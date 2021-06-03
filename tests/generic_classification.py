@@ -32,11 +32,16 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     return error, choice
 
 
-epochs = 200
+epochs = 20
 sensitivity_width = 0.6
+activation_threshold = 0.01
 error_threshold = 0.01
 seed_class = 0
 test = 'mnist'
+test_label = '{}{} - sw{} - at{} - et{}'.format(seed_class, test,
+                                                sensitivity_width,
+                                                activation_threshold,
+                                                error_threshold)
 
 if test == 'breast':
     from breast_data import *
@@ -56,6 +61,13 @@ elif test == 'mnist':
     from datasets.mnist_csv import *
     num_outputs = 10
     train_labels = mnist_training_labels
+    train_feat = mnist_training_data
+    test_labels = mnist_testing_labels
+    test_feat = mnist_testing_data
+elif test == 'rmnist':
+    from datasets.mnist_csv import *
+    num_outputs = 10
+    train_labels = mnist_training_labels
     train_feat = reduced_mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = reduced_mnist_testing_data
@@ -63,7 +75,8 @@ num_inputs = len(train_feat[0])
 
 CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class],
                    error_threshold=error_threshold,
-                   f_width=sensitivity_width)
+                   f_width=sensitivity_width,
+                   activation_threshold=activation_threshold)
 all_incorrect_classes = []
 epoch_error = []
 
@@ -83,6 +96,9 @@ for epoch in range(epochs):
         print("Epoch ", epoch, "/", epochs)
         error, choice = calculate_error(label, activations, train_count, num_outputs)
         print("neuron count", len(activations) - len(features) - num_outputs)
+        print(test_label)
+        for ep in epoch_error:
+            print(ep)
         if label == choice:
             correct_classifications += 1
             print("CORRECT CLASS WAS CHOSEN\n")
@@ -104,6 +120,9 @@ for epoch in range(epochs):
         activations = CLASSnet.convert_inputs_to_activations(features)
         activations = CLASSnet.response(activations)
         print("Test ", test_count + 1, "/", test_set_size)
+        print(test_label)
+        for ep in epoch_error:
+            print(ep)
         error, choice = calculate_error(label, activations, test_count, num_outputs)
         if label == choice:
             test_classifications += 1
@@ -119,6 +138,8 @@ for epoch in range(epochs):
     print("Test accuracy is ", test_classifications / test_set_size,
           "(", test_classifications, "/", test_set_size, ")")
     epoch_error.append([correct_classifications, test_classifications / test_set_size])
+    for ep in epoch_error:
+        print(ep)
 
 
 
