@@ -112,7 +112,7 @@ def collect_tests(test):
             print("Incorrect test selected")
             return None
         num_inputs = len(train_feat[0])
-        return train_labels, train_feat, test_labels, test_feat, num_inputs, retest_rate, retest_size
+        return train_labels, train_feat, test_labels, test_feat, num_inputs, num_outputs, retest_rate, retest_size
 
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
@@ -169,8 +169,10 @@ test_label = 'max_net:{}_{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_siz
 
 average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
 
-train_labels_1, train_feat_1, test_labels_1, test_feat_1, num_inputs_1, retest_rate_1, retest_size_1 = collect_tests(test)
-train_labels_2, train_feat_2, test_labels_2, test_feat_2, num_inputs_1, retest_rate_2, retest_size_2 = collect_tests(test)
+train_labels_1, train_feat_1, test_labels_1, test_feat_1, num_inputs_1, num_outputs_1,\
+retest_rate_1, retest_size_1 = collect_tests(test)
+train_labels_2, train_feat_2, test_labels_2, test_feat_2, num_inputs_1, num_outputs_1,\
+retest_rate_2, retest_size_2 = collect_tests(test)
 
 CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class],
                    error_threshold=error_threshold,

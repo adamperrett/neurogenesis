@@ -12,9 +12,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     activations = {}
     train_count = 0
     correct_classifications = 0
-    if 'esting' not in test_net_label:
-        classifications = []
-    incorrect_classes = []
+    # incorrect_classes = []
     for test in indexes:
         train_count += 1
         features = data[test]
@@ -115,7 +113,7 @@ else:
     maximum_synapses = 50
 epochs = 20
 seed_class = 0
-test = 'rmnist'
+test = 'pima'
 test_label = 'max_net:{}_{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_size, maximum_synapses,
                                                               seed_class, test,
                                                               sensitivity_width,
@@ -168,7 +166,7 @@ elif test == 'pima':
     train_feat = training_set_pimas
     test_labels = test_set_labels
     test_feat = test_set_pimas
-    retest_rate = 10
+    retest_rate = 100
     retest_size = len(test_set_pimas)
 num_inputs = len(train_feat[0])
 
@@ -189,15 +187,17 @@ for epoch in range(epochs):
         print("it reached 10")
     max_folds = int(len(train_labels) / retest_rate) + 1
     training_count = 0
+    training_classifications = []
     while training_count < len(train_labels):
         training_indexes = [i for i in range(training_count, min(training_count + retest_rate, len(train_labels)))]
         training_count += retest_rate
         current_fold = training_count / retest_rate
-        fold_string = 'fold {} / {}'.format(current_fold, max_folds)
+        fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
         training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
                                                                indexes=training_indexes,
                                                                test_net_label='Training',
                                                                fold_test_accuracy=fold_testing_accuracy,
+                                                               classifications=training_classifications,
                                                                fold_string=fold_string)
         testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
         testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
@@ -214,7 +214,7 @@ for epoch in range(epochs):
                                                           fold_test_accuracy=fold_testing_accuracy,
                                                           fold_string=fold_string)
 
-    epoch_error.append([training_accuracy, testing_accuracy])
+    epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy])
     for ep in epoch_error:
         print(ep)
 
