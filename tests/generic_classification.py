@@ -2,6 +2,59 @@ import numpy as np
 from scipy.special import softmax as sm
 from copy import deepcopy
 from models.neurogenesis import Network
+import random
+
+
+def test_net(net, data, labels, indexes=None, test_net_label='', classifications=None, fold_test_accuracy=None):
+    if not indexes:
+        indexes = [i for i in range(len(labels))]
+    activations = {}
+    train_count = 0
+    correct_classifications = 0
+    if 'esting' not in test_net_label:
+        classifications = []
+    incorrect_classes = []
+    for test in indexes:
+        train_count += 1
+        features = data[test]
+        label = labels[test]
+        activations = net.convert_inputs_to_activations(features)
+        activations = net.response(activations)
+        print(test_net_label, "\nEpoch ", epoch, "/", epochs)
+        print('test ', train_count, '/', len(indexes))
+        error, choice = calculate_error(label, activations, train_count, num_outputs)
+        print("neuron count", len(activations) - len(features) - num_outputs)
+        print(test_label)
+        for ep in epoch_error:
+            print(ep)
+        if label == choice:
+            correct_classifications += 1
+            if 'esting' not in test_net_label:
+                classifications.append(1)
+            print("CORRECT CLASS WAS CHOSEN")
+        else:
+            print("INCORRECT CLASS WAS CHOSEN")
+            if 'esting' not in test_net_label:
+                classifications.append(0)
+                net.error_driven_neuro_genesis(activations, error)
+            # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
+        # classifications.append([choice, label])
+        print("Performance over all current tests")
+        print(correct_classifications / train_count)
+        print("Performance over last tests")
+        for window in average_windows:
+            print(np.average(classifications[-window:]), ":", window)
+        if fold_testing_accuracy:
+            print("Fold testing accuracy", fold_testing_accuracy)
+        print("\n")
+    # print(incorrect_classes)
+    # all_incorrect_classes.append(incorrect_classes)
+    # for ep in all_incorrect_classes:
+    #     print(len(ep), "-", ep)
+    correct_classifications /= train_count
+    print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
+          correct_classifications)
+    return correct_classifications, classifications
 
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
@@ -19,9 +72,9 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     one_hot_encoding[correct_class] = 1
     for output in range(num_outputs):
         output_activations[output] = activations['out{}'.format(output)]
-    # softmax = sm(output_activations)
+    softmax = sm(output_activations)
     # softmax = normalise_outputs(output_activations)
-    softmax = output_activations
+    # softmax = output_activations
     if sum(softmax) > 0.:
         choice = softmax.argmax()
     else:
@@ -53,11 +106,14 @@ test_label = 'max_net:{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_size,
                                                               activation_threshold,
                                                               error_threshold)
 
+
 average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
 
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
+    retest_rate = 100
+    retest_size = 10
     train_labels = training_set_labels
     train_feat = training_set_breasts
     test_labels = test_set_labels
@@ -65,6 +121,8 @@ if test == 'breast':
 elif test == 'wine':
     from wine_data import *
     num_outputs = 3
+    retest_rate = 100
+    retest_size = 10
     train_labels = training_set_labels
     train_feat = training_set_wines
     test_labels = test_set_labels
@@ -72,6 +130,8 @@ elif test == 'wine':
 elif test == 'mnist':
     from datasets.mnist_csv import *
     num_outputs = 10
+    retest_rate = 1000
+    retest_size = 50
     train_labels = mnist_training_labels
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
@@ -79,6 +139,8 @@ elif test == 'mnist':
 elif test == 'rmnist':
     from datasets.mnist_csv import *
     num_outputs = 10
+    retest_rate = 1000
+    retest_size = 50
     train_labels = mnist_training_labels
     train_feat = reduced_mnist_training_data
     test_labels = mnist_testing_labels
@@ -93,75 +155,34 @@ CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class]
 all_incorrect_classes = []
 epoch_error = []
 
+fold_testing_accuracy = []
 for epoch in range(epochs):
     if epoch == 10:
         for ep, error in enumerate(epoch_error):
             print(ep, error)
         print("it reached 10")
-    activations = {}
-    train_count = 0
-    correct_classifications = 0
-    classifications = []
-    incorrect_classes = []
-    # for breast, label in zip(norm_breast, breast_labels):
-    for features, label in zip(train_feat, train_labels):
-        activations = CLASSnet.convert_inputs_to_activations(features)
-        activations = CLASSnet.response(activations)
-        print("Epoch ", epoch, "/", epochs)
-        error, choice = calculate_error(label, activations, train_count, num_outputs)
-        print("neuron count", len(activations) - len(features) - num_outputs)
-        print(test_label)
-        for ep in epoch_error:
-            print(ep)
-        if label == choice:
-            correct_classifications += 1
-            classifications.append(1)
-            print("CORRECT CLASS WAS CHOSEN\n")
-        else:
-            print("INCORRECT CLASS WAS CHOSEN\n")
-            classifications.append(0)
-            incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
-            CLASSnet.error_driven_neuro_genesis(activations, error)
-        # classifications.append([choice, label])
-        print("Performance over last tests")
-        for window in average_windows:
-            print(np.average(classifications[-window:]), ":", window)
-        train_count += 1
-    # print(incorrect_classes)
-    all_incorrect_classes.append(incorrect_classes)
-    for ep in all_incorrect_classes:
-        print(len(ep), "-", ep)
-    correct_classifications /= train_count
-    print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
-          correct_classifications)
-    test_count = 0
-    test_classifications = 0
-    for features, label in zip(test_feat, test_labels):
-        test_count += 1
-        activations = CLASSnet.convert_inputs_to_activations(features)
-        activations = CLASSnet.response(activations)
-        print("Test ", test_count, "/", len(test_labels))
-        print(test_label)
-        for ep in epoch_error:
-            print(ep)
-        error, choice = calculate_error(label, activations, test_count, num_outputs)
-        if label == choice:
-            test_classifications += 1
-            print("CORRECT CLASS WAS CHOSEN\n")
-        else:
-            print("INCORRECT CLASS WAS CHOSEN\n")
-            print('({}) {}: {}'.format(test_count, label, choice))
-        print("Performance over last tests")
-        for window in average_windows:
-            print(np.average(classifications[-window:]), ":", window)
-        print("Current testing accuracy: ", test_classifications / test_count)
+    training_count = 0
+    while training_count < len(train_labels):
+        training_indexes = [i for i in range(training_count, min(training_count + retest_rate, len(train_labels)))]
+        training_count += retest_rate
+        training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
+                                                               indexes=training_indexes,
+                                                               test_net_label='Training',
+                                                               fold_test_accuracy=fold_testing_accuracy)
+        testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
+        testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
+                                                              test_net_label='Testing',
+                                                              indexes=testing_indexes,
+                                                              classifications=training_classifications,
+                                                              fold_test_accuracy=fold_testing_accuracy)
+        fold_testing_accuracy.append(testing_accuracy)
 
-    print("neuron count", len(activations) - len(features) - num_outputs)
-    print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
-          correct_classifications)
-    print("Test accuracy is ", test_classifications / test_count,
-          "(", test_classifications, "/", test_count, ")")
-    epoch_error.append([correct_classifications, test_classifications / test_count])
+    testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
+                                                          test_net_label='Testing',
+                                                          classifications=training_classifications,
+                                                          fold_test_accuracy=fold_testing_accuracy)
+
+    epoch_error.append([training_accuracy, testing_accuracy])
     for ep in epoch_error:
         print(ep)
 
