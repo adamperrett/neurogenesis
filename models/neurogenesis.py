@@ -94,10 +94,14 @@ class Network():
         self.neurons[neuron_label].add_multiple_connections(connections)
 
     def response(self, activations):
-        for i in range(self.layers):
-            for neuron in self.neurons:
-                response = self.neurons[neuron].response(activations)
-                activations[self.neurons[neuron].neuron_label] = response
+        # for i in range(self.layers):
+        for neuron in self.neurons:
+            response = self.neurons[neuron].response(activations)
+            activations[self.neurons[neuron].neuron_label] = response
+        outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
+        for neuron in outputs:
+            response = self.neurons[neuron].response(activations)
+            activations[self.neurons[neuron].neuron_label] = response
         return activations
 
     def convert_inputs_to_activations(self, inputs):

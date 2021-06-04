@@ -34,14 +34,15 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
 
 epochs = 20
 sensitivity_width = 0.6
-activation_threshold = 0.01
+activation_threshold = 0.0
 error_threshold = 0.01
 seed_class = 0
-test = 'mnist'
+test = 'breast'
 test_label = '{}{} - sw{} - at{} - et{}'.format(seed_class, test,
                                                 sensitivity_width,
                                                 activation_threshold,
                                                 error_threshold)
+average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
 
 if test == 'breast':
     from breast_data import *
@@ -88,6 +89,7 @@ for epoch in range(epochs):
     activations = {}
     train_count = 0
     correct_classifications = 0
+    classifications = []
     incorrect_classes = []
     # for breast, label in zip(norm_breast, breast_labels):
     for features, label in zip(train_feat, train_labels):
@@ -101,11 +103,16 @@ for epoch in range(epochs):
             print(ep)
         if label == choice:
             correct_classifications += 1
+            classifications.append(1)
             print("CORRECT CLASS WAS CHOSEN\n")
         else:
             print("INCORRECT CLASS WAS CHOSEN\n")
+            classifications.append(0)
             incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
             CLASSnet.error_driven_neuro_genesis(activations, error)
+        print("Performance over last tests")
+        for window in average_windows:
+            print(np.average(classifications[-window:]), ":", window)
         train_count += 1
     # print(incorrect_classes)
     all_incorrect_classes.append(incorrect_classes)
@@ -117,9 +124,10 @@ for epoch in range(epochs):
     test_count = 0
     test_classifications = 0
     for features, label in zip(test_feat, test_labels):
+        test_count += 1
         activations = CLASSnet.convert_inputs_to_activations(features)
         activations = CLASSnet.response(activations)
-        print("Test ", test_count + 1, "/", test_set_size)
+        print("Test ", test_count, "/", test_count)
         print(test_label)
         for ep in epoch_error:
             print(ep)
@@ -130,14 +138,17 @@ for epoch in range(epochs):
         else:
             print("INCORRECT CLASS WAS CHOSEN\n")
             print('({}) {}: {}'.format(test_count, label, choice))
-        test_count += 1
+        print("Performance over last tests")
+        for window in average_windows:
+            print(np.average(classifications[-window:]), ":", window)
+        print("Current testing accuracy: ", test_classifications / test_count)
 
     print("neuron count", len(activations) - len(features) - num_outputs)
     print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
           correct_classifications)
-    print("Test accuracy is ", test_classifications / test_set_size,
-          "(", test_classifications, "/", test_set_size, ")")
-    epoch_error.append([correct_classifications, test_classifications / test_set_size])
+    print("Test accuracy is ", test_classifications / test_count,
+          "(", test_classifications, "/", test_count, ")")
+    epoch_error.append([correct_classifications, test_classifications / test_count])
     for ep in epoch_error:
         print(ep)
 
