@@ -171,10 +171,15 @@ average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
 
 train_labels_1, train_feat_1, test_labels_1, test_feat_1, num_inputs_1, num_outputs_1,\
 retest_rate_1, retest_size_1 = collect_tests(test)
-train_labels_2, train_feat_2, test_labels_2, test_feat_2, num_inputs_1, num_outputs_1,\
+train_labels_2, train_feat_2, test_labels_2, test_feat_2, num_inputs_2, num_outputs_2,\
 retest_rate_2, retest_size_2 = collect_tests(test)
 
-CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class],
+for i in range(len(train_labels_2)):
+    train_labels_2[i] += num_outputs_1
+for i in range(len(test_labels_2)):
+    test_labels_2[i] += num_outputs_1
+
+CLASSnet = Network(num_outputs_1+num_outputs_2, train_labels[seed_class], train_feat[seed_class],
                    error_threshold=error_threshold,
                    f_width=sensitivity_width,
                    activation_threshold=activation_threshold,

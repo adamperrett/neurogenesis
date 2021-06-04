@@ -47,6 +47,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         if fold_testing_accuracy:
             print("Fold testing accuracy", fold_testing_accuracy)
             print("Maximum fold = ", max(fold_test_accuracy))
+            print("Performance over last folds")
+            for window in average_windows:
+                print(np.average(classifications[-window:]), ":", window)
         print("\n")
     # print(incorrect_classes)
     # all_incorrect_classes.append(incorrect_classes)
@@ -83,6 +86,7 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
         choice = -1
     for output in range(num_outputs):
         error[output] += softmax[output] - one_hot_encoding[output]
+        # error[output] = - one_hot_encoding[output]
 
     print("Error for test ", test_label, " is ", error)
     print("output")
@@ -109,8 +113,8 @@ else:
     sensitivity_width = 0.9
     activation_threshold = 0.0
     error_threshold = 0.01
-    maximum_net_size = 1000
-    maximum_synapses = 50
+    maximum_net_size = 100
+    maximum_synapses = 30
 epochs = 20
 seed_class = 0
 test = 'pima'
