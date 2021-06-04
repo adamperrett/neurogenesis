@@ -36,13 +36,15 @@ epochs = 20
 sensitivity_width = 0.6
 activation_threshold = 0.0
 error_threshold = 0.01
-maximum_net_size = 200
+maximum_net_size = 1500
 seed_class = 0
 test = 'rmnist'
-test_label = '{}{} - sw{} - at{} - et{}'.format(seed_class, test,
-                                                sensitivity_width,
-                                                activation_threshold,
-                                                error_threshold)
+test_label = 'max_net:{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_size,
+                                                              seed_class, test,
+                                                              sensitivity_width,
+                                                              activation_threshold,
+                                                              error_threshold)
+
 average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
 
 if test == 'breast':
