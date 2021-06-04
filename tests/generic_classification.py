@@ -68,7 +68,8 @@ def normalise_outputs(out_activations):
 def calculate_error(correct_class, activations, test_label, num_outputs=2):
     output_activations = np.zeros(num_outputs)
     error = np.zeros(num_outputs)
-    one_hot_encoding = np.zeros(num_outputs)
+    one_hot_encoding = np.ones(num_outputs)
+    one_hot_encoding *= -0
     one_hot_encoding[correct_class] = 1
     for output in range(num_outputs):
         output_activations[output] = activations['out{}'.format(output)]
@@ -94,12 +95,12 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
 
 
 epochs = 20
-sensitivity_width = 0.6
+sensitivity_width = 0.9
 activation_threshold = 0.0
 error_threshold = 0.01
-maximum_net_size = 200
+maximum_net_size = 100
 seed_class = 0
-test = 'breast'
+test = 'pima'
 test_label = 'max_net:{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_size,
                                                               seed_class, test,
                                                               sensitivity_width,
@@ -145,6 +146,15 @@ elif test == 'rmnist':
     train_feat = reduced_mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = reduced_mnist_testing_data
+elif test == 'pima':
+    from datasets.pima_indians import *
+    num_outputs = 2
+    retest_rate = 100
+    retest_size = 10
+    train_labels = training_set_labels
+    train_feat = training_set_pimas
+    test_labels = test_set_labels
+    test_feat = test_set_pimas
 num_inputs = len(train_feat[0])
 
 CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class],
