@@ -96,15 +96,26 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
                                                    error[output]))
     return error, choice
 
-
+read_args = False
+if read_args:
+    import sys
+    sensitivity_width = float(sys.argv[1])
+    activation_threshold = float(sys.argv[2])
+    error_threshold = float(sys.argv[3])
+    maximum_net_size = int(sys.argv[4])
+    maximum_synapses = int(sys.argv[5])
+    print("Variables collected")
+    for i in range(5):
+        print(sys.argv[i+1])
+else:
+    sensitivity_width = 0.9
+    activation_threshold = 0.0
+    error_threshold = 0.01
+    maximum_net_size = 1000
+    maximum_synapses = 50
 epochs = 20
-sensitivity_width = 0.9
-activation_threshold = 0.0
-error_threshold = 0.01
-maximum_net_size = 1000
-maximum_synapses = 50
 seed_class = 0
-test = 'pima'
+test = 'mnist'
 test_label = 'max_net:{}_{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_size, maximum_synapses,
                                                               seed_class, test,
                                                               sensitivity_width,
