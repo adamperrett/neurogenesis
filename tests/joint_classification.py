@@ -59,6 +59,61 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
           correct_classifications)
     return correct_classifications, classifications
 
+def collect_tests(test):
+        if test == 'breast':
+            from breast_data import training_set_labels, training_set_breasts, test_set_labels, test_set_breasts
+            num_outputs = 2
+            train_labels = training_set_labels
+            train_feat = training_set_breasts
+            test_labels = test_set_labels
+            test_feat = test_set_breasts
+            retest_rate = 10
+            retest_size = len(test_set_labels)
+        elif test == 'wine':
+            from wine_data import training_set_labels, training_set_wines, test_set_labels, test_set_wines
+            num_outputs = 3
+            train_labels = training_set_labels
+            train_feat = training_set_wines
+            test_labels = test_set_labels
+            test_feat = test_set_wines
+            retest_rate = 100
+            retest_size = 10
+        elif test == 'mnist':
+            from datasets.mnist_csv import mnist_training_labels, mnist_training_data, \
+                mnist_testing_labels, mnist_testing_data
+            num_outputs = 10
+            train_labels = mnist_training_labels
+            train_feat = mnist_training_data
+            test_labels = mnist_testing_labels
+            test_feat = mnist_testing_data
+            retest_rate = 1000
+            retest_size = 50
+        elif test == 'rmnist':
+            from datasets.mnist_csv import mnist_training_labels, reduced_mnist_training_data, \
+                mnist_testing_labels, reduced_mnist_testing_data
+            num_outputs = 10
+            train_labels = mnist_training_labels
+            train_feat = reduced_mnist_training_data
+            test_labels = mnist_testing_labels
+            test_feat = reduced_mnist_testing_data
+            retest_rate = 1000
+            retest_size = 50
+        elif test == 'pima':
+            from datasets.pima_indians import training_set_labels, training_set_pimas, \
+                test_set_labels, test_set_pimas
+            num_outputs = 2
+            train_labels = training_set_labels
+            train_feat = training_set_pimas
+            test_labels = test_set_labels
+            test_feat = test_set_pimas
+            retest_rate = 10
+            retest_size = len(test_set_pimas)
+        else:
+            print("Incorrect test selected")
+            return None
+        num_inputs = len(train_feat[0])
+        return train_labels, train_feat, test_labels, test_feat, num_inputs, retest_rate, retest_size
+
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
     max_out = max(out_activations)
@@ -114,52 +169,8 @@ test_label = 'max_net:{}_{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_siz
 
 average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
 
-if test == 'breast':
-    from breast_data import *
-    num_outputs = 2
-    train_labels = training_set_labels
-    train_feat = training_set_breasts
-    test_labels = test_set_labels
-    test_feat = test_set_breasts
-    retest_rate = 10
-    retest_size = len(test_set_labels)
-elif test == 'wine':
-    from wine_data import *
-    num_outputs = 3
-    train_labels = training_set_labels
-    train_feat = training_set_wines
-    test_labels = test_set_labels
-    test_feat = test_set_wines
-    retest_rate = 100
-    retest_size = 10
-elif test == 'mnist':
-    from datasets.mnist_csv import *
-    num_outputs = 10
-    train_labels = mnist_training_labels
-    train_feat = mnist_training_data
-    test_labels = mnist_testing_labels
-    test_feat = mnist_testing_data
-    retest_rate = 1000
-    retest_size = 50
-elif test == 'rmnist':
-    from datasets.mnist_csv import *
-    num_outputs = 10
-    train_labels = mnist_training_labels
-    train_feat = reduced_mnist_training_data
-    test_labels = mnist_testing_labels
-    test_feat = reduced_mnist_testing_data
-    retest_rate = 1000
-    retest_size = 50
-elif test == 'pima':
-    from datasets.pima_indians import *
-    num_outputs = 2
-    train_labels = training_set_labels
-    train_feat = training_set_pimas
-    test_labels = test_set_labels
-    test_feat = test_set_pimas
-    retest_rate = 10
-    retest_size = len(test_set_pimas)
-num_inputs = len(train_feat[0])
+train_labels_1, train_feat_1, test_labels_1, test_feat_1, num_inputs_1, retest_rate_1, retest_size_1 = collect_tests(test)
+train_labels_2, train_feat_2, test_labels_2, test_feat_2, num_inputs_1, retest_rate_2, retest_size_2 = collect_tests(test)
 
 CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class],
                    error_threshold=error_threshold,

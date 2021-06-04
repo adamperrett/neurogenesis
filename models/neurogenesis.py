@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 
 class Synapses():
@@ -66,13 +67,15 @@ class Network():
                  error_threshold=0.1,
                  f_width=0.3,
                  activation_threshold=0.01,
-                 maximum_net_size=20):
+                 maximum_net_size=20,
+                 max_hidden_synapses=100):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.activation_threshold = activation_threshold
         self.hidden_neuron_count = 1
         self.deleted_neuron_count = 0
         self.maximum_net_size = maximum_net_size
+        self.max_hidden_synapses = max_hidden_synapses
         self.neurons = {}
         self.number_of_classes = number_of_classes
         # add seed neuron
@@ -80,6 +83,7 @@ class Network():
         self.neurons['n0'] = Neuron('n0',
                                     self.convert_inputs_to_activations(seed_features),
                                     f_width=f_width)
+        self.number_of_inputs = len(seed_features)
         # add outputs
         for output in range(number_of_classes):
             self.add_neuron({}, 'out{}'.format(output))
@@ -96,12 +100,29 @@ class Network():
         if neuron_label == '':
             neuron_label = 'n{}'.format(self.hidden_neuron_count)
             self.hidden_neuron_count += 1
+        if self.max_hidden_synapses:
+            connections = self.limit_connections(connections)
         self.neurons[neuron_label] = Neuron(neuron_label, connections,
                                             f_width=self.f_width)
         return neuron_label
         #### find a way to know whether you need to add a layer
         # for pre in connections:
         #     if 'in' not in pre
+
+    def limit_connections(self, connections):
+        if len(connections) < self.max_hidden_synapses:
+            return connections
+        # pruned_connections = {}
+        # for i in range(max(self.hidden_neuron_count-1 - self.max_hidden_synapses, 0),
+        #                self.hidden_neuron_count-1):
+        #     hidden_label = 'n{}'.format(i)
+        #     pruned_connections[hidden_label] = connections[hidden_label]
+
+        pruned_connections = {}
+        pre_list = random.sample(list(connections), self.max_hidden_synapses)
+        for pre in pre_list:
+            pruned_connections[pre] = connections[pre]
+        return pruned_connections
 
     def connect_neuron(self, neuron_label, connections):
         self.neurons[neuron_label].add_multiple_connections(connections)
