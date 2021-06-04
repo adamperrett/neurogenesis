@@ -3,7 +3,14 @@ from scipy.special import softmax as sm
 from copy import deepcopy
 from models.neurogenesis import Network
 
-
+def normalise_outputs(out_activations):
+    min_out = min(out_activations)
+    max_out = max(out_activations)
+    out_range = max_out - min_out
+    norm_out = []
+    for out in out_activations:
+        norm_out.append((out - min_out) / out_range)
+    return np.array(norm_out)
 
 def calculate_error(correct_class, activations, test_label, num_outputs=2):
     output_activations = np.zeros(num_outputs)
@@ -13,6 +20,7 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     for output in range(num_outputs):
         output_activations[output] = activations['out{}'.format(output)]
     # softmax = sm(output_activations)
+    # softmax = normalise_outputs(output_activations)
     softmax = output_activations
     if sum(softmax) > 0.:
         choice = softmax.argmax()
@@ -36,9 +44,9 @@ epochs = 20
 sensitivity_width = 0.6
 activation_threshold = 0.0
 error_threshold = 0.01
-maximum_net_size = 1500
+maximum_net_size = 200
 seed_class = 0
-test = 'rmnist'
+test = 'breast'
 test_label = 'max_net:{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_size,
                                                               seed_class, test,
                                                               sensitivity_width,
@@ -114,6 +122,7 @@ for epoch in range(epochs):
             classifications.append(0)
             incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
             CLASSnet.error_driven_neuro_genesis(activations, error)
+        # classifications.append([choice, label])
         print("Performance over last tests")
         for window in average_windows:
             print(np.average(classifications[-window:]), ":", window)
@@ -131,7 +140,7 @@ for epoch in range(epochs):
         test_count += 1
         activations = CLASSnet.convert_inputs_to_activations(features)
         activations = CLASSnet.response(activations)
-        print("Test ", test_count, "/", test_count)
+        print("Test ", test_count, "/", len(test_labels))
         print(test_label)
         for ep in epoch_error:
             print(ep)
