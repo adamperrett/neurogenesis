@@ -115,7 +115,7 @@ else:
     maximum_synapses = 50
 epochs = 20
 seed_class = 0
-test = 'mnist'
+test = 'rmnist'
 test_label = 'max_net:{}_{}  - {}{} - sw{} - at{} - et{}'.format(maximum_net_size, maximum_synapses,
                                                               seed_class, test,
                                                               sensitivity_width,
@@ -197,19 +197,22 @@ for epoch in range(epochs):
         training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
                                                                indexes=training_indexes,
                                                                test_net_label='Training',
-                                                               fold_test_accuracy=fold_testing_accuracy)
+                                                               fold_test_accuracy=fold_testing_accuracy,
+                                                               fold_string=fold_string)
         testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
         testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
                                                               test_net_label='Testing',
                                                               indexes=testing_indexes,
                                                               classifications=training_classifications,
-                                                              fold_test_accuracy=fold_testing_accuracy)
+                                                              fold_test_accuracy=fold_testing_accuracy,
+                                                              fold_string=fold_string)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
 
     testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
                                                           test_net_label='Testing',
                                                           classifications=training_classifications,
-                                                          fold_test_accuracy=fold_testing_accuracy)
+                                                          fold_test_accuracy=fold_testing_accuracy,
+                                                          fold_string=fold_string)
 
     epoch_error.append([training_accuracy, testing_accuracy])
     for ep in epoch_error:

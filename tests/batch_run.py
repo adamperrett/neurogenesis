@@ -6,7 +6,7 @@ sensitivity_width = [0.6, 0.9]
 activation_threshold = [0.0]
 error_threshold = [0.01]
 maximum_net_size = [1000, 10000]
-maximum_synapses = [50, 500]
+maximum_synapses = [90, 500]
 
 processes = []
 logs = []
