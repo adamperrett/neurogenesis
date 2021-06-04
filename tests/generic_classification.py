@@ -36,8 +36,9 @@ epochs = 20
 sensitivity_width = 0.6
 activation_threshold = 0.0
 error_threshold = 0.01
+maximum_net_size = 200
 seed_class = 0
-test = 'breast'
+test = 'rmnist'
 test_label = '{}{} - sw{} - at{} - et{}'.format(seed_class, test,
                                                 sensitivity_width,
                                                 activation_threshold,
@@ -77,7 +78,8 @@ num_inputs = len(train_feat[0])
 CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class],
                    error_threshold=error_threshold,
                    f_width=sensitivity_width,
-                   activation_threshold=activation_threshold)
+                   activation_threshold=activation_threshold,
+                   maximum_net_size=maximum_net_size)
 all_incorrect_classes = []
 epoch_error = []
 
