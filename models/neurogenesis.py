@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import operator
 
 
 class Synapses():
@@ -15,16 +16,20 @@ class Synapses():
 
 
 class Neuron():
-    def __init__(self, neuron_label, connections, f_width=0.3):
+    def __init__(self, neuron_label, connections, weights=None, f_width=0.3):
         self.neuron_label = neuron_label
         self.f_width = f_width
         self.synapses = {}
         self.synapse_count = len(connections)
+        weights = {}
         for pre in connections:
+            if pre not in weights:
+                weights[pre] = 1.
             freq = connections[pre]
             self.synapses[pre] = []
             self.synapses[pre].append(Synapses(pre + '0', neuron_label, freq,
-                                               f_width=self.f_width))
+                                               f_width=self.f_width,
+                                               weight=weights[pre]))
 
     def add_connection(self, pre, freq, weight=1.):
         self.synapse_count += 1
@@ -68,21 +73,26 @@ class Network():
                  f_width=0.3,
                  activation_threshold=0.01,
                  maximum_net_size=20,
-                 max_hidden_synapses=100):
+                 max_hidden_synapses=100,
+                 activity_decay_rate=0.9):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.activation_threshold = activation_threshold
-        self.hidden_neuron_count = 1
+        self.hidden_neuron_count = 0
         self.deleted_neuron_count = 0
         self.maximum_net_size = maximum_net_size
         self.max_hidden_synapses = max_hidden_synapses
         self.neurons = {}
+        self.neuron_activity = {}
+        self.neuron_selectivity = {}
+        self.activity_decay_rate = activity_decay_rate
         self.number_of_classes = number_of_classes
         # add seed neuron
         # self.neurons['seed{}'.format(seed_class)] = Neuron('seed{}'.format(seed_class),
-        self.neurons['n0'] = Neuron('n0',
-                                    self.convert_inputs_to_activations(seed_features),
-                                    f_width=f_width)
+        # self.neurons['n0'] = Neuron('n0',
+        #                             self.convert_inputs_to_activations(seed_features),
+        #                             f_width=f_width)
+        self.add_neuron(self.convert_inputs_to_activations(seed_features))
         self.number_of_inputs = len(seed_features)
         # add outputs
         for output in range(number_of_classes):
@@ -95,7 +105,13 @@ class Network():
 
     def add_neuron(self, connections, neuron_label=''):
         if self.hidden_neuron_count - self.deleted_neuron_count == self.maximum_net_size:
-            del self.neurons['n{}'.format(self.deleted_neuron_count)]
+            quiet_neuron = min(self.return_hidden_neurons(self.neuron_selectivity).items(),
+                               key=operator.itemgetter(1))[0]
+            if 'in' in quiet_neuron or 'out' in quiet_neuron:
+                print("not sure what deleting does here")
+            del self.neurons[quiet_neuron]
+            del self.neuron_activity[quiet_neuron]
+            del self.neuron_selectivity[quiet_neuron]
             self.deleted_neuron_count += 1
         if neuron_label == '':
             neuron_label = 'n{}'.format(self.hidden_neuron_count)
@@ -104,13 +120,14 @@ class Network():
             connections = self.limit_connections(connections)
         self.neurons[neuron_label] = Neuron(neuron_label, connections,
                                             f_width=self.f_width)
+        self.neuron_activity[neuron_label] = 1.
         return neuron_label
         #### find a way to know whether you need to add a layer
         # for pre in connections:
         #     if 'in' not in pre
 
     def limit_connections(self, connections):
-        if len(connections) < self.max_hidden_synapses:
+        if len(connections) <= self.max_hidden_synapses:
             return connections
         # pruned_connections = {}
         # for i in range(max(self.hidden_neuron_count-1 - self.max_hidden_synapses, 0),
@@ -118,8 +135,16 @@ class Network():
         #     hidden_label = 'n{}'.format(i)
         #     pruned_connections[hidden_label] = connections[hidden_label]
 
+        # todo add something to make it select most differently active neuron
+        # todo make high number of projecting synapses (meaning a descriminator neuron because above)
+        #  result in it not being selected for deletion
+        selected_neurons = dict(sorted(self.neuron_selectivity.items(),
+                                       key=operator.itemgetter(1),
+                                       reverse=True)[:self.max_hidden_synapses])
+
         pruned_connections = {}
-        pre_list = random.sample(list(connections), self.max_hidden_synapses)
+        # pre_list = random.sample(list(connections), self.max_hidden_synapses)
+        pre_list = selected_neurons
         for pre in pre_list:
             pruned_connections[pre] = connections[pre]
         return pruned_connections
@@ -131,7 +156,15 @@ class Network():
         # for i in range(self.layers):
         for neuron in self.neurons:
             response = self.neurons[neuron].response(activations)
+            # line below can be compressed?
             activations[self.neurons[neuron].neuron_label] = response
+        for neuron in self.remove_output_neurons(activations, cap=False):
+            if neuron in self.neuron_activity:
+                self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
+                                               (response * (1 - self.activity_decay_rate))
+            else:
+                self.neuron_activity[neuron] = response
+            self.neuron_selectivity[neuron] = abs(response - self.neuron_activity[neuron])
         outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
         for neuron in outputs:
             response = self.neurons[neuron].response(activations)
@@ -144,12 +177,22 @@ class Network():
             acti['in{}'.format(idx)] = ele
         return acti
 
-    def remove_output_neurons(self, activations):
+    def remove_output_neurons(self, activations, cap=True):
         neural_activations = {}
         for neuron in activations:
             if 'out' not in neuron:
-                if activations[neuron] > self.activation_threshold:
+                if cap:
+                    if activations[neuron] >= self.activation_threshold:
+                        neural_activations[neuron] = activations[neuron]
+                else:
                     neural_activations[neuron] = activations[neuron]
+        return neural_activations
+
+    def return_hidden_neurons(self, activations, cap=True):
+        neural_activations = {}
+        for neuron in activations:
+            if 'out' not in neuron and 'in' not in neuron:
+                neural_activations[neuron] = activations[neuron]
         return neural_activations
 
     def error_driven_neuro_genesis(self, activations, output_error):
