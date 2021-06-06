@@ -5,15 +5,15 @@ import time
 sensitivity_width = [0.6, 0.9]
 activation_threshold = [0.0]
 error_threshold = [0.01]
-maximum_net_size = [1000, 10000]
-maximum_synapses = [90, 500]
+maximum_total_synapses = [100000, 1000000]
+maximum_synapses = [200, 500]
 
 processes = []
 logs = []
 for sw in sensitivity_width:
     for at in activation_threshold:
         for er in error_threshold:
-            for mn in maximum_net_size:
+            for mn in maximum_total_synapses:
                 for ms in maximum_synapses:
                     screen_name = "sw{}_at{}_er{}_mn{}_ms{}".format(sw, at, er, mn, ms)
                     open_screen = "screen -dmS " + screen_name + " bash -c "

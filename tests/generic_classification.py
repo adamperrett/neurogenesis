@@ -104,8 +104,8 @@ if read_args:
     sensitivity_width = float(sys.argv[1])
     activation_threshold = float(sys.argv[2])
     error_threshold = float(sys.argv[3])
-    maximum_net_size = int(sys.argv[4])
-    maximum_synapses = int(sys.argv[5])
+    maximum_total_synapses = int(sys.argv[4])
+    maximum_synapses_per_neuron = int(sys.argv[5])
     print("Variables collected")
     for i in range(5):
         print(sys.argv[i+1])
@@ -113,19 +113,24 @@ else:
     sensitivity_width = 0.5
     activation_threshold = 0.0
     error_threshold = 0.01
-    maximum_net_size = 100
-    maximum_synapses = 100
-activity_decay_rate = 0.9
-epochs = 20
+    maximum_synapses_per_neuron = 10
+    maximum_total_synapses = 100*100
+
+maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
+activity_decay_rate = 0.99
+always_inputs = False
+epochs = 200
 seed_class = 0
 test = 'pima'
-test_label = 'max_net:{}_{}  - {}{} - sw{} - at{} - et{} - adr{}'.format(maximum_net_size, maximum_synapses,
-                                                                         seed_class, test,
-                                                                         sensitivity_width,
-                                                                         activation_threshold,
-                                                                         error_threshold,
-                                                                         activity_decay_rate
-                                                                         )
+test_label = 'max_net:{}_{}  - {}{} - sw{} - ' \
+             'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
+                                                   seed_class, test,
+                                                   sensitivity_width,
+                                                   activation_threshold,
+                                                   error_threshold,
+                                                   activity_decay_rate,
+                                                   always_inputs
+                                                   )
 
 
 average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
@@ -182,7 +187,7 @@ CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class]
                    f_width=sensitivity_width,
                    activation_threshold=activation_threshold,
                    maximum_net_size=maximum_net_size,
-                   max_hidden_synapses=maximum_synapses,
+                   max_hidden_synapses=maximum_synapses_per_neuron,
                    activity_decay_rate=activity_decay_rate)
 all_incorrect_classes = []
 epoch_error = []
@@ -218,6 +223,15 @@ for epoch in range(epochs):
                                                               fold_string=fold_string,
                                                               max_fold=maximum_fold_accuracy)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
+        if testing_accuracy > maximum_fold_accuracy[-1][0]:
+            total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
+                                              test_net_label='Testing',
+                                              classifications=training_classifications,
+                                              fold_test_accuracy=fold_testing_accuracy,
+                                              fold_string=fold_string,
+                                              max_fold=maximum_fold_accuracy
+                                              )
+            maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold])
 
     testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
                                                           test_net_label='Testing',
@@ -225,15 +239,6 @@ for epoch in range(epochs):
                                                           fold_test_accuracy=fold_testing_accuracy,
                                                           fold_string=fold_string,
                                                           max_fold=maximum_fold_accuracy)
-    if testing_accuracy > maximum_fold_accuracy[-1][0]:
-        total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
-                                          test_net_label='Testing',
-                                          classifications=training_classifications,
-                                          fold_test_accuracy=fold_testing_accuracy,
-                                          fold_string=fold_string,
-                                          max_fold=maximum_fold_accuracy
-                                          )
-        maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold])
 
     epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy])
     print(test_label)
@@ -241,7 +246,7 @@ for epoch in range(epochs):
         print(ep, error)
     print(test_label)
 
-
+print("done")
 
 
 
