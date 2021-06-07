@@ -113,12 +113,12 @@ else:
     sensitivity_width = 0.5
     activation_threshold = 0.0
     error_threshold = 0.01
-    maximum_synapses_per_neuron = 10
-    maximum_total_synapses = 100*100
+    maximum_synapses_per_neuron = 10000
+    maximum_total_synapses = 100*1000000
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 activity_decay_rate = 0.99
-always_inputs = False
+always_inputs = True
 epochs = 200
 seed_class = 0
 test = 'pima'
@@ -188,7 +188,8 @@ CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class]
                    activation_threshold=activation_threshold,
                    maximum_net_size=maximum_net_size,
                    max_hidden_synapses=maximum_synapses_per_neuron,
-                   activity_decay_rate=activity_decay_rate)
+                   activity_decay_rate=activity_decay_rate,
+                   always_inputs=always_inputs)
 all_incorrect_classes = []
 epoch_error = []
 
@@ -233,12 +234,12 @@ for epoch in range(epochs):
                                               )
             maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold])
 
-    testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
-                                                          test_net_label='Testing',
-                                                          classifications=training_classifications,
-                                                          fold_test_accuracy=fold_testing_accuracy,
-                                                          fold_string=fold_string,
-                                                          max_fold=maximum_fold_accuracy)
+    # testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
+    #                                                       test_net_label='Testing',
+    #                                                       classifications=training_classifications,
+    #                                                       fold_test_accuracy=fold_testing_accuracy,
+    #                                                       fold_string=fold_string,
+    #                                                       max_fold=maximum_fold_accuracy)
 
     epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy])
     print(test_label)

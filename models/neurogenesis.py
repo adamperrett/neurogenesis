@@ -95,8 +95,8 @@ class Network():
         # self.neurons['n0'] = Neuron('n0',
         #                             self.convert_inputs_to_activations(seed_features),
         #                             f_width=f_width)
-        self.add_neuron(self.convert_inputs_to_activations(seed_features))
         self.number_of_inputs = len(seed_features)
+        self.add_neuron(self.convert_inputs_to_activations(seed_features))
         # add outputs
         for output in range(number_of_classes):
             self.add_neuron({}, 'out{}'.format(output))
@@ -108,25 +108,7 @@ class Network():
 
     def add_neuron(self, connections, neuron_label=''):
         if self.hidden_neuron_count - self.deleted_neuron_count == self.maximum_net_size:
-            oldest_neuron = 'n{}'.format(self.deleted_neuron_count)
-
-            quiet_neuron = min(self.return_hidden_neurons(self.neuron_selectivity).items(),
-                               key=operator.itemgetter(1))[0]
-
-            # synapse_count = [[key, self.neurons[key].synapse_count] for key in self.neurons]
-            # unconnected_neuron = min(self.neuron_connectedness, key=operator.itemgetter(1))[0]
-            unconnected_neuron = min(self.neuron_connectedness.items(),
-                                     key=operator.itemgetter(1))[0]
-            if 'in' in quiet_neuron or 'out' in quiet_neuron:
-                print("not sure what deleting does here")
-            # delete_neuron = oldest_neuron
-            delete_neuron = quiet_neuron
-            # delete_neuron = unconnected_neuron
-            del self.neurons[delete_neuron]
-            del self.neuron_activity[delete_neuron]
-            del self.neuron_selectivity[delete_neuron]
-            del self.neuron_connectedness[delete_neuron]
-            self.deleted_neuron_count += 1
+            self.delete_neuron()
         if neuron_label == '':
             neuron_label = 'n{}'.format(self.hidden_neuron_count)
             self.hidden_neuron_count += 1
@@ -135,11 +117,37 @@ class Network():
         self.neurons[neuron_label] = Neuron(neuron_label, connections,
                                             f_width=self.f_width)
         self.count_synapses(connections)
+        self.age_synapses()
         self.neuron_activity[neuron_label] = 1.
         return neuron_label
-        #### find a way to know whether you need to add a layer
-        # for pre in connections:
-        #     if 'in' not in pre
+
+    def delete_neuron(self, delete_type='conn'):
+        if delete_type == 'old':
+            oldest_neuron = 'n{}'.format(self.deleted_neuron_count)
+            delete_neuron = oldest_neuron
+        elif delete_type == 'quiet':
+            quiet_neuron = min(self.return_hidden_neurons(self.neuron_selectivity).items(),
+                               key=operator.itemgetter(1))[0]
+            delete_neuron = quiet_neuron
+        else:
+            # synapse_count = [[key, self.neurons[key].synapse_count] for key in self.neurons]
+            # unconnected_neuron = min(self.neuron_connectedness, key=operator.itemgetter(1))[0]
+            unconnected_neuron = min(self.return_hidden_neurons(self.neuron_connectedness).items(),
+                                     key=operator.itemgetter(1))[0]
+            delete_neuron = unconnected_neuron
+        if 'in' in delete_neuron or 'out' in delete_neuron:
+            print("not sure what deleting does here")
+        del self.neurons[delete_neuron]
+        del self.neuron_activity[delete_neuron]
+        del self.neuron_selectivity[delete_neuron]
+        del self.neuron_connectedness[delete_neuron]
+        self.deleted_neuron_count += 1
+
+    def age_synapses(self):
+        expected_inputs = self.always_inputs * self.number_of_inputs
+        for neuron in self.neuron_connectedness:
+            self.neuron_connectedness[neuron] -= (self.max_hidden_synapses - expected_inputs) / \
+                                                 self.maximum_net_size
 
     def count_synapses(self, connections):
         for pre in connections:
