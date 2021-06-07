@@ -5,7 +5,7 @@ from models.neurogenesis import Network
 import random
 
 
-test = 'pima'
+test = 'mnist'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -31,7 +31,7 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 1000
+    retest_rate = 100
     retest_size = 50
 elif test == 'rmnist':
     from datasets.mnist_csv import *
@@ -51,6 +51,10 @@ elif test == 'pima':
     test_feat = test_set_pimas
     retest_rate = 100
     retest_size = len(test_set_pimas)
+if 'mnist' in test:
+    input_dimensions = [28, 28]
+else:
+    input_dimensions = None
 num_inputs = len(train_feat[0])
 
 def test_net(net, data, labels, indexes=None, test_net_label='', classifications=None,
@@ -154,33 +158,40 @@ if read_args:
     error_threshold = float(sys.argv[3])
     maximum_total_synapses = int(sys.argv[4])
     maximum_synapses_per_neuron = int(sys.argv[5])
+    input_spread = int(sys.argv[6])
+    activity_decay_rate = float(sys.argv[7])
+    number_of_seeds = int(sys.argv[8])
     print("Variables collected")
     for i in range(5):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.5
+    sensitivity_width = 0.99
     activation_threshold = 0.0
     error_threshold = 0.01
-    maximum_synapses_per_neuron = 10000
+    maximum_synapses_per_neuron = 500
     maximum_total_synapses = 100*1000000
+    input_spread = 3
+    activity_decay_rate = 0.99
+    number_of_seeds = 300
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
-activity_decay_rate = 0.99
-new_importance = 0.999
-always_inputs = True
+old_weight_modifier = 1.
+always_inputs = False
 epochs = 200
 np.random.seed(27)
-number_of_seeds = 100
+number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
 test_label = 'max_net:{}_{}  - {}{} aging{} - sw{} - ' \
              'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
-                                                   number_of_seeds, test, new_importance,
+                                                   number_of_seeds, test, old_weight_modifier,
                                                    sensitivity_width,
                                                    activation_threshold,
                                                    error_threshold,
                                                    activity_decay_rate,
                                                    always_inputs
                                                    )
+if 'mnist' in test:
+    test_label += ' spread{}'.format(input_spread)
 
 
 average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
@@ -193,7 +204,9 @@ CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    max_hidden_synapses=maximum_synapses_per_neuron,
                    activity_decay_rate=activity_decay_rate,
                    always_inputs=always_inputs,
-                   new_importance=new_importance)
+                   old_weight_modifier=old_weight_modifier,
+                   input_dimensions=input_dimensions,
+                   input_spread=input_spread)
 all_incorrect_classes = []
 epoch_error = []
 
@@ -246,7 +259,8 @@ for epoch in range(epochs):
     #                                                       fold_string=fold_string,
     #                                                       max_fold=maximum_fold_accuracy)
 
-    epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy])
+    epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,
+                        CLASSnet.hidden_neuron_count])
     print(test_label)
     for ep, error in enumerate(epoch_error):
         print(ep, error)
