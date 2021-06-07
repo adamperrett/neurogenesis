@@ -31,7 +31,7 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 100
+    retest_rate = 1000
     retest_size = 50
 elif test == 'rmnist':
     from datasets.mnist_csv import *
@@ -241,7 +241,7 @@ for epoch in range(epochs):
                                                               fold_string=fold_string,
                                                               max_fold=maximum_fold_accuracy)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
-        if testing_accuracy > maximum_fold_accuracy[-1][0]:
+        if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
             total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
                                               test_net_label='Testing',
                                               classifications=training_classifications,
