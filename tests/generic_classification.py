@@ -5,6 +5,54 @@ from models.neurogenesis import Network
 import random
 
 
+test = 'pima'
+if test == 'breast':
+    from breast_data import *
+    num_outputs = 2
+    train_labels = training_set_labels
+    train_feat = training_set_breasts
+    test_labels = test_set_labels
+    test_feat = test_set_breasts
+    retest_rate = 10
+    retest_size = len(test_set_labels)
+elif test == 'wine':
+    from wine_data import *
+    num_outputs = 3
+    train_labels = training_set_labels
+    train_feat = training_set_wines
+    test_labels = test_set_labels
+    test_feat = test_set_wines
+    retest_rate = 100
+    retest_size = 10
+elif test == 'mnist':
+    from datasets.mnist_csv import *
+    num_outputs = 10
+    train_labels = mnist_training_labels
+    train_feat = mnist_training_data
+    test_labels = mnist_testing_labels
+    test_feat = mnist_testing_data
+    retest_rate = 1000
+    retest_size = 50
+elif test == 'rmnist':
+    from datasets.mnist_csv import *
+    num_outputs = 10
+    train_labels = mnist_training_labels
+    train_feat = reduced_mnist_training_data
+    test_labels = mnist_testing_labels
+    test_feat = reduced_mnist_testing_data
+    retest_rate = 1000
+    retest_size = 50
+elif test == 'pima':
+    from datasets.pima_indians import *
+    num_outputs = 2
+    train_labels = training_set_labels
+    train_feat = training_set_pimas
+    test_labels = test_set_labels
+    test_feat = test_set_pimas
+    retest_rate = 100
+    retest_size = len(test_set_pimas)
+num_inputs = len(train_feat[0])
+
 def test_net(net, data, labels, indexes=None, test_net_label='', classifications=None,
              fold_test_accuracy=None, fold_string='', max_fold=[]):
     if not indexes:
@@ -118,13 +166,15 @@ else:
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 activity_decay_rate = 0.99
+new_importance = 0.999
 always_inputs = True
 epochs = 200
-seed_class = 0
-test = 'pima'
-test_label = 'max_net:{}_{}  - {}{} - sw{} - ' \
+np.random.seed(27)
+number_of_seeds = 100
+seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
+test_label = 'max_net:{}_{}  - {}{} aging{} - sw{} - ' \
              'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
-                                                   seed_class, test,
+                                                   number_of_seeds, test, new_importance,
                                                    sensitivity_width,
                                                    activation_threshold,
                                                    error_threshold,
@@ -135,68 +185,22 @@ test_label = 'max_net:{}_{}  - {}{} - sw{} - ' \
 
 average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
 
-if test == 'breast':
-    from breast_data import *
-    num_outputs = 2
-    train_labels = training_set_labels
-    train_feat = training_set_breasts
-    test_labels = test_set_labels
-    test_feat = test_set_breasts
-    retest_rate = 10
-    retest_size = len(test_set_labels)
-elif test == 'wine':
-    from wine_data import *
-    num_outputs = 3
-    train_labels = training_set_labels
-    train_feat = training_set_wines
-    test_labels = test_set_labels
-    test_feat = test_set_wines
-    retest_rate = 100
-    retest_size = 10
-elif test == 'mnist':
-    from datasets.mnist_csv import *
-    num_outputs = 10
-    train_labels = mnist_training_labels
-    train_feat = mnist_training_data
-    test_labels = mnist_testing_labels
-    test_feat = mnist_testing_data
-    retest_rate = 1000
-    retest_size = 50
-elif test == 'rmnist':
-    from datasets.mnist_csv import *
-    num_outputs = 10
-    train_labels = mnist_training_labels
-    train_feat = reduced_mnist_training_data
-    test_labels = mnist_testing_labels
-    test_feat = reduced_mnist_testing_data
-    retest_rate = 1000
-    retest_size = 50
-elif test == 'pima':
-    from datasets.pima_indians import *
-    num_outputs = 2
-    train_labels = training_set_labels
-    train_feat = training_set_pimas
-    test_labels = test_set_labels
-    test_feat = test_set_pimas
-    retest_rate = 100
-    retest_size = len(test_set_pimas)
-num_inputs = len(train_feat[0])
-
-CLASSnet = Network(num_outputs, train_labels[seed_class], train_feat[seed_class],
+CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    error_threshold=error_threshold,
                    f_width=sensitivity_width,
                    activation_threshold=activation_threshold,
                    maximum_net_size=maximum_net_size,
                    max_hidden_synapses=maximum_synapses_per_neuron,
                    activity_decay_rate=activity_decay_rate,
-                   always_inputs=always_inputs)
+                   always_inputs=always_inputs,
+                   new_importance=new_importance)
 all_incorrect_classes = []
 epoch_error = []
 
 fold_testing_accuracy = []
 maximum_fold_accuracy = [[0, 0]]
 for epoch in range(epochs):
-    if epoch == 10:
+    if epoch == 3:
         for ep, error in enumerate(epoch_error):
             print(ep, error)
         print("it reached 10")
@@ -232,7 +236,8 @@ for epoch in range(epochs):
                                               fold_string=fold_string,
                                               max_fold=maximum_fold_accuracy
                                               )
-            maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold])
+            maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold,
+                                          CLASSnet.hidden_neuron_count])
 
     # testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
     #                                                       test_net_label='Testing',

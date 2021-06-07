@@ -68,14 +68,15 @@ class Neuron():
 
 
 class Network():
-    def __init__(self, number_of_classes, seed_class, seed_features,
+    def __init__(self, number_of_classes, seed_class, seed_features, seeds,
                  error_threshold=0.1,
                  f_width=0.3,
                  activation_threshold=0.01,
                  maximum_net_size=20,
                  max_hidden_synapses=100,
                  activity_decay_rate=0.9,
-                 always_inputs=True):
+                 always_inputs=True,
+                 new_importance=1.):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.activation_threshold = activation_threshold
@@ -84,6 +85,8 @@ class Network():
         self.maximum_net_size = maximum_net_size
         self.max_hidden_synapses = max_hidden_synapses
         self.always_inputs = always_inputs
+        self.new_importance = new_importance
+        self.current_importance = 1.
         self.neurons = {}
         self.neuron_activity = {}
         self.neuron_selectivity = {}
@@ -95,16 +98,22 @@ class Network():
         # self.neurons['n0'] = Neuron('n0',
         #                             self.convert_inputs_to_activations(seed_features),
         #                             f_width=f_width)
-        self.number_of_inputs = len(seed_features)
-        self.add_neuron(self.convert_inputs_to_activations(seed_features))
+        self.number_of_inputs = len(seed_features[0])
         # add outputs
         for output in range(number_of_classes):
             self.add_neuron({}, 'out{}'.format(output))
         # connect seed neuron to seed class
+        self.add_seed(seeds, seed_class, seed_features)
         # self.neurons['out{}'.format(seed_class)].add_connection('seed{}'.format(seed_class),
-        self.neurons['out{}'.format(seed_class)].add_connection('n0',
-                                                                freq=1.)
         self.layers = 2
+
+    def add_seed(self, seeds, seed_classes, seed_features):
+        for seed in seeds:
+            features = seed_features[seed]
+            seed_class = seed_classes[seed]
+            neuron_label = self.add_neuron(self.convert_inputs_to_activations(features))
+            self.neurons['out{}'.format(seed_class)].add_connection(neuron_label, freq=1.)
+
 
     def add_neuron(self, connections, neuron_label=''):
         if self.hidden_neuron_count - self.deleted_neuron_count == self.maximum_net_size:
@@ -240,6 +249,8 @@ class Network():
             neuron_label = self.add_neuron(activations)
             for output, error in enumerate(output_error):
                 if abs(error) > self.error_threshold:
+                    self.current_importance *= self.new_importance
+                    error *= self.current_importance
                     self.neurons['out{}'.format(output)].add_connection(neuron_label,
                                                                         freq=1.,
                                                                         weight=-error)
