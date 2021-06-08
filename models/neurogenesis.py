@@ -4,16 +4,24 @@ import operator
 
 
 class Synapses():
-    def __init__(self, pre, post, freq, f_width=0.3, weight=1.):
+    def __init__(self, pre, post, freq, f_width=0.3, weight=1., maturation=1.):
         self.pre = pre
         self.post = post
         self.freq = freq
         self.f_width = f_width
         self.weight = weight
+        self.maturation = maturation
+        self.age = 1.
+        self.age_multiplier = 1. / self.maturation
         # self.input_spread = input_spread
 
+    def age_weight(self):
+        if self.age_multiplier != 1:
+            self.age += 1.
+            self.age_multiplier = min(self.age / self.maturation, 1.)
+
     def response(self, input):
-        return self.weight * max(1. - abs((input - self.freq) / self.f_width), 0)
+        return self.weight * max(1. - abs((input - self.freq) / self.f_width), 0) * self.age_multiplier
 
 
 
@@ -39,14 +47,15 @@ class Neuron():
             #                                    f_width=self.f_width,
             #                                    weight=weights[pre]))
 
-    def add_connection(self, pre, freq, weight=1.):
+    def add_connection(self, pre, freq, weight=1., maturation=1.):
         self.synapse_count += 1
         if pre not in self.synapses:
             self.synapses[pre] = []
         self.synapses[pre].append(Synapses(pre + '{}'.format(len(self.synapses[pre])),
                                            self.neuron_label, freq,
                                            weight=weight,
-                                           f_width=self.f_width))
+                                           f_width=self.f_width,
+                                           maturation=maturation))
 
     def add_multiple_connections(self, connections):
         for pre in connections:
@@ -116,7 +125,8 @@ class Network():
                  always_inputs=True,
                  old_weight_modifier=1.,
                  input_dimensions=None,
-                 input_spread=3):
+                 input_spread=3,
+                 output_synapse_maturity=1.):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.activation_threshold = activation_threshold
@@ -129,6 +139,7 @@ class Network():
         self.current_importance = 1.
         self.input_dimensions = input_dimensions
         self.input_spread = input_spread
+        self.output_synapse_maturity = output_synapse_maturity
         self.neurons = {}
         self.neuron_activity = {}
         self.neuron_selectivity = {}
@@ -339,11 +350,15 @@ class Network():
                     neural_activations[neuron] = activations[neuron]
         return neural_activations
 
-    def decay_output_synapses(self):
+    def age_output_synapses(self, reward=True):
+        if reward:
+            weight_modifier = self.old_weight_modifier
+        else:
+            weight_modifier = 1. / self.old_weight_modifier
         for i in range(self.number_of_classes):
             for synapse in self.neurons['out{}'.format(i)].synapses:
-                for conn in self.neurons['out{}'.format(i)].synapses[synapse]:
-                    conn.weight *= self.old_weight_modifier
+                for syn in self.neurons['out{}'.format(i)].synapses[synapse]:
+                    syn.age_weight()
 
     def error_driven_neuro_genesis(self, activations, output_error):
         if np.max(np.abs(output_error)) > self.error_threshold:
@@ -353,10 +368,11 @@ class Network():
                 if abs(error) > self.error_threshold:
                     # self.current_importance += self.old_weight_modifier
                     # error *= self.current_importance
-                    self.decay_output_synapses()
+                    self.age_output_synapses(reward=True)
                     self.neurons['out{}'.format(output)].add_connection(neuron_label,
                                                                         freq=1.,
-                                                                        weight=-error)
+                                                                        weight=-error/1000.,
+                                                                        maturation=self.output_synapse_maturity)
                     self.neuron_connectedness[neuron_label] = 1
 
 

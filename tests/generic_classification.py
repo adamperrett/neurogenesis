@@ -83,6 +83,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             correct_classifications += 1
             if 'esting' not in test_net_label:
                 classifications.append(1)
+                # net.age_output_synapses(reward=True)
             print("CORRECT CLASS WAS CHOSEN")
         else:
             print("INCORRECT CLASS WAS CHOSEN")
@@ -165,25 +166,27 @@ if read_args:
     for i in range(5):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.99
+    sensitivity_width = 0.9
     activation_threshold = 0.0
     error_threshold = 0.01
-    maximum_synapses_per_neuron = 500
-    maximum_total_synapses = 100*1000000
-    input_spread = 3
+    maximum_synapses_per_neuron = 100000
+    maximum_total_synapses = 100*1000000000
+    input_spread = 1
     activity_decay_rate = 0.99
-    number_of_seeds = 300
+    number_of_seeds = 100
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
-old_weight_modifier = 1.
-always_inputs = False
-epochs = 200
+old_weight_modifier = 1.01
+maturity = 50.
+always_inputs = True
+epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'max_net:{}_{}  - {}{} aging{} - sw{} - ' \
+test_label = 'max_net:{}_{}  - {}{} max_age{} - sw{} - ' \
              'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
-                                                   number_of_seeds, test, old_weight_modifier,
+                                                   number_of_seeds, test,
+                                                   maturity,
                                                    sensitivity_width,
                                                    activation_threshold,
                                                    error_threshold,
@@ -194,7 +197,7 @@ if 'mnist' in test:
     test_label += ' spread{}'.format(input_spread)
 
 
-average_windows = [10, 30, 50, 100, 200, 300, 500, 1000]
+average_windows = [10, 30, 50, 100, 300, 500, 1000, 2000]
 
 CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    error_threshold=error_threshold,
@@ -225,13 +228,14 @@ for epoch in range(epochs):
         training_count += retest_rate
         current_fold = training_count / retest_rate
         fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
-        training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
-                                                               indexes=training_indexes,
-                                                               test_net_label='Training',
-                                                               fold_test_accuracy=fold_testing_accuracy,
-                                                               classifications=training_classifications,
-                                                               fold_string=fold_string,
-                                                               max_fold=maximum_fold_accuracy)
+        training_accuracy, new_classifications = test_net(CLASSnet, train_feat, train_labels,
+                                                          indexes=training_indexes,
+                                                          test_net_label='Training',
+                                                          fold_test_accuracy=fold_testing_accuracy,
+                                                          classifications=training_classifications,
+                                                          fold_string=fold_string,
+                                                          max_fold=maximum_fold_accuracy)
+        training_classifications += new_classifications
         testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
         testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
                                                               test_net_label='Testing',
