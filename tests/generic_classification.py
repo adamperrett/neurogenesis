@@ -166,18 +166,18 @@ if read_args:
     for i in range(5):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.9
+    sensitivity_width = 0.6
     activation_threshold = 0.0
     error_threshold = 0.01
     maximum_synapses_per_neuron = 100000
-    maximum_total_synapses = 100*1000000000
-    input_spread = 1
-    activity_decay_rate = 0.99
+    maximum_total_synapses = 100*10000000
+    input_spread = 0
+    activity_decay_rate = 0.999
     number_of_seeds = 100
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
-maturity = 50.
+maturity = 1.
 always_inputs = True
 epochs = 20
 np.random.seed(27)
@@ -209,7 +209,8 @@ CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    always_inputs=always_inputs,
                    old_weight_modifier=old_weight_modifier,
                    input_dimensions=input_dimensions,
-                   input_spread=input_spread)
+                   input_spread=input_spread,
+                   output_synapse_maturity=maturity)
 all_incorrect_classes = []
 epoch_error = []
 

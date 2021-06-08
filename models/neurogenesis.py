@@ -80,7 +80,7 @@ class Neuron():
                     #     response += self.spread_input(pre, activations, synapse)
                     # else:
                     response += synapse.response(freq)
-                    active_synapse_weight += synapse.weight
+                    active_synapse_weight += 1.#synapse.weight
         if active_synapse_weight:
             return response / active_synapse_weight
         else:
@@ -173,6 +173,7 @@ class Network():
             seed_class = seed_classes[seed]
             neuron_label = self.add_neuron(converted_inputs, seeding=True)
             self.neurons['out{}'.format(seed_class)].add_connection(neuron_label, freq=1.)
+            self.neuron_connectedness[neuron_label] = 1
             seed_count += 1
             print("Added seed", seed_count, "/", len(seeds))
         for inp in input_response:
@@ -201,7 +202,7 @@ class Network():
             self.neurons[neuron_label].add_connection(pre, freq, weight)
         self.count_synapses(connections)
         self.age_synapses()
-        self.neuron_activity[neuron_label] = self.neurons[neuron_label].response(connections)
+        self.neuron_activity[neuron_label] = 1.#self.neurons[neuron_label].response(connections)
         return neuron_label
 
     def delete_neuron(self, delete_type='conn'):
@@ -225,7 +226,8 @@ class Network():
         del self.neuron_selectivity[delete_neuron]
         del self.neuron_connectedness[delete_neuron]
         for i in range(self.number_of_classes):
-            del self.neurons['out{}'.format(i)].synapses[delete_neuron]
+            if delete_neuron in self.neurons['out{}'.format(i)].synapses:
+                del self.neurons['out{}'.format(i)].synapses[delete_neuron]
         self.deleted_neuron_count += 1
 
     def spread_connections(self, connections):
@@ -289,9 +291,12 @@ class Network():
             for i in range(self.number_of_inputs):
                 input_neuron = 'in{}'.format(i)
                 pruned_connections[input_neuron] = connections[input_neuron]
-            selected_neurons = dict(sorted(self.return_hidden_neurons(self.neuron_selectivity).items(),
-                                           key=operator.itemgetter(1),
-                                           reverse=True)[:self.max_hidden_synapses - self.number_of_inputs])
+            if self.number_of_inputs < self.max_hidden_synapses:
+                selected_neurons = dict(sorted(self.return_hidden_neurons(self.neuron_selectivity).items(),
+                                               key=operator.itemgetter(1),
+                                               reverse=True)[:self.max_hidden_synapses - self.number_of_inputs])
+            else:
+                selected_neurons = []
         else:
             selected_neurons = dict(sorted(self.neuron_selectivity.items(),
                                            key=operator.itemgetter(1),
@@ -371,7 +376,7 @@ class Network():
                     self.age_output_synapses(reward=True)
                     self.neurons['out{}'.format(output)].add_connection(neuron_label,
                                                                         freq=1.,
-                                                                        weight=-error/1000.,
+                                                                        weight=-error,
                                                                         maturation=self.output_synapse_maturity)
                     self.neuron_connectedness[neuron_label] = 1
 
