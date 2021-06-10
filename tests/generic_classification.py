@@ -101,7 +101,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             print("Fold testing accuracy", fold_testing_accuracy)
             print("Maximum fold = ", maximum_fold_accuracy)
             print("Performance over last folds")
-            for window in average_windows:
+            for window in fold_average_windows:
                 print(np.average(fold_test_accuracy[-window:]), ":", window)
         print("\n")
     # print(incorrect_classes)
@@ -166,10 +166,10 @@ if read_args:
     for i in range(5):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.6
+    sensitivity_width = 0.3
     activation_threshold = 0.0
     error_threshold = 0.01
-    maximum_synapses_per_neuron = 100000
+    maximum_synapses_per_neuron = 600
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 0.999
@@ -178,7 +178,7 @@ else:
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 1.
-always_inputs = True
+always_inputs = False
 epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
@@ -197,7 +197,9 @@ if 'mnist' in test:
     test_label += ' spread{}'.format(input_spread)
 
 
-average_windows = [10, 30, 50, 100, 300, 500, 1000, 2000]
+average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
+fold_average_windows = [3, 10, 30, 60, 100, 1000]
+
 
 CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    error_threshold=error_threshold,

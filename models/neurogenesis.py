@@ -231,7 +231,7 @@ class Network():
         self.deleted_neuron_count += 1
 
     def spread_connections(self, connections):
-        if not self.input_dimensions:
+        if not self.input_dimensions or not self.input_spread:
             return []
         else:
             new_connections = []
@@ -301,7 +301,7 @@ class Network():
             selected_neurons = dict(sorted(self.neuron_selectivity.items(),
                                            key=operator.itemgetter(1),
                                            reverse=True)[:self.max_hidden_synapses])
-
+            ########### add return here as no need to go through again
         # pre_list = random.sample(list(connections), self.max_hidden_synapses)
         pre_list = selected_neurons
         for pre in pre_list:
@@ -321,7 +321,7 @@ class Network():
         for neuron in self.remove_output_neurons(activations, cap=False):
             if neuron in self.neuron_activity:
                 self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
-                                               (response[neuron] * (1 - self.activity_decay_rate))
+                                               (response[neuron] * (1. - self.activity_decay_rate))
             else:
                 self.neuron_activity[neuron] = response[neuron]
             self.neuron_selectivity[neuron] = abs(response[neuron] - self.neuron_activity[neuron])
