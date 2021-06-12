@@ -2,14 +2,14 @@ import os
 import subprocess
 import time
 
-sensitivity_width = [0.6, 0.4]
+sensitivity_width = [0.4, 0.3, 0.2]
 activation_threshold = [0.0]
 error_threshold = [0.01]
 maximum_total_synapses = [1000000000]
-maximum_synapses = [500, 2000]
+maximum_synapses = [600]
 input_spread = [0]
-activity_decay_rate = [0.999, 0.99, 0.9]
-number_of_seeds = [1000]
+activity_decay_rate = [0.999]
+number_of_seeds = [100, 500, 1000]
 
 processes = []
 logs = []

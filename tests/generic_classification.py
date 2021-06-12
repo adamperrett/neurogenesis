@@ -166,7 +166,7 @@ if read_args:
     for i in range(5):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.3
+    sensitivity_width = 0.6
     activation_threshold = 0.0
     error_threshold = 0.01
     maximum_synapses_per_neuron = 600
@@ -231,14 +231,14 @@ for epoch in range(epochs):
         training_count += retest_rate
         current_fold = training_count / retest_rate
         fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
-        training_accuracy, new_classifications = test_net(CLASSnet, train_feat, train_labels,
-                                                          indexes=training_indexes,
-                                                          test_net_label='Training',
-                                                          fold_test_accuracy=fold_testing_accuracy,
-                                                          classifications=training_classifications,
-                                                          fold_string=fold_string,
-                                                          max_fold=maximum_fold_accuracy)
-        training_classifications += new_classifications
+        training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
+                                                               indexes=training_indexes,
+                                                               test_net_label='Training',
+                                                               fold_test_accuracy=fold_testing_accuracy,
+                                                               classifications=training_classifications,
+                                                               fold_string=fold_string,
+                                                               max_fold=maximum_fold_accuracy)
+        # training_classifications += new_classifications
         testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
         testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
                                                               test_net_label='Testing',
