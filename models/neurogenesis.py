@@ -21,7 +21,7 @@ class Synapses():
             self.age_multiplier = min(self.age / self.maturation, 1.)
 
     def response(self, input):
-        return self.weight * max(1. - abs((input - self.freq) / self.f_width), 0) * self.age_multiplier
+        return self.weight * max(1. - abs((input - self.freq) / self.f_width), 0) #* self.age_multiplier
 
 
 
@@ -72,9 +72,9 @@ class Neuron():
             return 0.
         response = 0.
         active_synapse_weight = 0
-        for pre in activations:
-            freq = activations[pre]
-            if pre in self.synapses:
+        for pre in self.synapses:  # do as an intersection of sets? inter = activations.keys() & self.synapses.keys()
+            if pre in activations:
+                freq = activations[pre]
                 for synapse in self.synapses[pre]:
                     # if 'in' in pre:
                     #     response += self.spread_input(pre, activations, synapse)

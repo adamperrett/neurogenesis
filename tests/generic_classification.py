@@ -3,6 +3,7 @@ from scipy.special import softmax as sm
 from copy import deepcopy
 from models.neurogenesis import Network
 import random
+import matplotlib.pyplot as plt
 
 
 test = 'mnist'
@@ -58,7 +59,7 @@ else:
 num_inputs = len(train_feat[0])
 
 def test_net(net, data, labels, indexes=None, test_net_label='', classifications=None,
-             fold_test_accuracy=None, fold_string='', max_fold=[]):
+             fold_test_accuracy=None, fold_string='', max_fold=None):
     if not indexes:
         indexes = [i for i in range(len(labels))]
     activations = {}
@@ -113,6 +114,50 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
           correct_classifications)
     return correct_classifications, classifications
 
+def moving_average(a, n=3):
+    ret = np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
+
+def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_flag=False):
+    fig, axs = plt.subplots(2, 2)
+    ave_err10 = moving_average(correct_or_not, 10)
+    ave_err100 = moving_average(correct_or_not, 100)
+    ave_err1000 = moving_average(correct_or_not, 1000)
+    axs[0][0].scatter([i for i in range(len(correct_or_not))], correct_or_not)
+    axs[0][0].plot([i + 5 for i in range(len(ave_err10))], ave_err10, 'r')
+    axs[0][0].plot([i + 50 for i in range(len(ave_err100))], ave_err100, 'b')
+    axs[0][0].plot([i + 500 for i in range(len(ave_err1000))], ave_err1000, 'g')
+    if len(ave_err1000):
+        axs[0][0].plot([0, len(correct_or_not)], [ave_err1000[-1], ave_err1000[-1]], 'g')
+    axs[0][0].set_xlim([0, len(correct_or_not)])
+    axs[0][0].set_ylim([0, 1])
+    axs[0][0].set_title("cycle classification")
+    ave_err10 = moving_average(fold_test_accuracy, 4)
+    ave_err100 = moving_average(fold_test_accuracy, 10)
+    ave_err1000 = moving_average(fold_test_accuracy, 20)
+    axs[0][1].scatter([i for i in range(len(fold_test_accuracy))], fold_test_accuracy)
+    axs[0][1].plot([i + 2 for i in range(len(ave_err10))], ave_err10, 'r')
+    axs[0][1].plot([i + 5 for i in range(len(ave_err100))], ave_err100, 'b')
+    axs[0][1].plot([i + 10 for i in range(len(ave_err1000))], ave_err1000, 'g')
+    axs[0][1].set_xlim([0, len(fold_test_accuracy)])
+    axs[0][1].set_ylim([0, 1])
+    axs[0][1].set_title("fold test classification")
+    neuron_count_over_time = []
+    neuron_count = number_of_seeds
+    for classification in correct_or_not:
+        neuron_count_over_time.append(neuron_count)
+        if classification == 0:
+            neuron_count += 1
+    axs[1][0].plot([i for i in range(len(neuron_count_over_time))], neuron_count_over_time)
+    axs[1][0].set_title("neuron count")
+    figure = plt.gcf()
+    figure.set_size_inches(16, 9)
+    plt.tight_layout(rect=[0, 0.3, 1, 0.95])
+    if save_flag:
+        plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
+    plt.close()
+
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
     max_out = max(out_activations)
@@ -141,8 +186,8 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
         error[output] += softmax[output] - one_hot_encoding[output]
         # error[output] = - one_hot_encoding[output]
 
-    print("Error for test ", test_label, " is ", error)
-    print("output")
+    # print("Error for test ", test_label, " is ", error)
+    # print("output")
     for output in range(num_outputs):
         print("{} - {}:{} - sm:{} - err:{}".format(one_hot_encoding[output],
                                                    output,
@@ -173,7 +218,7 @@ else:
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 0.999
-    number_of_seeds = 100
+    number_of_seeds = 0
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
@@ -183,7 +228,7 @@ epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'max_net:{}_{}  - {}{} max_age{} - sw{} - ' \
+test_label = 'max_net{}_{}  - {}{} max_age{} - sw{} - ' \
              'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
                                                    maturity,
@@ -248,6 +293,7 @@ for epoch in range(epochs):
                                                               fold_string=fold_string,
                                                               max_fold=maximum_fold_accuracy)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
+        plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
             total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
                                               test_net_label='Testing',
@@ -259,15 +305,20 @@ for epoch in range(epochs):
             maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold,
                                           CLASSnet.hidden_neuron_count])
 
-    # testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
-    #                                                       test_net_label='Testing',
-    #                                                       classifications=training_classifications,
-    #                                                       fold_test_accuracy=fold_testing_accuracy,
-    #                                                       fold_string=fold_string,
-    #                                                       max_fold=maximum_fold_accuracy)
+    if retest_size < len(test_labels):
+        full_testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
+                                                                   test_net_label='Testing',
+                                                                   classifications=training_classifications,
+                                                                   fold_test_accuracy=fold_testing_accuracy,
+                                                                   fold_string=fold_string,
+                                                                   max_fold=maximum_fold_accuracy)
 
-    epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,
-                        CLASSnet.hidden_neuron_count])
+        epoch_error.append([np.mean(training_classifications[-len(train_labels):]), full_testing_accuracy,
+                            CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
+    else:
+        epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,
+                            CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
+
     print(test_label)
     for ep, error in enumerate(epoch_error):
         print(ep, error)
