@@ -3,7 +3,10 @@ from scipy.special import softmax as sm
 from copy import deepcopy
 from models.neurogenesis import Network
 import random
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 
 
 test = 'mnist'
@@ -228,7 +231,7 @@ epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'max_net{}_{}  - {}{} max_age{} - sw{} - ' \
+test_label = 'net{}x{}  - {}{} max_age{} - sw{} - ' \
              'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
                                                    maturity,
