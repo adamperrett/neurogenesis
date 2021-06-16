@@ -157,6 +157,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
     figure = plt.gcf()
     figure.set_size_inches(16, 9)
     plt.tight_layout(rect=[0, 0.3, 1, 0.95])
+    plt.suptitle(test_label, fontsize=16)
     if save_flag:
         plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
     plt.close()
