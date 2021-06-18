@@ -115,6 +115,18 @@ class Neuron():
         combined_response /= response_count
         return combined_response
 
+    def visualise_neuron(self):
+        visualisation = np.zeros([28, 28])
+        for pre in self.synapses:
+            if 'in' in pre:
+                for inputs in self.synapses[pre]:
+                    idx = int(pre.replace('in', ''))
+                    x = idx % 28
+                    y = int((idx - x) / 28)
+                    for syn in self.synapses[pre]:
+                        visualisation[y][x] += syn.freq
+        return visualisation
+
 
 class Network():
     def __init__(self, number_of_classes, seed_class, seed_features, seeds,
@@ -385,7 +397,7 @@ class Network():
                     self.neuron_connectedness[neuron_label] = 1
 
     def visualise_mnist_output(self, output):
-        visualisation = [[0. for i in range(28)] for j in range(28)]
+        visualisation = np.zeros([28, 28])
         output_neuron = self.neurons['out{}'.format(output)]
         for pre in self.neurons['out{}'.format(output)].synapses:
             if self.neurons['out{}'.format(output)].synapses[pre][0].weight > 0:
@@ -401,7 +413,7 @@ class Network():
         return visualisation
 
     def visualise_mnist_activations(self, activations):
-        visualisation = [[0. for i in range(28)] for j in range(28)]
+        visualisation = np.zeros([28, 28])
         for inputs in activations:
             if 'in' in inputs:
                 idx = int(inputs.replace('in', ''))
