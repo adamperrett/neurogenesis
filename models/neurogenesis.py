@@ -154,6 +154,8 @@ class Network():
         #                             self.convert_inputs_to_activations(seed_features),
         #                             f_width=f_width)
         self.number_of_inputs = len(seed_features[0])
+        # for i in range(self.number_of_inputs):
+        #     self.neuron_activity
         # add outputs
         for output in range(number_of_classes):
             self.add_neuron({}, 'out{}'.format(output))
@@ -382,7 +384,34 @@ class Network():
                                                                         maturation=self.output_synapse_maturity)
                     self.neuron_connectedness[neuron_label] = 1
 
-    # def visualise_output(self, output):
+    def visualise_mnist_output(self, output):
+        visualisation = [[0. for i in range(28)] for j in range(28)]
+        output_neuron = self.neurons['out{}'.format(output)]
+        for pre in self.neurons['out{}'.format(output)].synapses:
+            if self.neurons['out{}'.format(output)].synapses[pre][0].weight > 0:
+                for inputs in self.neurons[pre].synapses:
+                    if 'in' in inputs:
+                        idx = int(inputs.replace('in', ''))
+                        x = idx % 28
+                        y = int((idx - x) / 28)
+                        for syn in self.neurons[pre].synapses[inputs]:
+                            visualisation[y][x] += syn.freq
+        # plt.imshow(visualisation, cmap='hot', interpolation='nearest', aspect='auto')
+        # plt.savefig("./plots/{}{}.png".format('mnist_memory', output), bbox_inches='tight', dpi=200)
+        return visualisation
+
+    def visualise_mnist_activations(self, activations):
+        visualisation = [[0. for i in range(28)] for j in range(28)]
+        for inputs in activations:
+            if 'in' in inputs:
+                idx = int(inputs.replace('in', ''))
+                x = idx % 28
+                y = int((idx - x) / 28)
+                visualisation[y][x] += activations[inputs]
+        # plt.imshow(visualisation, cmap='hot', interpolation='nearest', aspect='auto')
+        # plt.savefig("./plots/{}.png".format('mnist_activations_vis'), bbox_inches='tight', dpi=200)
+        return visualisation
+
 
 
 
