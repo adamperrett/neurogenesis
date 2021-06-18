@@ -104,7 +104,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         if fold_testing_accuracy:
             print("Fold testing accuracy", fold_testing_accuracy)
             print("Maximum fold = ", maximum_fold_accuracy)
-            print("Performance over last folds")
+            print("Performance over last", len(fold_test_accuracy), "folds")
             for window in fold_average_windows:
                 print(np.average(fold_test_accuracy[-window:]), ":", window)
         print("\n")
@@ -127,7 +127,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
     ave_err10 = moving_average(correct_or_not, 10)
     ave_err100 = moving_average(correct_or_not, 100)
     ave_err1000 = moving_average(correct_or_not, 1000)
-    axs[0][0].scatter([i for i in range(len(correct_or_not))], correct_or_not)
+    axs[0][0].scatter([i for i in range(len(correct_or_not))], correct_or_not, s=5)
     axs[0][0].plot([i + 5 for i in range(len(ave_err10))], ave_err10, 'r')
     axs[0][0].plot([i + 50 for i in range(len(ave_err100))], ave_err100, 'b')
     axs[0][0].plot([i + 500 for i in range(len(ave_err1000))], ave_err1000, 'g')
@@ -139,10 +139,12 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
     ave_err10 = moving_average(fold_test_accuracy, 4)
     ave_err100 = moving_average(fold_test_accuracy, 10)
     ave_err1000 = moving_average(fold_test_accuracy, 20)
-    axs[0][1].scatter([i for i in range(len(fold_test_accuracy))], fold_test_accuracy)
+    axs[0][1].scatter([i for i in range(len(fold_test_accuracy))], fold_test_accuracy, s=5)
     axs[0][1].plot([i + 2 for i in range(len(ave_err10))], ave_err10, 'r')
     axs[0][1].plot([i + 5 for i in range(len(ave_err100))], ave_err100, 'b')
     axs[0][1].plot([i + 10 for i in range(len(ave_err1000))], ave_err1000, 'g')
+    if len(ave_err1000):
+        axs[0][1].plot([0, len(correct_or_not)], [ave_err1000[-1], ave_err1000[-1]], 'g')
     axs[0][1].set_xlim([0, len(fold_test_accuracy)])
     axs[0][1].set_ylim([0, 1])
     axs[0][1].set_title("fold test classification")
@@ -154,6 +156,13 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
             neuron_count += 1
     axs[1][0].plot([i for i in range(len(neuron_count_over_time))], neuron_count_over_time)
     axs[1][0].set_title("neuron count")
+    if len(epoch_error):
+        axs[1][1].set_xlim([0, len(epoch_error)])
+        axs[1][1].set_ylim([0, 1])
+        axs[1][1].plot([i for i in range(len(epoch_error))], epoch_error[:][1])
+        ave_err10 = moving_average(epoch_error[:][1], 2)
+        axs[1][1].plot([i + 1 for i in range(len(ave_err10))], ave_err10, 'r')
+        axs[1][1].plot([0, len(epoch_error)], [epoch_error[-1][1], epoch_error[-1][1]], 'g')
     figure = plt.gcf()
     figure.set_size_inches(16, 9)
     plt.tight_layout(rect=[0, 0.3, 1, 0.95])
@@ -215,10 +224,10 @@ if read_args:
     for i in range(5):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.6
+    sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.01
-    maximum_synapses_per_neuron = 600
+    maximum_synapses_per_neuron = 100
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 0.999
@@ -226,7 +235,7 @@ else:
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
-maturity = 1.
+maturity = 100.
 always_inputs = False
 epochs = 20
 np.random.seed(27)
@@ -267,14 +276,14 @@ epoch_error = []
 
 fold_testing_accuracy = []
 maximum_fold_accuracy = [[0, 0]]
+training_classifications = []
 for epoch in range(epochs):
     if epoch == 3:
         for ep, error in enumerate(epoch_error):
             print(ep, error)
         print("it reached 10")
-    max_folds = int(len(train_labels) / retest_rate) + 1
+    max_folds = int(len(train_labels) / retest_rate)
     training_count = 0
-    training_classifications = []
     while training_count < len(train_labels):
         training_indexes = [i for i in range(training_count, min(training_count + retest_rate, len(train_labels)))]
         training_count += retest_rate

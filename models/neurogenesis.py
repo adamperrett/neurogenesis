@@ -11,14 +11,16 @@ class Synapses():
         self.f_width = f_width
         self.weight = weight
         self.maturation = maturation
-        self.age = 1.
-        self.age_multiplier = 1. / self.maturation
+        self.age = 0.
+        self.age_multiplier = 1. #/ self.maturation
         # self.input_spread = input_spread
 
     def age_weight(self):
-        if self.age_multiplier != 1:
-            self.age += 1.
-            self.age_multiplier = min(self.age / self.maturation, 1.)
+        if self.age == self.maturation:
+            return
+        self.age += 1.
+        self.age = min(self.age, self.maturation)
+        self.age_multiplier = 1. + self.age#(self.age / self.maturation)
 
     def response(self, input):
         return self.weight * max(1. - abs((input - self.freq) / self.f_width), 0) #* self.age_multiplier
@@ -373,12 +375,15 @@ class Network():
                 if abs(error) > self.error_threshold:
                     # self.current_importance += self.old_weight_modifier
                     # error *= self.current_importance
-                    self.age_output_synapses(reward=True)
+                    # self.age_output_synapses(reward=True)
                     self.neurons['out{}'.format(output)].add_connection(neuron_label,
                                                                         freq=1.,
                                                                         weight=-error,
                                                                         maturation=self.output_synapse_maturity)
                     self.neuron_connectedness[neuron_label] = 1
+
+    # def visualise_output(self, output):
+
 
 
 
