@@ -312,7 +312,7 @@ for epoch in range(epochs):
         for i in range(10):
             vis = CLASSnet.visualise_neuron('out{}'.format(i))
             plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-            plt.savefig("./plots/{}{}.png".format('mnist_freq', i), bbox_inches='tight', dpi=200)
+            plt.savefig("./plots/{}{}.png".format('sensitive reduced neurons', i), bbox_inches='tight', dpi=200)
         if current_fold == 10:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:

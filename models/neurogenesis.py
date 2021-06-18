@@ -395,14 +395,19 @@ class Network():
                 x = idx % 28
                 y = int((idx - x) / 28)
                 for syn in self.neurons[neuron].synapses[pre]:
-                    visualisation[y][x] += syn.freq
-            elif 'out' not in pre:
-                new_vis = self.neurons[pre].visualisation
-                for syn in self.neurons[neuron].synapses[pre]:
                     if sensitive:
-                        visualisation += new_vis * syn.freq * syn.weight
+                        visualisation[y][x] += syn.contribution()
                     else:
-                        visualisation += new_vis * syn.weight
+                        visualisation[y][x] += syn.freq
+            elif 'out' not in pre:
+                for syn in self.neurons[neuron].synapses[pre]:
+                    # if syn.weight > 0.:
+                    if sensitive:
+                        visualisation += self.neurons[pre].visualisation * syn.contribution() * \
+                                         syn.weight / self.max_hidden_synapses
+                    else:
+                        visualisation += self.neurons[pre].visualisation * syn.freq * \
+                                         syn.weight / self.max_hidden_synapses
         return visualisation
 
     def visualise_mnist_output(self, output, contribution=True):
