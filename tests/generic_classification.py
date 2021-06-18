@@ -236,15 +236,16 @@ else:
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
+fixed_hidden_ratio = 0.5
 always_inputs = False
 epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'net{}x{}  - {}{} max_age{} - sw{} - ' \
+test_label = 'net{}x{}  - {}{} fixed_h{} - sw{} - ' \
              'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
-                                                   maturity,
+                                                   fixed_hidden_ratio,
                                                    sensitivity_width,
                                                    activation_threshold,
                                                    error_threshold,
@@ -270,7 +271,8 @@ CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    old_weight_modifier=old_weight_modifier,
                    input_dimensions=input_dimensions,
                    input_spread=input_spread,
-                   output_synapse_maturity=maturity)
+                   output_synapse_maturity=maturity,
+                   fixed_hidden_ratio=fixed_hidden_ratio)
 all_incorrect_classes = []
 epoch_error = []
 
@@ -307,6 +309,12 @@ for epoch in range(epochs):
                                                               max_fold=maximum_fold_accuracy)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
         plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
+        for i in range(10):
+            vis = CLASSnet.visualise_neuron('out{}'.format(i))
+            plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+            plt.savefig("./plots/{}{}.png".format('mnist_freq', i), bbox_inches='tight', dpi=200)
+        if current_fold == 10:
+            print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
             total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
                                               test_net_label='Testing',

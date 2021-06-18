@@ -4,7 +4,7 @@ import operator
 
 
 class Synapses():
-    def __init__(self, pre, post, freq, f_width=0.3, weight=1., maturation=1.):
+    def __init__(self, pre, post, freq, f_width=0.3, weight=1., maturation=1., sensitivity=0.):
         self.pre = pre
         self.post = post
         self.freq = freq
@@ -13,7 +13,11 @@ class Synapses():
         self.maturation = maturation
         self.age = 0.
         self.age_multiplier = 1. #/ self.maturation
+        self.sensitivity = sensitivity
         # self.input_spread = input_spread
+
+    def contribution(self):
+        return self.sensitivity * self.freq
 
     def age_weight(self):
         if self.age == self.maturation:
@@ -28,7 +32,7 @@ class Synapses():
 
 
 class Neuron():
-    def __init__(self, neuron_label, connections, weights=None, f_width=0.3,
+    def __init__(self, neuron_label, connections, sensitivities, weights=None, f_width=0.3,
                  input_dimensions=None,
                  input_spread=3):
         self.neuron_label = neuron_label
@@ -37,37 +41,31 @@ class Neuron():
         self.synapse_count = len(connections)
         self.input_dimensions = input_dimensions
         self.input_spread = input_spread
+        self.visualisation = None
         if not weights:
             weights = {}
         for pre in connections:
             # if pre not in weights:
             #     weights[pre] = 1.
             freq = connections[pre]
-            self.add_connection(pre, freq, weight=1.)
+            self.add_connection(pre, freq, sensitivities=sensitivities, weight=1.)
             # self.synapses[pre] = []
             # self.synapses[pre].append(Synapses(pre + '0', neuron_label, freq,
             #                                    f_width=self.f_width,
             #                                    weight=weights[pre]))
 
-    def add_connection(self, pre, freq, weight=1., maturation=1.):
+    def add_connection(self, pre, freq, sensitivities, weight=1., maturation=1.):
         self.synapse_count += 1
         if pre not in self.synapses:
             self.synapses[pre] = []
+        if 'out' in self.neuron_label:
+            sensitivities[pre] = 1.
         self.synapses[pre].append(Synapses(pre + '{}'.format(len(self.synapses[pre])),
                                            self.neuron_label, freq,
                                            weight=weight,
                                            f_width=self.f_width,
-                                           maturation=maturation))
-
-    def add_multiple_connections(self, connections):
-        for pre in connections:
-            freq = connections[pre]
-            if pre not in self.synapses:
-                self.synapses[pre] = []
-            self.synapses[pre].append(Synapses(pre + '{}'.format(len(self.synapses[pre])),
-                                               self.neuron_label, freq,
-                                               f_width=self.f_width))
-            self.synapse_count += 1
+                                           maturation=maturation,
+                                           sensitivity=sensitivities[pre]))
 
     def response(self, activations):
         if not self.synapse_count:
@@ -115,18 +113,6 @@ class Neuron():
         combined_response /= response_count
         return combined_response
 
-    def visualise_neuron(self):
-        visualisation = np.zeros([28, 28])
-        for pre in self.synapses:
-            if 'in' in pre:
-                for inputs in self.synapses[pre]:
-                    idx = int(pre.replace('in', ''))
-                    x = idx % 28
-                    y = int((idx - x) / 28)
-                    for syn in self.synapses[pre]:
-                        visualisation[y][x] += syn.freq
-        return visualisation
-
 
 class Network():
     def __init__(self, number_of_classes, seed_class, seed_features, seeds,
@@ -140,7 +126,8 @@ class Network():
                  old_weight_modifier=1.,
                  input_dimensions=None,
                  input_spread=3,
-                 output_synapse_maturity=1.):
+                 output_synapse_maturity=1.,
+                 fixed_hidden_ratio=0.1):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.activation_threshold = activation_threshold
@@ -154,6 +141,8 @@ class Network():
         self.input_dimensions = input_dimensions
         self.input_spread = input_spread
         self.output_synapse_maturity = output_synapse_maturity
+        self.fixed_hidden_ratio = fixed_hidden_ratio
+
         self.neurons = {}
         self.neuron_activity = {}
         self.neuron_selectivity = {}
@@ -166,8 +155,8 @@ class Network():
         #                             self.convert_inputs_to_activations(seed_features),
         #                             f_width=f_width)
         self.number_of_inputs = len(seed_features[0])
-        # for i in range(self.number_of_inputs):
-        #     self.neuron_activity
+        for i in range(self.number_of_inputs):
+            self.neuron_activity['in{}'.format(i)] = 0.
         # add outputs
         for output in range(number_of_classes):
             self.add_neuron({}, 'out{}'.format(output))
@@ -206,19 +195,21 @@ class Network():
             self.hidden_neuron_count += 1
         if self.max_hidden_synapses and not seeding:
             connections = self.limit_connections(connections)
-        self.neurons[neuron_label] = Neuron(neuron_label, connections,
+        self.neurons[neuron_label] = Neuron(neuron_label, connections, self.neuron_selectivity,
                                             f_width=self.f_width,
                                             input_spread=self.input_spread,
                                             input_dimensions=self.input_dimensions)
+        self.neurons[neuron_label].visualisation = self.visualise_neuron(neuron_label)
         spread_connections = self.spread_connections(connections)
         for conn in spread_connections:
             pre = conn[0]
             freq = conn[1]
             weight = conn[2]
             self.neurons[neuron_label].add_connection(pre, freq, weight)
-        self.count_synapses(connections)
-        self.age_synapses()
+        # self.count_synapses(connections)
+        # self.age_synapses()
         self.neuron_activity[neuron_label] = 1.#self.neurons[neuron_label].response(connections)
+        self.neuron_selectivity[neuron_label] = 0.
         return neuron_label
 
     def delete_neuron(self, delete_type='conn'):
@@ -290,42 +281,41 @@ class Network():
             else:
                 self.neuron_connectedness[pre] = 1
 
+    def process_selectivity(self, only_positive=True):
+        input_selectivity = {}
+        hidden_selectivity = {}
+        for neuron in self.neuron_selectivity:
+            if 'in' in neuron:
+                input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+            elif 'out' not in neuron:
+                if only_positive:
+                    hidden_selectivity[neuron] = self.neuron_selectivity[neuron]
+                else:
+                    hidden_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+        return input_selectivity, hidden_selectivity
+
     def limit_connections(self, connections):
         if len(connections) <= self.max_hidden_synapses:
             return connections
-        # pruned_connections = {}
-        # for i in range(max(self.hidden_neuron_count-1 - self.max_hidden_synapses, 0),
-        #                self.hidden_neuron_count-1):
-        #     hidden_label = 'n{}'.format(i)
-        #     pruned_connections[hidden_label] = connections[hidden_label]
-
-        # todo add something to make it select most differently active neuron
-        # todo make high number of projecting synapses (meaning a descriminator neuron because above)
-        #  result in it not being selected for deletion
         pruned_connections = {}
-        if self.always_inputs:
-            for i in range(self.number_of_inputs):
-                input_neuron = 'in{}'.format(i)
-                pruned_connections[input_neuron] = connections[input_neuron]
-            if self.number_of_inputs < self.max_hidden_synapses:
-                selected_neurons = dict(sorted(self.return_hidden_neurons(self.neuron_selectivity).items(),
+        input_selectivity, hidden_selectivity = self.process_selectivity()
+        number_of_hidden = int(min(self.hidden_neuron_count - self.deleted_neuron_count,
+                                    self.fixed_hidden_ratio * self.max_hidden_synapses))
+        selected_hidden = dict(sorted(hidden_selectivity.items(),
+                                               # key=lambda dict_key: abs(self.neuron_selectivity[dict_key[0]]),
                                                key=operator.itemgetter(1),
-                                               reverse=True)[:self.max_hidden_synapses - self.number_of_inputs])
-            else:
-                selected_neurons = []
-        else:
-            selected_neurons = dict(sorted(self.neuron_selectivity.items(),
-                                           key=operator.itemgetter(1),
-                                           reverse=True)[:self.max_hidden_synapses])
-            ########### add return here as no need to go through again
+                                               reverse=True)[:number_of_hidden])
+        selected_input = dict(sorted(input_selectivity.items(),
+                                               # key=lambda dict_key: abs(self.neuron_selectivity[dict_key[0]]),
+                                               key=operator.itemgetter(1),
+                                               reverse=True)[:self.max_hidden_synapses - number_of_hidden])
+
         # pre_list = random.sample(list(connections), self.max_hidden_synapses)
-        pre_list = selected_neurons
-        for pre in pre_list:
+        for pre in selected_hidden:
+            pruned_connections[pre] = connections[pre]
+        for pre in selected_input:
             pruned_connections[pre] = connections[pre]
         return pruned_connections
-
-    # def connect_neuron(self, neuron_label, connections):
-    #     self.neurons[neuron_label].add_multiple_connections(connections)
 
     def response(self, activations):
         # for i in range(self.layers):
@@ -340,7 +330,7 @@ class Network():
                                                (response[neuron] * (1. - self.activity_decay_rate))
             else:
                 self.neuron_activity[neuron] = response[neuron]
-            self.neuron_selectivity[neuron] = abs(response[neuron] - self.neuron_activity[neuron])
+            self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
         outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
         for neuron in outputs:
             response = self.neurons[neuron].response(activations)
@@ -393,10 +383,29 @@ class Network():
                     self.neurons['out{}'.format(output)].add_connection(neuron_label,
                                                                         freq=1.,
                                                                         weight=-error,
+                                                                        sensitivities=self.neuron_selectivity,
                                                                         maturation=self.output_synapse_maturity)
                     self.neuron_connectedness[neuron_label] = 1
 
-    def visualise_mnist_output(self, output):
+    def visualise_neuron(self, neuron, sensitive=True):
+        visualisation = np.zeros([28, 28])
+        for pre in self.neurons[neuron].synapses:
+            if 'in' in pre:
+                idx = int(pre.replace('in', ''))
+                x = idx % 28
+                y = int((idx - x) / 28)
+                for syn in self.neurons[neuron].synapses[pre]:
+                    visualisation[y][x] += syn.freq
+            elif 'out' not in pre:
+                new_vis = self.neurons[pre].visualisation
+                for syn in self.neurons[neuron].synapses[pre]:
+                    if sensitive:
+                        visualisation += new_vis * syn.freq * syn.weight
+                    else:
+                        visualisation += new_vis * syn.weight
+        return visualisation
+
+    def visualise_mnist_output(self, output, contribution=True):
         visualisation = np.zeros([28, 28])
         output_neuron = self.neurons['out{}'.format(output)]
         for pre in self.neurons['out{}'.format(output)].synapses:
@@ -407,7 +416,10 @@ class Network():
                         x = idx % 28
                         y = int((idx - x) / 28)
                         for syn in self.neurons[pre].synapses[inputs]:
-                            visualisation[y][x] += syn.freq
+                            if contribution:
+                                visualisation[y][x] += syn.contribution()
+                            else:
+                                visualisation[y][x] += syn.freq
         # plt.imshow(visualisation, cmap='hot', interpolation='nearest', aspect='auto')
         # plt.savefig("./plots/{}{}.png".format('mnist_memory', output), bbox_inches='tight', dpi=200)
         return visualisation
