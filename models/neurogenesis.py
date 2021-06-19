@@ -208,7 +208,7 @@ class Network():
             self.neurons[neuron_label].add_connection(pre, freq, weight)
         # self.count_synapses(connections)
         # self.age_synapses()
-        self.neuron_activity[neuron_label] = 1.#self.neurons[neuron_label].response(connections)
+        self.neuron_activity[neuron_label] = 0.#self.neurons[neuron_label].response(connections)
         self.neuron_selectivity[neuron_label] = 0.
         return neuron_label
 
@@ -281,7 +281,7 @@ class Network():
             else:
                 self.neuron_connectedness[pre] = 1
 
-    def process_selectivity(self, only_positive=True):
+    def process_selectivity(self, only_positive=False):
         input_selectivity = {}
         hidden_selectivity = {}
         for neuron in self.neuron_selectivity:
@@ -326,11 +326,12 @@ class Network():
             activations[self.neurons[neuron].neuron_label] = response[neuron]
         for neuron in self.remove_output_neurons(activations, cap=False):
             if neuron in self.neuron_activity:
+                self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
                 self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
                                                (response[neuron] * (1. - self.activity_decay_rate))
             else:
                 self.neuron_activity[neuron] = response[neuron]
-            self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+                # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
         outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
         for neuron in outputs:
             response = self.neurons[neuron].response(activations)
@@ -387,7 +388,7 @@ class Network():
                                                                         maturation=self.output_synapse_maturity)
                     self.neuron_connectedness[neuron_label] = 1
 
-    def visualise_neuron(self, neuron, sensitive=True):
+    def visualise_neuron(self, neuron, sensitive=False):
         visualisation = np.zeros([28, 28])
         for pre in self.neurons[neuron].synapses:
             if 'in' in pre:

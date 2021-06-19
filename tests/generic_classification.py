@@ -230,7 +230,7 @@ else:
     maximum_synapses_per_neuron = 100
     maximum_total_synapses = 100*10000000
     input_spread = 0
-    activity_decay_rate = 0.999
+    activity_decay_rate = 1.
     number_of_seeds = 0
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
@@ -242,7 +242,7 @@ epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+test_label = '+-ve0act net{}x{}  - {}{} fixed_h{} - sw{} - ' \
              'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
                                                    fixed_hidden_ratio,
@@ -312,7 +312,7 @@ for epoch in range(epochs):
         for i in range(10):
             vis = CLASSnet.visualise_neuron('out{}'.format(i))
             plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-            plt.savefig("./plots/{}{}.png".format('sensitive reduced neurons', i), bbox_inches='tight', dpi=200)
+            plt.savefig("./plots/{} {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
         if current_fold == 10:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
