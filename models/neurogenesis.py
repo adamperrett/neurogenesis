@@ -208,7 +208,7 @@ class Network():
             self.neurons[neuron_label].add_connection(pre, freq, weight)
         # self.count_synapses(connections)
         # self.age_synapses()
-        self.neuron_activity[neuron_label] = 0.#self.neurons[neuron_label].response(connections)
+        self.neuron_activity[neuron_label] = 1.#self.neurons[neuron_label].response(connections)
         self.neuron_selectivity[neuron_label] = 0.
         return neuron_label
 

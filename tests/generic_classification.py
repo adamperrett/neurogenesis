@@ -220,14 +220,16 @@ if read_args:
     input_spread = int(sys.argv[6])
     activity_decay_rate = float(sys.argv[7])
     number_of_seeds = int(sys.argv[8])
+    fixed_hidden_ratio = float(sys.argv[9])
     print("Variables collected")
-    for i in range(5):
+    for i in range(9):
         print(sys.argv[i+1])
 else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.01
     maximum_synapses_per_neuron = 100
+    fixed_hidden_ratio = 0.5
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 1.
@@ -236,7 +238,6 @@ else:
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
-fixed_hidden_ratio = 0.5
 always_inputs = False
 epochs = 20
 np.random.seed(27)
