@@ -219,7 +219,8 @@ if read_args:
     maximum_total_synapses = int(sys.argv[4])
     maximum_synapses_per_neuron = int(sys.argv[5])
     input_spread = int(sys.argv[6])
-    activity_decay_rate = float(sys.argv[7])
+    activity_init = float(sys.argv[7])
+    activity_decay_rate = 1.
     number_of_seeds = int(sys.argv[8])
     fixed_hidden_ratio = float(sys.argv[9])
     print("Variables collected")
@@ -230,10 +231,11 @@ else:
     activation_threshold = 0.0
     error_threshold = 0.01
     maximum_synapses_per_neuron = 100
-    fixed_hidden_ratio = 0.3
+    fixed_hidden_ratio = 0.8
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 1.
+    activity_init = 1.
     number_of_seeds = 0
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)

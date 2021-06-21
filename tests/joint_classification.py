@@ -172,6 +172,17 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
         plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
     plt.close()
 
+def split_classes(splits, labels, features):
+    split_labels = [[] for i in range(len(splits))]
+    split_features = [[] for i in range(len(splits))]
+    for label, feature in zip(labels, features):
+        for idx, split in enumerate(splits):
+            if label in split:
+                split_labels[idx] = label
+                split_features[idx] = feature
+    return split_labels, split_features
+
+
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
     max_out = max(out_activations)
@@ -262,6 +273,9 @@ if 'mnist' in test:
 average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
 fold_average_windows = [3, 10, 30, 60, 100, 1000]
 
+splits = [[0, 2, 4, 6, 8],
+          [1, 3, 5, 7, 9]]
+split_labels, split_features = split_classes(splits, test_labels, test_feat)
 
 CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    error_threshold=error_threshold,
@@ -290,18 +304,20 @@ for epoch in range(epochs):
         print("it reached 10")
     max_folds = int(len(train_labels) / retest_rate)
     training_count = 0
-    while training_count < len(train_labels):
-        training_indexes = [i for i in range(training_count, min(training_count + retest_rate, len(train_labels)))]
+    while training_count < min([len(t) for t in split_labels]):
+        training_indexes = [i for i in range(training_count, min(training_count + retest_rate,
+                                                                 min([len(t) for t in split_labels])))]
         training_count += retest_rate
         current_fold = training_count / retest_rate
         fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
-        training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
-                                                               indexes=training_indexes,
-                                                               test_net_label='Training',
-                                                               fold_test_accuracy=fold_testing_accuracy,
-                                                               classifications=training_classifications,
-                                                               fold_string=fold_string,
-                                                               max_fold=maximum_fold_accuracy)
+        for labels and features in zip(split_labels, split_features):
+            training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
+                                                                   indexes=training_indexes,
+                                                                   test_net_label='Training',
+                                                                   fold_test_accuracy=fold_testing_accuracy,
+                                                                   classifications=training_classifications,
+                                                                   fold_string=fold_string,
+                                                                   max_fold=maximum_fold_accuracy)
         # training_classifications += new_classifications
         testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
         testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
