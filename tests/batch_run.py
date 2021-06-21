@@ -6,11 +6,11 @@ sensitivity_width = [0.4]
 activation_threshold = [0.0]
 error_threshold = [0.01]
 maximum_total_synapses = [1000000000]
-maximum_synapses = [100]
+maximum_synapses = [50, 100, 300, 600]
 input_spread = [0]
-activity_decay_rate = [1., 0.999, 0.8, 0.5, 0.2, 0.001, 0.]
+activity_decay_rate = [1.]
 number_of_seeds = [0]
-fixed_hidden_ratio = [0.4, 0.5, 0.6]
+fixed_hidden_ratio = [0.3, 0.5, 0.8]
 
 processes = []
 logs = []
@@ -41,8 +41,9 @@ for sw in sensitivity_width:
                                         stdin=subprocess.PIPE,
                                         stderr=subprocess.PIPE))
                                     print("Set up config", screen_name)
+                                    time.sleep(1)
 
-days = 4
+days = 0
 print("Done - beginning wait of", days, "days")
-time.sleep(60*60*24*days)
-print("Finished waiting")
+# time.sleep(60*60*24*days)
+# print("Finished waiting")

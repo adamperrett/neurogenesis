@@ -230,7 +230,7 @@ else:
     activation_threshold = 0.0
     error_threshold = 0.01
     maximum_synapses_per_neuron = 100
-    fixed_hidden_ratio = 0.5
+    fixed_hidden_ratio = 0.3
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 1.
