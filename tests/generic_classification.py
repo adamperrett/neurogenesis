@@ -231,7 +231,7 @@ else:
     activation_threshold = 0.0
     error_threshold = 0.01
     maximum_synapses_per_neuron = 100
-    fixed_hidden_ratio = 0.8
+    fixed_hidden_ratio = 0.5
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 1.
@@ -247,7 +247,7 @@ epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'rands net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+test_label = 'net{}x{}  - {}{} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
                                                    fixed_hidden_ratio,

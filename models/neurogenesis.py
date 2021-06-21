@@ -338,8 +338,6 @@ class Network():
                                                    number_of_hidden)
         selected_input = self.get_max_selectivity(input_selectivity,
                                                   self.max_hidden_synapses - len(selected_hidden))
-
-        # pre_list = random.sample(list(connections), self.max_hidden_synapses)
         for pre in selected_hidden:
             pruned_connections[pre] = connections[pre]
         for pre in selected_input:
