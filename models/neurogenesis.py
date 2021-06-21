@@ -296,15 +296,20 @@ class Network():
                     hidden_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
         return input_selectivity, hidden_selectivity
 
-    def get_max_selectivity(self, selectivity, n_select):
+    def get_max_selectivity(self, selectivity, n_select, random_sampling=False):
         selected = 0
         if len(selectivity) == 0:
             return {}
+        total_dic = {}
+        if random_sampling:
+            sample_dic = random.sample(selectivity.items(), min(n_select-selected, len(selectivity)))
+            for key, v in sample_dic:
+                total_dic[key] = v
+            return total_dic
         ordered_dict = dict(sorted(selectivity.items(),
                                      # key=lambda dict_key: abs(self.neuron_selectivity[dict_key[0]]),
                                      key=operator.itemgetter(1),
                                      reverse=True))
-        total_dic = {}
         while selected < n_select and selected < len(selectivity):
             current_max = None
             selected_dic = {}
