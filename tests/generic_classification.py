@@ -275,7 +275,8 @@ CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    input_dimensions=input_dimensions,
                    input_spread=input_spread,
                    output_synapse_maturity=maturity,
-                   fixed_hidden_ratio=fixed_hidden_ratio)
+                   fixed_hidden_ratio=fixed_hidden_ratio,
+                   activity_init=activity_init)
 all_incorrect_classes = []
 epoch_error = []
 
