@@ -334,16 +334,10 @@ class Network():
         input_selectivity, hidden_selectivity = self.process_selectivity()
         number_of_hidden = int(min(self.hidden_neuron_count - self.deleted_neuron_count,
                                     self.fixed_hidden_ratio * self.max_hidden_synapses))
-        selected_hidden = dict(sorted(hidden_selectivity.items(),
-                                               # key=lambda dict_key: abs(self.neuron_selectivity[dict_key[0]]),
-                                               key=operator.itemgetter(1),
-                                               reverse=True)[:number_of_hidden])
-        selected_input = dict(sorted(input_selectivity.items(),
-                                               # key=lambda dict_key: abs(self.neuron_selectivity[dict_key[0]]),
-                                               key=operator.itemgetter(1),
-                                               reverse=True)[:self.max_hidden_synapses - number_of_hidden])
-
-        # pre_list = random.sample(list(connections), self.max_hidden_synapses)
+        selected_hidden = self.get_max_selectivity(hidden_selectivity,
+                                                   number_of_hidden)
+        selected_input = self.get_max_selectivity(input_selectivity,
+                                                  self.max_hidden_synapses - len(selected_hidden))
         for pre in selected_hidden:
             pruned_connections[pre] = connections[pre]
         for pre in selected_input:
