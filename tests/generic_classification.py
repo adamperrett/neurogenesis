@@ -79,7 +79,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         print(fold_string)
         print('test ', train_count, '/', len(indexes))
         error, choice = calculate_error(label, activations, train_count, num_outputs)
-        print("neuron count", len(activations) - len(features) - num_outputs)
+        neuron_count = len(activations) - len(features) - num_outputs
+        print("neuron count", neuron_count, "- synapse count", neuron_count * net.max_hidden_synapses)
         print(test_label)
         for ep in epoch_error:
             print(ep)
@@ -159,8 +160,8 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
     if len(epoch_error):
         axs[1][1].set_xlim([0, len(epoch_error)])
         axs[1][1].set_ylim([0, 1])
-        axs[1][1].plot([i for i in range(len(epoch_error))], epoch_error[:][1])
-        ave_err10 = moving_average(epoch_error[:][1], 2)
+        axs[1][1].plot([i for i in range(len(epoch_error))], np.array(epoch_error)[:, 1])
+        ave_err10 = moving_average(np.array(epoch_error)[:, 1], min(2, len(epoch_error)))
         axs[1][1].plot([i + 1 for i in range(len(ave_err10))], ave_err10, 'r')
         axs[1][1].plot([0, len(epoch_error)], [epoch_error[-1][1], epoch_error[-1][1]], 'g')
     figure = plt.gcf()
@@ -238,19 +239,20 @@ else:
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
+activity_init = 1.0
 always_inputs = False
 epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = '+-ve0act net{}x{}  - {}{} fixed_h{} - sw{} - ' \
-             'at{} - et{} - adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
+test_label = 'rands net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
                                                    fixed_hidden_ratio,
                                                    sensitivity_width,
                                                    activation_threshold,
                                                    error_threshold,
-                                                   activity_decay_rate,
+                                                   activity_init, activity_decay_rate,
                                                    always_inputs
                                                    )
 if 'mnist' in test:
@@ -311,9 +313,12 @@ for epoch in range(epochs):
         fold_testing_accuracy.append(round(testing_accuracy, 3))
         plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
         for i in range(10):
-            vis = CLASSnet.visualise_neuron('out{}'.format(i))
+            vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
             plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-            plt.savefig("./plots/{} {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+            plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+            vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
+            plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+            plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
         if current_fold == 10:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
