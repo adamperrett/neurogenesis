@@ -310,10 +310,10 @@ for epoch in range(epochs):
         training_count += retest_rate
         current_fold = training_count / retest_rate
         fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
-        for labels and features in zip(split_labels, split_features):
-            training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
+        for labels, features in zip(split_labels, split_features):
+            training_accuracy, training_classifications = test_net(CLASSnet, features, labels,
                                                                    indexes=training_indexes,
-                                                                   test_net_label='Training',
+                                                                   test_net_label='Training split',
                                                                    fold_test_accuracy=fold_testing_accuracy,
                                                                    classifications=training_classifications,
                                                                    fold_string=fold_string,
