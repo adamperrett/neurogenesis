@@ -159,6 +159,7 @@ class Network():
         self.number_of_inputs = len(seed_features[0])
         for i in range(self.number_of_inputs):
             self.neuron_activity['in{}'.format(i)] = 0.
+            self.neuron_selectivity['in{}'.format(i)] = 1.
         # add outputs
         for output in range(number_of_classes):
             self.add_neuron({}, 'out{}'.format(output))
@@ -417,8 +418,31 @@ class Network():
                                                                         maturation=self.output_synapse_maturity)
                     self.neuron_connectedness[neuron_label] = 1
 
-    def consolidate(self):
-        return "new connections to create neurons"
+    def extract(self):
+        extracted_memories = []
+        for i in range(self.number_of_classes):
+            pos_vis = self.visualise_neuron('out{}'.format(i), only_pos=True)
+            all_vis = self.visualise_neuron('out{}'.format(i), only_pos=False)
+            neg_vis = all_vis - pos_vis
+            pos_norm = (pos_vis - np.min(pos_vis)) / (np.max(pos_vis) - np.min(pos_vis))
+            neg_vis *= -1
+            neg_norm = (neg_vis - np.min(neg_vis)) / (np.max(neg_vis) - np.min(neg_vis))
+            pos_conn = {}
+            neg_conn = {}
+            for y in range(28):
+                for x in range(28):
+                    idx = x + (y * 28)
+                    if pos_norm[y][x]:
+                        pos_conn['in{}'.format(idx)] = pos_norm[y][x]
+                    if neg_norm[y][x]:
+                        neg_conn['in{}'.format(idx)] = neg_norm[y][x]
+            extracted_memories.append([pos_conn, neg_conn])
+        return extracted_memories
+
+    # def consolidate_memories(self):
+    #     extracted_connections = self.extract()
+    #     for pos, neg in extracted_connections:
+
 
     def visualise_neuron(self, neuron, sensitive=False, only_pos=False):
         visualisation = np.zeros([28, 28])

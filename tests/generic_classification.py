@@ -241,12 +241,14 @@ old_weight_modifier = 1.01
 maturity = 100.
 activity_init = 1.0
 always_inputs = False
+consolidate = False
 epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'rands net{}x{}  - {}{} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
+test_label = 'mem{} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{} - inp_{}'.format(int(consolidate),
+                                                     maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
                                                    fixed_hidden_ratio,
                                                    sensitivity_width,
@@ -322,6 +324,36 @@ for epoch in range(epochs):
             plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
         if current_fold == 10:
             print("it reached 10 folds")
+        if consolidate:
+            print("Extracting memories")
+            memories = CLASSnet.extract()
+            CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
+                               error_threshold=error_threshold,
+                               f_width=sensitivity_width,
+                               activation_threshold=activation_threshold,
+                               maximum_net_size=maximum_net_size,
+                               max_hidden_synapses=maximum_synapses_per_neuron,
+                               activity_decay_rate=activity_decay_rate,
+                               always_inputs=always_inputs,
+                               old_weight_modifier=old_weight_modifier,
+                               input_dimensions=input_dimensions,
+                               input_spread=input_spread,
+                               output_synapse_maturity=maturity,
+                               fixed_hidden_ratio=fixed_hidden_ratio,
+                               activity_init=activity_init)
+            print("Consolidating memories")
+            for out in range(len(memories)):
+                pos_out, neg_out = memories[out]
+                pos_label = CLASSnet.add_neuron(pos_out, seeding=True)
+                neg_label = CLASSnet.add_neuron(neg_out, seeding=True)
+                CLASSnet.neurons['out{}'.format(out)].add_connection(pos_label,
+                                                                    freq=1.,
+                                                                    weight=1.,
+                                                                     sensitivities=CLASSnet.neuron_selectivity)
+                CLASSnet.neurons['out{}'.format(out)].add_connection(neg_label,
+                                                                    freq=1.,
+                                                                    weight=-1.,
+                                                                     sensitivities=CLASSnet.neuron_selectivity)
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
             total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
                                               test_net_label='Testing',
