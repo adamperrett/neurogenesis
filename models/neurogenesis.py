@@ -128,7 +128,8 @@ class Network():
                  input_spread=3,
                  output_synapse_maturity=1.,
                  fixed_hidden_ratio=0.1,
-                 activity_init=1.0):
+                 activity_init=1.0,
+                 replaying=True):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.activation_threshold = activation_threshold
@@ -144,6 +145,7 @@ class Network():
         self.output_synapse_maturity = output_synapse_maturity
         self.fixed_hidden_ratio = fixed_hidden_ratio
         self.activity_init = activity_init
+        self.replaying = replaying
 
         self.neurons = {}
         self.neuron_activity = {}
@@ -201,7 +203,7 @@ class Network():
                                             f_width=self.f_width,
                                             input_spread=self.input_spread,
                                             input_dimensions=self.input_dimensions)
-        self.neurons[neuron_label].visualisation = self.visualise_neuron(neuron_label)
+        visualisation = self.visualise_neuron(neuron_label)
         spread_connections = self.spread_connections(connections)
         for conn in spread_connections:
             pre = conn[0]
@@ -344,7 +346,7 @@ class Network():
             pruned_connections[pre] = connections[pre]
         return pruned_connections
 
-    def response(self, activations):
+    def response(self, activations, replay=False):
         # for i in range(self.layers):
         response = activations
         for neuron in self.neurons:
@@ -352,12 +354,14 @@ class Network():
             # line below can be compressed?
             activations[self.neurons[neuron].neuron_label] = response[neuron]
         for neuron in self.remove_output_neurons(activations, cap=False):
-            if neuron in self.neuron_activity:
+            if self.replaying:
+                if replay:
+                    self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+                self.neuron_activity[neuron] = response[neuron]
+            else:
                 self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
                 self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
                                                (response[neuron] * (1. - self.activity_decay_rate))
-            else:
-                self.neuron_activity[neuron] = response[neuron]
                 # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
         outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
         for neuron in outputs:
@@ -399,9 +403,21 @@ class Network():
                 for syn in self.neurons['out{}'.format(i)].synapses[synapse]:
                     syn.age_weight()
 
-    def error_driven_neuro_genesis(self, activations, output_error):
+    def convert_vis_to_activations(self, neuron):
+        vis = self.neurons[neuron].visualisation
+        activations = {}
+        for y in range(28):
+            for x in range(28):
+                idx = (y * 28) + x
+                activations['in{}'.format(idx)] = vis[y][x]
+        return activations
+
+
+    def error_driven_neuro_genesis(self, activations, output_error, correct_class):
         if np.max(np.abs(output_error)) > self.error_threshold:
             activations = self.remove_output_neurons(activations)
+            if self.replaying:
+                self.response(self.convert_vis_to_activations('out{}'.format(correct_class)), replay=True)
             neuron_label = self.add_neuron(activations)
             for output, error in enumerate(output_error):
                 if abs(error) > self.error_threshold:
@@ -413,6 +429,7 @@ class Network():
                                                                         weight=-error,
                                                                         sensitivities=self.neuron_selectivity,
                                                                         maturation=self.output_synapse_maturity)
+                    self.visualise_neuron('out{}'.format(output), only_pos=True)
                     self.neuron_connectedness[neuron_label] = 1
 
     def consolidate(self):
@@ -436,17 +453,18 @@ class Network():
                         if syn.weight > 0.:
                             if sensitive:
                                 visualisation += self.neurons[pre].visualisation * syn.contribution() * \
-                                                 syn.weight / self.max_hidden_synapses
+                                                 syn.weight / len(self.neurons[neuron].synapses) # not if multapse
                             else:
                                 visualisation += self.neurons[pre].visualisation * syn.freq * \
-                                                 syn.weight / self.max_hidden_synapses
+                                                 syn.weight / len(self.neurons[neuron].synapses) # not if multapse
                     else:
                         if sensitive:
                             visualisation += self.neurons[pre].visualisation * syn.contribution() * \
-                                             syn.weight / self.max_hidden_synapses
+                                             syn.weight / len(self.neurons[neuron].synapses) # not if multapse
                         else:
                             visualisation += self.neurons[pre].visualisation * syn.freq * \
-                                             syn.weight / self.max_hidden_synapses
+                                             syn.weight / len(self.neurons[neuron].synapses) # not if multapse
+        self.neurons[neuron].visualisation = visualisation
         return visualisation
 
     def visualise_mnist_output(self, output, contribution=True):

@@ -94,7 +94,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             print("INCORRECT CLASS WAS CHOSEN")
             if 'esting' not in test_net_label:
                 classifications.append(0)
-                net.error_driven_neuro_genesis(activations, error)
+                net.error_driven_neuro_genesis(activations, error, label)
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
         # classifications.append([choice, label])
         print("Performance over all current tests")
@@ -189,10 +189,10 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     one_hot_encoding[correct_class] = 1
     for output in range(num_outputs):
         output_activations[output] = activations['out{}'.format(output)]
-    softmax = sm(output_activations)
+    # softmax = sm(output_activations)
     # softmax = normalise_outputs(output_activations)
-    # softmax = output_activations
-    if sum(softmax) > 0.:
+    softmax = output_activations
+    if min(softmax) != max(softmax):
         choice = softmax.argmax()
     else:
         choice = -1
@@ -229,7 +229,7 @@ if read_args:
 else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
-    error_threshold = 0.01
+    error_threshold = 0.0
     maximum_synapses_per_neuron = 100
     fixed_hidden_ratio = 0.5
     maximum_total_synapses = 100*10000000
@@ -243,12 +243,14 @@ old_weight_modifier = 1.01
 maturity = 100.
 activity_init = 1.0
 always_inputs = False
+replaying = True
 epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'net{}x{}  - {}{} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
+test_label = 'replay{} out pos net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{} - inp_{}'.format(int(replaying),
+                                                     maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
                                                    fixed_hidden_ratio,
                                                    sensitivity_width,
@@ -278,7 +280,8 @@ CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    input_spread=input_spread,
                    output_synapse_maturity=maturity,
                    fixed_hidden_ratio=fixed_hidden_ratio,
-                   activity_init=activity_init)
+                   activity_init=activity_init,
+                   replaying=replaying)
 all_incorrect_classes = []
 epoch_error = []
 
