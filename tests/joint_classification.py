@@ -35,7 +35,7 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 1000
+    retest_rate = 4000
     retest_size = 50
 elif test == 'rmnist':
     from datasets.mnist_csv import *
@@ -178,14 +178,16 @@ def split_classes(splits, labels, features):
     for label, feature in zip(labels, features):
         for idx, split in enumerate(splits):
             if label in split:
-                split_labels[idx] = label
-                split_features[idx] = feature
+                split_labels[idx].append(label)
+                split_features[idx].append(feature)
     return split_labels, split_features
 
 
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
     max_out = max(out_activations)
+    if min_out == max_out:
+        return np.zeros_like(out_activations)
     out_range = max_out - min_out
     norm_out = []
     for out in out_activations:
@@ -200,13 +202,14 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     one_hot_encoding[correct_class] = 1
     for output in range(num_outputs):
         output_activations[output] = activations['out{}'.format(output)]
-    softmax = sm(output_activations)
+    # softmax = sm(output_activations)
     # softmax = normalise_outputs(output_activations)
-    # softmax = output_activations
+    softmax = output_activations
     if sum(softmax) > 0.:
         choice = softmax.argmax()
     else:
         choice = -1
+    softmax = np.zeros(num_outputs)#output_activations
     for output in range(num_outputs):
         error[output] += softmax[output] - one_hot_encoding[output]
         # error[output] = - one_hot_encoding[output]
@@ -241,7 +244,7 @@ else:
     activation_threshold = 0.0
     error_threshold = 0.01
     maximum_synapses_per_neuron = 100
-    fixed_hidden_ratio = 0.3
+    fixed_hidden_ratio = 0.5
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 1.
@@ -256,26 +259,29 @@ epochs = 20
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'rands net{}x{}  - {}{} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{} - inp_{}'.format(maximum_net_size, maximum_synapses_per_neuron,
-                                                   number_of_seeds, test,
-                                                   fixed_hidden_ratio,
-                                                   sensitivity_width,
-                                                   activation_threshold,
-                                                   error_threshold,
-                                                   activity_init, activity_decay_rate,
-                                                   always_inputs
-                                                   )
+
+# splits = [[0, 2, 4, 6, 8],
+#           [1, 3, 5, 7, 9]]
+splits = [[0, 2], [4, 6], [8, 9],
+          [1, 3], [5, 7]]
+test_label = '{} {} zero net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{} - inp_{}'.format(retest_rate, len(splits),
+                                                     maximum_net_size, maximum_synapses_per_neuron,
+                                                       number_of_seeds, test,
+                                                       fixed_hidden_ratio,
+                                                       sensitivity_width,
+                                                       activation_threshold,
+                                                       error_threshold,
+                                                       activity_init, activity_decay_rate,
+                                                       always_inputs
+                                                       )
 if 'mnist' in test:
     test_label += ' spread{}'.format(input_spread)
 
 
 average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
 fold_average_windows = [3, 10, 30, 60, 100, 1000]
-
-splits = [[0, 2, 4, 6, 8],
-          [1, 3, 5, 7, 9]]
-split_labels, split_features = split_classes(splits, test_labels, test_feat)
+split_labels, split_features = split_classes(splits, train_labels, train_feat)
 
 CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
                    error_threshold=error_threshold,
@@ -304,30 +310,31 @@ for epoch in range(epochs):
         print("it reached 10")
     max_folds = int(len(train_labels) / retest_rate)
     training_count = 0
-    while training_count < min([len(t) for t in split_labels]):
-        training_indexes = [i for i in range(training_count, min(training_count + retest_rate,
-                                                                 min([len(t) for t in split_labels])))]
-        training_count += retest_rate
-        current_fold = training_count / retest_rate
-        fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
-        for labels, features in zip(split_labels, split_features):
+    while training_count < min([len(t) for t in split_labels]) * len(splits):
+        training_indexes = [i for i in range(int(training_count / len(splits)),
+                                             min(int(training_count / len(splits)) + retest_rate,
+                                                 min([len(t) for t in split_labels])))]
+        for labels, features, split in zip(split_labels, split_features, splits):
+            training_count += retest_rate
+            current_fold = training_count / retest_rate
+            fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
             training_accuracy, training_classifications = test_net(CLASSnet, features, labels,
                                                                    indexes=training_indexes,
-                                                                   test_net_label='Training split',
+                                                                   test_net_label='Training {}'.format(split),
                                                                    fold_test_accuracy=fold_testing_accuracy,
                                                                    classifications=training_classifications,
                                                                    fold_string=fold_string,
                                                                    max_fold=maximum_fold_accuracy)
-        # training_classifications += new_classifications
-        testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
-        testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
-                                                              test_net_label='Testing',
-                                                              indexes=testing_indexes,
-                                                              classifications=training_classifications,
-                                                              fold_test_accuracy=fold_testing_accuracy,
-                                                              fold_string=fold_string,
-                                                              max_fold=maximum_fold_accuracy)
-        fold_testing_accuracy.append(round(testing_accuracy, 3))
+            # training_classifications += new_classifications
+            testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
+            testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
+                                                                  test_net_label='Testing',
+                                                                  indexes=testing_indexes,
+                                                                  classifications=training_classifications,
+                                                                  fold_test_accuracy=fold_testing_accuracy,
+                                                                  fold_string=fold_string,
+                                                                  max_fold=maximum_fold_accuracy)
+            fold_testing_accuracy.append(round(testing_accuracy, 3))
         plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
         for i in range(10):
             vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
