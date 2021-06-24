@@ -10,7 +10,7 @@ maximum_synapses = [50, 100, 300]
 input_spread = [0]
 activity_decay_rate = [1., 0.]
 number_of_seeds = [0]
-fixed_hidden_ratio = [0.3, 0.5, 0.8]
+fixed_hidden_ratio = [0.5, 0.7]
 
 processes = []
 logs = []

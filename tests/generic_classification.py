@@ -248,14 +248,14 @@ old_weight_modifier = 1.01
 maturity = 100.
 activity_init = 1.0
 always_inputs = False
-replaying = True
+replaying = False
 error_type = 'out'
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'replay{}wactll {} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+test_label = 'replay{} {} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{} - inp_{}'.format(int(replaying), error_type,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
