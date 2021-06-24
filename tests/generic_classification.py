@@ -90,6 +90,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 classifications.append(1)
                 # net.age_output_synapses(reward=True)
             print("CORRECT CLASS WAS CHOSEN")
+            # if error[choice] < -0.5:
+            #     net.error_driven_neuro_genesis(activations, error, label)
         else:
             print("INCORRECT CLASS WAS CHOSEN")
             if 'esting' not in test_net_label:
@@ -189,9 +191,12 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     one_hot_encoding[correct_class] = 1
     for output in range(num_outputs):
         output_activations[output] = activations['out{}'.format(output)]
-    # softmax = sm(output_activations)
-    # softmax = normalise_outputs(output_activations)
-    softmax = output_activations
+    if error_type == 'sm':
+        softmax = sm(output_activations)
+    elif error_type == 'norm':
+        softmax = normalise_outputs(output_activations)
+    else:
+        softmax = output_activations
     if min(softmax) != max(softmax):
         choice = softmax.argmax()
     else:
@@ -244,12 +249,14 @@ maturity = 100.
 activity_init = 1.0
 always_inputs = False
 replaying = True
+error_type = 'out'
 epochs = 20
+visualise_rate = 5
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'replay{} out pos net{}x{}  - {}{} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{} - inp_{}'.format(int(replaying),
+test_label = 'replay{}wactll {} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{} - inp_{}'.format(int(replaying), error_type,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
                                                    fixed_hidden_ratio,
@@ -318,14 +325,22 @@ for epoch in range(epochs):
                                                               max_fold=maximum_fold_accuracy)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
         plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
-        for i in range(10):
-            vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
-            plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-            plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
-            vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
-            plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-            plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
-        if current_fold == 10:
+        print("visualising features")
+        if current_fold % visualise_rate == 0:
+            for i in range(10):
+                print("positive visualising class", i)
+                vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
+                print("plotting class", i)
+                plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+                print("saving class", i)
+                plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                print("negative visualising class", i)
+                vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
+                print("plotting class", i)
+                plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+                print("saving class", i)
+                plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+        if current_fold % 10 == 0 and current_fold:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
             total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
@@ -351,6 +366,8 @@ for epoch in range(epochs):
     else:
         epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,
                             CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
+
+    plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
 
     print(test_label)
     for ep, error in enumerate(epoch_error):

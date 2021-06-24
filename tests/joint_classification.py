@@ -335,7 +335,7 @@ for epoch in range(epochs):
                                                                   fold_string=fold_string,
                                                                   max_fold=maximum_fold_accuracy)
             fold_testing_accuracy.append(round(testing_accuracy, 3))
-        plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
+            plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
         for i in range(10):
             vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
             plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
@@ -369,6 +369,7 @@ for epoch in range(epochs):
     else:
         epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,
                             CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
+    plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
 
     print(test_label)
     for ep, error in enumerate(epoch_error):

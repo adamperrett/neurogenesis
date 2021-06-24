@@ -403,8 +403,21 @@ class Network():
                 for syn in self.neurons['out{}'.format(i)].synapses[synapse]:
                     syn.age_weight()
 
-    def convert_vis_to_activations(self, neuron):
-        vis = self.neurons[neuron].visualisation
+    def collect_all_vis(self, error=None, correct_class=0, activations=None):
+        # if error == None:
+        #     error = np.zeros(self.number_of_classes)
+        #     error[correct_class] = 1.
+        vis = np.zeros([28, 28])
+        for output in range(self.number_of_classes):
+            # vis += self.neurons['out{}'.format(output)].visualisation * error[output]
+            vis += self.neurons['out{}'.format(output)].visualisation * activations['out{}'.format(output)]
+        return vis
+
+    def convert_vis_to_activations(self, neuron='', vis=None, norm=False):
+        if neuron != '':
+            vis = self.neurons[neuron].visualisation
+        if norm and np.max(vis) != np.min(vis):
+            vis = (vis - np.min(vis)) / (np.max(vis) - np.min(vis))
         activations = {}
         for y in range(28):
             for x in range(28):
@@ -415,9 +428,12 @@ class Network():
 
     def error_driven_neuro_genesis(self, activations, output_error, correct_class):
         if np.max(np.abs(output_error)) > self.error_threshold:
-            activations = self.remove_output_neurons(activations)
             if self.replaying:
-                self.response(self.convert_vis_to_activations('out{}'.format(correct_class)), replay=True)
+                # self.response(self.convert_vis_to_activations('out{}'.format(correct_class)), replay=True)
+                self.response(self.convert_vis_to_activations(vis=self.collect_all_vis(error=output_error,
+                                                                                       activations=activations)),
+                              replay=True)
+            activations = self.remove_output_neurons(activations)
             neuron_label = self.add_neuron(activations)
             for output, error in enumerate(output_error):
                 if abs(error) > self.error_threshold:
@@ -429,7 +445,8 @@ class Network():
                                                                         weight=-error,
                                                                         sensitivities=self.neuron_selectivity,
                                                                         maturation=self.output_synapse_maturity)
-                    self.visualise_neuron('out{}'.format(output), only_pos=True)
+                    if self.replaying:
+                        self.visualise_neuron('out{}'.format(output), only_pos=False)
                     self.neuron_connectedness[neuron_label] = 1
 
     def consolidate(self):
