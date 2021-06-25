@@ -138,7 +138,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
         axs[0][0].plot([0, len(correct_or_not)], [ave_err1000[-1], ave_err1000[-1]], 'g')
     axs[0][0].set_xlim([0, len(correct_or_not)])
     axs[0][0].set_ylim([0, 1])
-    axs[0][0].set_title("cycle classification")
+    axs[0][0].set_title("running average of training classification")
     ave_err10 = moving_average(fold_test_accuracy, 4)
     ave_err100 = moving_average(fold_test_accuracy, 10)
     ave_err1000 = moving_average(fold_test_accuracy, 20)
@@ -166,6 +166,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
         ave_err10 = moving_average(np.array(epoch_error)[:, 1], min(2, len(epoch_error)))
         axs[1][1].plot([i + 1 for i in range(len(ave_err10))], ave_err10, 'r')
         axs[1][1].plot([0, len(epoch_error)], [epoch_error[-1][1], epoch_error[-1][1]], 'g')
+        axs[1][1].set_title("Epoch test classification")
     figure = plt.gcf()
     figure.set_size_inches(16, 9)
     plt.tight_layout(rect=[0, 0.3, 1, 0.95])
@@ -249,13 +250,13 @@ maturity = 100.
 activity_init = 1.0
 always_inputs = False
 replaying = False
-error_type = 'out'
+error_type = 'sm'
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'replay{} {} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+test_label = 'replay{} w1 {} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{} - inp_{}'.format(int(replaying), error_type,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,

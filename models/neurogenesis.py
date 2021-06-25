@@ -54,7 +54,9 @@ class Neuron():
             #                                    f_width=self.f_width,
             #                                    weight=weights[pre]))
 
-    def add_connection(self, pre, freq, sensitivities, weight=1., maturation=1.):
+    def add_connection(self, pre, freq, sensitivities, weight=1., maturation=1., width=None):
+        if width == None:
+            width = self.f_width
         self.synapse_count += 1
         if pre not in self.synapses:
             self.synapses[pre] = []
@@ -63,7 +65,7 @@ class Neuron():
         self.synapses[pre].append(Synapses(pre + '{}'.format(len(self.synapses[pre])),
                                            self.neuron_label, freq,
                                            weight=weight,
-                                           f_width=self.f_width,
+                                           f_width=width,
                                            maturation=maturation,
                                            sensitivity=sensitivities[pre]))
 
@@ -444,6 +446,7 @@ class Network():
                                                                         freq=1.,
                                                                         weight=-error,
                                                                         sensitivities=self.neuron_selectivity,
+                                                                        width=1.,
                                                                         maturation=self.output_synapse_maturity)
                     if self.replaying:
                         self.visualise_neuron('out{}'.format(output), only_pos=False)
