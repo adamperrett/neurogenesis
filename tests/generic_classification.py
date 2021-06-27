@@ -202,6 +202,8 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
         choice = softmax.argmax()
     else:
         choice = -1
+    if error_type == 'zero':
+        error = np.zeros(num_outputs)
     for output in range(num_outputs):
         error[output] += softmax[output] - one_hot_encoding[output]
         # error[output] = - one_hot_encoding[output]
@@ -256,7 +258,7 @@ visualise_rate = 5
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'replay{} w1 {} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+test_label = 'replay{} w0.3 {} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{} - inp_{}'.format(int(replaying), error_type,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
