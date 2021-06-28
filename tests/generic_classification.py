@@ -336,13 +336,13 @@ for epoch in range(epochs):
                 print("plotting class", i)
                 plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
                 print("saving class", i)
-                plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
                 print("negative visualising class", i)
                 vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
                 print("plotting class", i)
                 plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
                 print("saving class", i)
-                plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
         if current_fold % 10 == 0 and current_fold:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:

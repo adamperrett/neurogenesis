@@ -42,8 +42,9 @@ elif test == 'mnist':
 elif test == 'rlmnist':
     from datasets.mnist_csv import *
 
-    num_outputs = 10 + 4
-    glimpse_sizes = [10, 20]
+    num_outputs = 10
+    directions = 2
+    glimpse_radius = [5]
     number_of_glimpses = 3
     initial_glimpse_distance = 8
     train_labels = mnist_training_labels
@@ -83,7 +84,6 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
              fold_test_accuracy=None, fold_string='', max_fold=None):
     if not indexes:
         indexes = [i for i in range(len(labels))]
-    activations = {}
     train_count = 0
     correct_classifications = 0
     # incorrect_classes = []
@@ -91,14 +91,31 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         train_count += 1
         features = data[test]
         label = labels[test]
-
-        activations = net.convert_inputs_to_activations(features)
-        activations = net.response(activations)
+        x = 14
+        y = 14
+        horizontal = 0.
+        vertical = 0.
+        glimpses = []
+        combined_vis = np.zeros([28, 28])
+        activations = {}
+        for glimpse in range(number_of_glimpses):
+            # activations = net.convert_inputs_to_activations(features)
+            activations, vis = update_activations_for_glimpse(features, x, y, activations)
+            for i in range(28):
+                for j in range(28):
+                    if vis[i][j]:
+                        combined_vis[i][j] = vis[i][j]
+            activations = net.response(activations)#, qualifier='g{}'.format(glimpse))
+            x, y, horizontal, vertical = update_position(x, y, glimpse, activations)
+            print("x:{} y:{} horizontal:{}, vertical:{}".format(x, y, horizontal, vertical))
+            activations['horizontal'] = horizontal
+            activations['vertical'] = vertical
+            glimpses.append(deepcopy(activations))
         print(test_net_label, "\nEpoch ", epoch, "/", epochs)
         print(fold_string)
         print('test ', train_count, '/', len(indexes))
         error, choice = calculate_error(label, activations, train_count, num_outputs)
-        neuron_count = len(activations) - len(features) - num_outputs
+        neuron_count = len(activations) - (11*11) - num_outputs
         print("neuron count", neuron_count, "- synapse count", neuron_count * net.max_hidden_synapses)
         print(test_label)
         for ep in epoch_error:
@@ -115,7 +132,16 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             print("INCORRECT CLASS WAS CHOSEN")
             if 'esting' not in test_net_label:
                 classifications.append(0)
-                net.error_driven_neuro_genesis(activations, error, label)
+                for glimpse in glimpses:
+                    # connect each glimpse neuron to the same of this presentation
+                    dir_error = direction_error(glimpse['horizontal'], glimpse['vertical'], glimpse)
+                    print("Direction and corresponding error")
+                    print("0 - ", glimpse['out10'], "\t", glimpse['horizontal'], "horizontal")
+                    print("1 - ", glimpse['out11'], "\t", glimpse['vertical'], "vertical")
+                    for direction, err in enumerate(dir_error):
+                        print(direction, " - ", err)
+                    combined_error = np.hstack([error, dir_error])
+                    net.error_driven_neuro_genesis(glimpse, combined_error, label)
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
         # classifications.append([choice, label])
         print("Performance over all current tests")
@@ -139,6 +165,48 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
           correct_classifications)
     return correct_classifications, classifications
 
+def update_activations_for_glimpse(features, x_pos, y_pos, activations):
+    # updates = {}
+    for scale, glimspe_size in enumerate(glimpse_radius):
+        inputs, vis = gather_inputs(x_pos, y_pos, int(np.power(2, scale)), glimspe_size, features)
+        for pixel in inputs:
+            activations[pixel] = inputs[pixel]
+            # updates[pixel] = inputs[pixel]
+    return activations, vis
+
+def convert_x_y_to_input(x, y):
+    return (y * 28) + x
+
+def gather_inputs(x_centre, y_centre, scale, size, features):
+    glimpse = {}
+    vis = np.zeros([28, 28])
+    for horizontal in range(-size, size+1):
+        for vertical in range(-size, size+1):
+            x = x_centre + (horizontal * scale)
+            y = y_centre + (vertical * scale)
+            # Add some spatial averaging for different scales
+            if x < 0 or x >= 28 or y < 0 or y >= 28:
+                glimpse['{}inx{}y{}'.format(scale, horizontal, vertical)] = 0.0
+            else:
+                glimpse['{}inx{}y{}'.format(scale, horizontal, vertical)] = features[convert_x_y_to_input(x, y)]
+                vis[y][x] = features[convert_x_y_to_input(x, y)]
+    return glimpse, vis
+
+def update_position(x, y, glimpse, activations):
+    hor = 0 + num_outputs
+    ver = 1 + num_outputs
+    vertical = activations['out{}'.format(ver)]
+    horizontal = activations['out{}'.format(hor)]
+    # if horizontal == 0. and vertical == 0.:
+    #     horizontal = (np.random.random() * 2.) - 1.
+    #     vertical = (np.random.random() * 2.) - 1.
+    # distance = initial_glimpse_distance / np.power(2, glimpse)
+    # re_scale = np.sqrt(np.power(distance, 2) / (np.power(horizontal, 2) + np.power(vertical, 2)))
+    re_scale = 10000
+    vertical *= re_scale
+    horizontal *= re_scale
+    # return int(round(x+horizontal, 0)), int(round(y+vertical, 0)), horizontal/distance, vertical/distance
+    return int(round(x+horizontal, 0)), int(round(y+vertical, 0)), horizontal, vertical
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -206,6 +274,24 @@ def normalise_outputs(out_activations):
         norm_out.append((out - min_out) / out_range)
     return np.array(norm_out)
 
+def direction_error(horizontal, vertical, activations):
+    hor = 0 + num_outputs
+    ver = 1 + num_outputs
+    one_hot_encoding = np.zeros(directions)
+    if horizontal > 0.:
+        one_hot_encoding[0] = 1
+    else:
+        one_hot_encoding[0] = -1
+    if vertical > 0.:
+        one_hot_encoding[1] = 1
+    else:
+        one_hot_encoding[1] = -1
+    error = np.ones(directions)
+    error[0] = one_hot_encoding[0] #-activations['out{}'.format(hor)] +
+    error[1] = one_hot_encoding[1] #-activations['out{}'.format(ver)] +
+    # error[0] = horizontal - one_hot_encoding[0]
+    # error[1] = vertical - one_hot_encoding[1]
+    return error
 
 def calculate_error(correct_class, activations, test_label, num_outputs=2):
     output_activations = np.zeros(num_outputs)
@@ -230,7 +316,6 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     for output in range(num_outputs):
         error[output] += softmax[output] - one_hot_encoding[output]
         # error[output] = - one_hot_encoding[output]
-
     # print("Error for test ", test_label, " is ", error)
     # print("output")
     for output in range(num_outputs):
@@ -268,7 +353,7 @@ else:
     maximum_total_synapses = 100 * 10000000
     input_spread = 0
     activity_decay_rate = 1.
-    activity_init = 1.
+    activity_init = 0.
     number_of_seeds = 0
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
@@ -277,7 +362,7 @@ maturity = 100.
 activity_init = 1.0
 always_inputs = False
 replaying = False
-error_type = 'sm'
+error_type = 'out'
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
@@ -300,7 +385,7 @@ if 'mnist' in test:
 average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
 fold_average_windows = [3, 10, 30, 60, 100, 1000]
 
-CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
+CLASSnet = Network(num_outputs+directions, train_labels, train_feat, seed_classes,
                    error_threshold=error_threshold,
                    f_width=sensitivity_width,
                    activation_threshold=activation_threshold,
@@ -352,20 +437,20 @@ for epoch in range(epochs):
         fold_testing_accuracy.append(round(testing_accuracy, 3))
         plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
         print("visualising features")
-        if current_fold % visualise_rate == 0:
-            for i in range(10):
-                print("positive visualising class", i)
-                vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
-                print("plotting class", i)
-                plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-                print("saving class", i)
-                plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
-                print("negative visualising class", i)
-                vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
-                print("plotting class", i)
-                plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-                print("saving class", i)
-                plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+        # if current_fold % visualise_rate == 0:
+        #     for i in range(10):
+        #         print("positive visualising class", i)
+        #         vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
+        #         print("plotting class", i)
+        #         plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+        #         print("saving class", i)
+        #         plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
+        #         print("negative visualising class", i)
+        #         vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
+        #         print("plotting class", i)
+        #         plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+        #         print("saving class", i)
+        #         plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
         if current_fold % 10 == 0 and current_fold:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:

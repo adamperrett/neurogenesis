@@ -160,9 +160,14 @@ class Network():
         # self.neurons['n0'] = Neuron('n0',
         #                             self.convert_inputs_to_activations(seed_features),
         #                             f_width=f_width)
-        self.number_of_inputs = len(seed_features[0])
-        for i in range(self.number_of_inputs):
-            self.neuron_activity['in{}'.format(i)] = 0.
+        # self.number_of_inputs = len(seed_features[0])
+        # for i in range(self.number_of_inputs):
+        #     self.neuron_activity['in{}'.format(i)] = 0.
+        self.number_of_inputs = (11*11)
+        for glimpse in range(3):
+            for horizontal in range(-5, 5 + 1):
+                for vertical in range(-5, 5 + 1):
+                    self.neuron_activity['{}inx{}y{}'.format(1, horizontal, vertical)] = 0.0
         # add outputs
         for output in range(number_of_classes):
             self.add_neuron({}, 'out{}'.format(output))
@@ -199,13 +204,13 @@ class Network():
         if self.max_hidden_synapses and not seeding:
             connections = self.limit_connections(connections)
         if neuron_label == '':
-            neuron_label = 'n{}'.format(self.hidden_neuron_count)
+            neuron_label = 'h{}'.format(self.hidden_neuron_count)
             self.hidden_neuron_count += 1
         self.neurons[neuron_label] = Neuron(neuron_label, connections, self.neuron_selectivity,
                                             f_width=self.f_width,
                                             input_spread=self.input_spread,
                                             input_dimensions=self.input_dimensions)
-        visualisation = self.visualise_neuron(neuron_label)
+        # visualisation = self.visualise_neuron(neuron_label)
         spread_connections = self.spread_connections(connections)
         for conn in spread_connections:
             pre = conn[0]
@@ -343,32 +348,39 @@ class Network():
         selected_input = self.get_max_selectivity(input_selectivity,
                                                   self.max_hidden_synapses - len(selected_hidden))
         for pre in selected_hidden:
-            pruned_connections[pre] = connections[pre]
+            if pre in connections:
+                pruned_connections[pre] = connections[pre]
         for pre in selected_input:
             pruned_connections[pre] = connections[pre]
         return pruned_connections
 
-    def response(self, activations, replay=False):
+    def response(self, activations, replay=False, qualifier=''):
         # for i in range(self.layers):
         response = activations
         for neuron in self.neurons:
             response[neuron] = self.neurons[neuron].response(activations)
             # line below can be compressed?
-            activations[self.neurons[neuron].neuron_label] = response[neuron]
-        for neuron in self.remove_output_neurons(activations, cap=False):
-            if self.replaying:
-                if replay:
-                    self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-                self.neuron_activity[neuron] = response[neuron]
+            activations[neuron+qualifier] = response[neuron]
+        for neuron in activations:
+            if 'out' not in neuron:
+                if 'horizontal' in neuron:
+                    self.neuron_selectivity[neuron] = 1.
+                    continue
+                elif 'vertical' in neuron:
+                    self.neuron_selectivity[neuron] = 1.
+                    continue
+                if self.replaying:
+                    if replay:
+                        self.neuron_selectivity[neuron+qualifier] = response[neuron] - self.neuron_activity[neuron+qualifier]
+                    self.neuron_activity[neuron+qualifier] = response[neuron]
+                else:
+                    self.neuron_selectivity[neuron+qualifier] = response[neuron] - self.neuron_activity[neuron+qualifier]
+                    self.neuron_activity[neuron+qualifier] = (self.neuron_activity[neuron+qualifier] * self.activity_decay_rate) + \
+                                                   (response[neuron] * (1. - self.activity_decay_rate))
+                    # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
             else:
-                self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-                self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
-                                               (response[neuron] * (1. - self.activity_decay_rate))
-                # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-        outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
-        for neuron in outputs:
-            response = self.neurons[neuron].response(activations)
-            activations[self.neurons[neuron].neuron_label] = response
+                response[neuron] = self.neurons[neuron].response(activations)
+                activations[neuron+qualifier] = response[neuron]
         return activations
 
     def convert_inputs_to_activations(self, inputs):
