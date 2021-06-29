@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 
-test = 'mnist'
+test = 'pima'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -26,7 +26,7 @@ elif test == 'wine':
     train_feat = training_set_wines
     test_labels = test_set_labels
     test_feat = test_set_wines
-    retest_rate = 100
+    retest_rate = 10
     retest_size = 10
 elif test == 'mnist':
     from datasets.mnist_csv import *
@@ -53,7 +53,7 @@ elif test == 'pima':
     train_feat = training_set_pimas
     test_labels = test_set_labels
     test_feat = test_set_pimas
-    retest_rate = 100
+    retest_rate = 10
     retest_size = len(test_set_pimas)
 if 'mnist' in test:
     input_dimensions = [28, 28]
@@ -252,13 +252,13 @@ maturity = 100.
 activity_init = 1.0
 always_inputs = False
 replaying = False
-error_type = 'sm'
+error_type = 'out'
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 number_of_seeds = min(number_of_seeds, len(train_labels))
 seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'replay{} w0.3 {} net{}x{}  - {}{} fixed_h{} - sw{} - ' \
+test_label = 'replay{} {} net{}x{}  - {}{} fullfold fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{} - inp_{}'.format(int(replaying), error_type,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    number_of_seeds, test,
@@ -299,7 +299,7 @@ fold_testing_accuracy = []
 maximum_fold_accuracy = [[0, 0]]
 training_classifications = []
 for epoch in range(epochs):
-    if epoch == 3:
+    if epoch % 6 == 0 and epoch:
         for ep, error in enumerate(epoch_error):
             print(ep, error)
         print("it reached 10")
@@ -329,20 +329,20 @@ for epoch in range(epochs):
         fold_testing_accuracy.append(round(testing_accuracy, 3))
         plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
         print("visualising features")
-        if current_fold % visualise_rate == 0:
+        if current_fold % visualise_rate == 0 and 'mnist' in test:
             for i in range(10):
                 print("positive visualising class", i)
                 vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
                 print("plotting class", i)
                 plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
                 print("saving class", i)
-                plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
                 print("negative visualising class", i)
                 vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
                 print("plotting class", i)
                 plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
                 print("saving class", i)
-                plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
         if current_fold % 10 == 0 and current_fold:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:

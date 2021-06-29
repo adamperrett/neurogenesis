@@ -446,7 +446,7 @@ class Network():
                                                                         freq=1.,
                                                                         weight=-error,
                                                                         sensitivities=self.neuron_selectivity,
-                                                                        width=0.3,
+                                                                        # width=0.3,
                                                                         maturation=self.output_synapse_maturity)
                     if self.replaying:
                         self.visualise_neuron('out{}'.format(output), only_pos=False)
