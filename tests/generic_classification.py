@@ -299,7 +299,7 @@ fold_testing_accuracy = []
 maximum_fold_accuracy = [[0, 0]]
 training_classifications = []
 for epoch in range(epochs):
-    if epoch % 6 == 0 and epoch:
+    if epoch % 3 == 0 and epoch:
         for ep, error in enumerate(epoch_error):
             print(ep, error)
         print("it reached 10")
