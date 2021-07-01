@@ -218,7 +218,7 @@ class Network():
         # self.count_synapses(connections)
         # self.age_synapses()
         self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
-        self.neuron_selectivity[neuron_label] = -1.
+        # self.neuron_selectivity[neuron_label] = -1.
         return neuron_label
 
     def delete_neuron(self, delete_type='conn'):
@@ -337,7 +337,7 @@ class Network():
         return total_dic
 
     def limit_connections(self, connections, selectivity=True):
-        if len(connections) <= self.max_hidden_synapses:
+        if len(connections) <= min(self.max_hidden_synapses, self.number_of_inputs):
             return connections
         if selectivity:
             pruned_connections = {}

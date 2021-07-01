@@ -19,7 +19,7 @@ if 'mnist' in test:
 else:
     input_dimensions = None
 
-def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label=''):
+def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', repeat=None):
     env = gym.make('CartPole-v1')
 
     # The main program loop
@@ -29,7 +29,7 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label=''):
         observation = env.reset()
         # Iterating through time steps within an episode
         for t in range(max_timesteps):
-            env.render()
+            # env.render()
             activations = net.convert_inputs_to_activations(observation)
             activations = net.response(activations)
             action = select_binary_action(activations)
@@ -42,7 +42,7 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label=''):
                 # If the pole has tipped over, end this episode
                 # scores_last_timesteps.append(t + 1)
                 all_times.append(t+1)
-                print('\nEpisode {} ended after {} timesteps'.format(i_episode, t + 1))
+                print('\nEpisode {} of repeat {} ended after {} timesteps'.format(i_episode, repeat, t + 1))
                 # unless balanced
                 if t >= 499:
                     print("WOW")
@@ -50,25 +50,23 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label=''):
                     for r, state in enumerate(states[-memory_length:]):
                         activ = state[4]
                         action = state[1]
-                        # error = generate_error(r/len(states), action, activ)
-                        error = generate_error(r/memory_length, action, activ)
+                        error = generate_error(r, action, activ, memory_length, len(states))
+                        # error = generate_error(r/memory_length, action, activ)
                         print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
                         net.error_driven_neuro_genesis(activ, error)
                 # all_states.append(states[-memory_length:])
                 break
-    plt.figure()
-    plt.title("+ve")
-    plt.ylim([0, 500])
-    plt.plot([i for i in range(len(all_times))], all_times, 'r')
-    ave_err10 = moving_average(all_times, 4)
-    plt.plot([i for i in range(len(ave_err10))], ave_err10, 'b')
-    plt.show()
-    return 0
+    return all_times
 
-def generate_error(reward, action, activations):
+def generate_error(reward, action, activations, memory_length, test_duration):
     # add in neuron activations to error
     error = np.zeros(num_outputs)
-    error[action] += reward
+    if error_type == 'mem':
+        error[action] += reward / memory_length
+    elif error_type == 'len':
+        error[action] += reward / test_duration
+    elif error_type == 'exp':
+        error[action] += np.power(error_decay_rate, memory_length - reward)
 
     error[0] += activations['out0']
     error[1] += activations['out1']
@@ -79,14 +77,14 @@ def generate_error(reward, action, activations):
 def select_binary_action(activations):
     if activations['out0'] > activations['out1']:
         action = 0
-        print("0", end='')
+        # print("0", end='')
     elif activations['out0'] < activations['out1']:
         action = 1
-        print("1", end='')
+        # print("1", end='')
     else:
         # action = np.random.randint(2)
         action = 1
-        print("r", end='')
+        # print("r", end='')
     return action
 
 def moving_average(a, n=3):
@@ -164,8 +162,8 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 100
-    fixed_hidden_ratio = 0.0
+    maximum_synapses_per_neuron = 10
+    fixed_hidden_ratio = 0.4
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 1.
@@ -178,22 +176,24 @@ maturity = 100.
 activity_init = 1.0
 always_inputs = False
 replaying = False
-error_type = 'out'
+error_type = 'exp'
+error_decay_rate = 0.8
+window_size = 10
+repeat_test = 10
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = '{} net{}x{}  - {} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{} - inp_{}'.format(error_type,
+test_label = 'w{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{}'.format(window_size, error_type, error_decay_rate,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
                                                    fixed_hidden_ratio,
                                                    sensitivity_width,
                                                    activation_threshold,
                                                    error_threshold,
-                                                   activity_init, activity_decay_rate,
-                                                   always_inputs
+                                                   activity_init, activity_decay_rate
                                                    )
 
 
@@ -201,23 +201,60 @@ average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
 fold_average_windows = [3, 10, 30, 60, 100, 1000]
 
 
-CLASSnet = Network(num_outputs, num_inputs,
-                   error_threshold=error_threshold,
-                   f_width=sensitivity_width,
-                   activation_threshold=activation_threshold,
-                   maximum_net_size=maximum_net_size,
-                   max_hidden_synapses=maximum_synapses_per_neuron,
-                   activity_decay_rate=activity_decay_rate,
-                   always_inputs=always_inputs,
-                   old_weight_modifier=old_weight_modifier,
-                   input_dimensions=input_dimensions,
-                   input_spread=input_spread,
-                   output_synapse_maturity=maturity,
-                   fixed_hidden_ratio=fixed_hidden_ratio,
-                   activity_init=activity_init,
-                   replaying=replaying)
+all_times = []
+for repeat in range(repeat_test):
+    CLASSnet = Network(num_outputs, num_inputs,
+                       error_threshold=error_threshold,
+                       f_width=sensitivity_width,
+                       activation_threshold=activation_threshold,
+                       maximum_net_size=maximum_net_size,
+                       max_hidden_synapses=maximum_synapses_per_neuron,
+                       activity_decay_rate=activity_decay_rate,
+                       always_inputs=always_inputs,
+                       old_weight_modifier=old_weight_modifier,
+                       input_dimensions=input_dimensions,
+                       input_spread=input_spread,
+                       output_synapse_maturity=maturity,
+                       fixed_hidden_ratio=fixed_hidden_ratio,
+                       activity_init=activity_init,
+                       replaying=replaying)
 
-test_net(CLASSnet, 1000, 50)
+    times = test_net(CLASSnet, 1000, 200,
+                     test_net_label=test_label,
+                     memory_length=window_size,
+                     repeat=repeat)
+    all_times.append(times)
+
+    # all_times = np.array(all_times)
+    max_time = []
+    min_time = []
+    ave_time = []
+    std_err = []
+    for i in range(len(all_times[0])):
+        test_scores = []
+        for j in range(len(all_times)):
+            test_scores.append(all_times[j][i])
+        max_time.append(max(test_scores))
+        min_time.append(min(test_scores))
+        ave_time.append(np.average(test_scores))
+        std_err.append(np.std(test_scores))
+    plt.figure()
+    for j in range(len(all_times)):
+        plt.scatter([i for i in range(len(all_times[j]))], all_times[j], s=4)
+    # plt.title(test_label)
+    plt.ylim([-10, 510])
+    plt.plot([i for i in range(len(max_time))], max_time, 'r')
+    plt.plot([i for i in range(len(min_time))], min_time, 'r')
+    plt.plot([i for i in range(len(ave_time))], ave_time, 'b')
+    # ave_err10 = moving_average(all_times, 10)
+    plt.plot([i for i in range(len(std_err))], (np.array(std_err)*(1/len(all_times))) + np.array(ave_time), 'g')
+    plt.plot([i for i in range(len(std_err))], (-1*np.array(std_err)*(1/len(all_times))) + np.array(ave_time), 'g')
+    figure = plt.gcf()
+    figure.set_size_inches(16, 9)
+    plt.tight_layout(rect=[0, 0.3, 1, 0.95])
+    plt.suptitle(test_label, fontsize=16)
+    plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
+    # plt.show()
 
 print("done")
 
