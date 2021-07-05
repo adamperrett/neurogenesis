@@ -4,7 +4,7 @@ from copy import deepcopy
 from models.neurogenesis import Network
 import random
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
@@ -42,18 +42,30 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 # If the pole has tipped over, end this episode
                 # scores_last_timesteps.append(t + 1)
                 all_times.append(t+1)
-                print('\nEpisode {} of repeat {} ended after {} timesteps'.format(i_episode, repeat, t + 1))
+                print('\nEpisode {} of repeat {} ended after {} timesteps - {}'.format(i_episode, repeat,
+                                                                                       t + 1, test_label))
+                print("Neuron count: ", CLASSnet.hidden_neuron_count)
                 # unless balanced
                 if t >= 499:
                     print("WOW")
                 else:
-                    for r, state in enumerate(states[-memory_length:]):
-                        activ = state[4]
-                        action = state[1]
-                        error = generate_error(r, action, activ, memory_length, len(states))
-                        # error = generate_error(r/memory_length, action, activ)
-                        print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
-                        net.error_driven_neuro_genesis(activ, error)
+                    if 'exp' in error_type:
+                        for r, state in reversed(list(enumerate(states))):
+                            activ = state[4]
+                            action = state[1]
+                            error = generate_error(r+1, action, activ, memory_length, len(states))
+                            if np.max(np.abs(error)) > error_threshold:
+                                # error = generate_error(r/memory_length, action, activ)
+                                print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
+                                net.error_driven_neuro_genesis(activ, error)
+                    else:
+                        for r, state in enumerate(states[-memory_length:]):
+                            activ = state[4]
+                            action = state[1]
+                            error = generate_error(r+1, action, activ, memory_length, len(states))
+                            # error = generate_error(r/memory_length, action, activ)
+                            print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
+                            net.error_driven_neuro_genesis(activ, error)
                 # all_states.append(states[-memory_length:])
                 break
     return all_times
@@ -64,9 +76,11 @@ def generate_error(reward, action, activations, memory_length, test_duration):
     if error_type == 'mem':
         error[action] += reward / memory_length
     elif error_type == 'len':
-        error[action] += reward / test_duration
-    elif error_type == 'exp':
-        error[action] += np.power(error_decay_rate, memory_length - reward)
+        error[action] += reward
+    elif 'exp' in error_type:
+        error[action] = np.power(error_decay_rate, test_duration - reward)
+    if 'len' in error_type:
+        error /= test_duration
 
     error[0] += activations['out0']
     error[1] += activations['out1']
@@ -163,23 +177,24 @@ else:
     activation_threshold = 0.0
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
-    fixed_hidden_ratio = 0.4
+    fixed_hidden_ratio = 0.9
     maximum_total_synapses = 100*10000000
     input_spread = 0
     activity_decay_rate = 1.
-    activity_init = 1.
+    activity_init = 0.
     number_of_seeds = 0
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
-activity_init = 1.0
+# activity_init = 1.0
 always_inputs = False
 replaying = False
-error_type = 'exp'
-error_decay_rate = 0.8
+error_type = 'mem'
+error_decay_rate = 0.
 window_size = 10
-repeat_test = 10
+number_of_episodes = 500
+repeat_test = 20
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
@@ -219,7 +234,7 @@ for repeat in range(repeat_test):
                        activity_init=activity_init,
                        replaying=replaying)
 
-    times = test_net(CLASSnet, 1000, 200,
+    times = test_net(CLASSnet, 1000, number_of_episodes,
                      test_net_label=test_label,
                      memory_length=window_size,
                      repeat=repeat)
@@ -246,16 +261,19 @@ for repeat in range(repeat_test):
     plt.plot([i for i in range(len(max_time))], max_time, 'r')
     plt.plot([i for i in range(len(min_time))], min_time, 'r')
     plt.plot([i for i in range(len(ave_time))], ave_time, 'b')
-    # ave_err10 = moving_average(all_times, 10)
     plt.plot([i for i in range(len(std_err))], (np.array(std_err)*(1/len(all_times))) + np.array(ave_time), 'g')
     plt.plot([i for i in range(len(std_err))], (-1*np.array(std_err)*(1/len(all_times))) + np.array(ave_time), 'g')
+    plt.plot([0, len(ave_time)], [475, 475], 'g')
+    for j in range(len(all_times)):
+        ave_err100 = moving_average(all_times[j], 100)
+        plt.plot([i + 50 for i in range(len(ave_err100))], ave_err100, 'r')
     figure = plt.gcf()
     figure.set_size_inches(16, 9)
     plt.tight_layout(rect=[0, 0.3, 1, 0.95])
     plt.suptitle(test_label, fontsize=16)
     plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
     # plt.show()
-
+    plt.close()
 print("done")
 
 

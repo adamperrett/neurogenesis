@@ -290,7 +290,7 @@ class Network():
             else:
                 self.neuron_connectedness[pre] = 1
 
-    def process_selectivity(self, only_positive=True):
+    def process_selectivity(self, only_positive=False):
         input_selectivity = {}
         hidden_selectivity = {}
         for neuron in self.neuron_selectivity:
