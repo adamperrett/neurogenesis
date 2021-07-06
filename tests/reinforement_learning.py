@@ -14,6 +14,12 @@ if test == 'pen':
     import gym
     num_outputs = 2
     num_inputs = 4
+elif test == 'rf':
+    import gym
+    num_outputs = 2
+    fields_per_inp = 20
+    field_width = 0.6
+    num_inputs = 4 * fields_per_inp
 if 'mnist' in test:
     input_dimensions = [28, 28]
 else:
@@ -30,10 +36,12 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
         # Iterating through time steps within an episode
         for t in range(max_timesteps):
             # env.render()
+            prev_obs = observation
+            if test == 'rf':
+                observation = convert_observation_to_fields(observation)
             activations = net.convert_inputs_to_activations(observation)
             activations = net.response(activations)
             action = select_binary_action(activations)
-            prev_obs = observation
             observation, reward, done, info = env.step(action)
             # Keep a store of the agent's experiences
             states.append([done, action, observation, prev_obs, deepcopy(activations)])
@@ -66,9 +74,40 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                             # error = generate_error(r/memory_length, action, activ)
                             print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
                             net.error_driven_neuro_genesis(activ, error)
+                            plot_activations(activ, r)
                 # all_states.append(states[-memory_length:])
                 break
     return all_times
+
+def plot_activations(activations, reward):
+    extractivations = []
+    for neuron in activations:
+        if 'in' not in neuron and 'out' not in neuron:
+            extractivations.append(activations[neuron])
+    act = extractivations
+    print("mean", np.mean(act))
+    print("stdev", np.std(act))
+    plt.figure()
+    plt.scatter([i for i in range(len(act))], act)
+    plt.plot([0, len(act)], [np.mean(act), np.mean(act)], 'g')
+    plt.plot([0, len(act)], [np.mean(act) + np.std(act), np.mean(act) + np.std(act)], 'r')
+    plt.plot([0, len(act)], [np.mean(act) - np.std(act), np.mean(act) - np.std(act)], 'r')
+    plt.plot([0, len(act)], [np.mean(act) + (2 * np.std(act)), np.mean(act) + (2 * np.std(act))], 'r')
+    plt.plot([0, len(act)], [np.mean(act) - (2 * np.std(act)), np.mean(act) - (2 * np.std(act))], 'r')
+    plt.plot([0, len(act)], [np.mean(act) + (3 * np.std(act)), np.mean(act) + (3 * np.std(act))], 'r')
+    plt.plot([0, len(act)], [np.mean(act) - (3 * np.std(act)), np.mean(act) - (3 * np.std(act))], 'r')
+    plt.ylim([-0.5, 1.5])
+    plt.savefig("./plots/activations {} {}.png".format(test_label, reward), bbox_inches='tight', dpi=200)
+    plt.close()
+    return extractivations
+
+def convert_observation_to_fields(observation):
+    new_observations = []
+    for obv in observation:
+        for val in np.linspace(-1, 1, fields_per_inp):
+            new_obv = max(1. - abs((val - obv) / field_width), 0)
+            new_observations.append(new_obv)
+    return new_observations
 
 def generate_error(reward, action, activations, memory_length, test_duration):
     # add in neuron activations to error
@@ -173,15 +212,15 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.4
+    sensitivity_width = 0.6
     activation_threshold = 0.0
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
-    fixed_hidden_ratio = 0.9
-    maximum_total_synapses = 100*10000000
+    fixed_hidden_ratio = 0.6
+    maximum_total_synapses = 400*10
     input_spread = 0
     activity_decay_rate = 1.
-    activity_init = 0.
+    activity_init = 1.
     number_of_seeds = 0
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
@@ -193,7 +232,7 @@ replaying = False
 error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
-number_of_episodes = 500
+number_of_episodes = 300
 repeat_test = 20
 epochs = 20
 visualise_rate = 5

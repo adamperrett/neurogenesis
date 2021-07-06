@@ -221,7 +221,7 @@ class Network():
         # self.neuron_selectivity[neuron_label] = -1.
         return neuron_label
 
-    def delete_neuron(self, delete_type='conn'):
+    def delete_neuron(self, delete_type='old'):
         if delete_type == 'old':
             oldest_neuron = 'n{}'.format(self.deleted_neuron_count)
             delete_neuron = oldest_neuron
@@ -378,6 +378,9 @@ class Network():
             response = self.neurons[neuron].response(activations)
             activations[self.neurons[neuron].neuron_label] = response
         return activations
+
+    def distribute_hidden_activity(self, activations):
+        return "mean and stdev or possibly the selected neurons"
 
     def convert_inputs_to_activations(self, inputs):
         acti = {}
