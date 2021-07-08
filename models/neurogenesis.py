@@ -4,17 +4,18 @@ import operator
 
 
 class Synapses():
-    def __init__(self, pre, post, freq, f_width=0.3, weight=1., maturation=1., sensitivity=0.):
+    def __init__(self, pre, post, freq, f_width=0.3, weight=1., reward_decay=1., sensitivity=0.):
         self.pre = pre
         self.post = post
         self.freq = freq
         self.f_width = f_width
         self.weight = weight
-        self.maturation = maturation
+        self.reward_decay = reward_decay
         self.age = 0.
         self.age_multiplier = 1. #/ self.maturation
         self.sensitivity = sensitivity
-        # self.input_spread = input_spread
+        self.activity = 0.
+        self.reward = 0.1
 
     def contribution(self):
         return self.sensitivity * self.freq
@@ -25,23 +26,30 @@ class Synapses():
         self.age += 1.
         self.age = min(self.age, self.maturation)
         self.age_multiplier = 1. + self.age#(self.age / self.maturation)
+        
+    def reinforce(self, reward):
+        self.reward = ((1. - self.reward_decay) * self.activity * reward) + (self.reward_decay * self.reward)
+        if self.reward < 0:
+            print("I'm sorry, what?")
+        return self.reward
 
     def response(self, input):
-        return self.weight * max(1. - abs((input - self.freq) / self.f_width), 0) #* self.age_multiplier
+        self.activity = max(1. - abs((input - self.freq) / self.f_width), 0) #* self.age_multiplier
+        return self.activity * self.weight
 
 
 
 class Neuron():
     def __init__(self, neuron_label, connections, sensitivities, weights=None, f_width=0.3,
-                 input_dimensions=None,
-                 input_spread=3):
+                 input_dimensions=None, reward_decay=1.):
         self.neuron_label = neuron_label
         self.f_width = f_width
         self.synapses = {}
-        self.synapse_count = len(connections)
+        self.synapse_count = 0
         self.input_dimensions = input_dimensions
-        self.input_spread = input_spread
         self.visualisation = None
+        self.reward_decay = reward_decay
+        self.activity = 0
         if not weights:
             weights = {}
         for pre in connections:
@@ -54,7 +62,7 @@ class Neuron():
             #                                    f_width=self.f_width,
             #                                    weight=weights[pre]))
 
-    def add_connection(self, pre, freq, sensitivities, weight=1., maturation=1., width=None):
+    def add_connection(self, pre, freq, sensitivities, weight=1., reward_decay=1., width=None):
         if width == None:
             width = self.f_width
         self.synapse_count += 1
@@ -66,8 +74,13 @@ class Neuron():
                                            self.neuron_label, freq,
                                            weight=weight,
                                            f_width=width,
-                                           maturation=maturation))#,
-                                           # sensitivity=sensitivities[pre]))
+                                           reward_decay=self.reward_decay))
+        
+    def remove_connection(self, pre, idx):
+        del self.synapses[pre][idx]
+        if len(self.synapses[pre]) == 0:
+            del self.synapses[pre]
+        self.synapse_count -= 1
 
     def response(self, activations):
         if not self.synapse_count:
@@ -78,42 +91,13 @@ class Neuron():
             if pre in activations:
                 freq = activations[pre]
                 for synapse in self.synapses[pre]:
-                    # if 'in' in pre:
-                    #     response += self.spread_input(pre, activations, synapse)
-                    # else:
                     response += synapse.response(freq)
                     active_synapse_weight += 1.#synapse.weight
         if active_synapse_weight:
-            return response / active_synapse_weight
+            self.activity = response / active_synapse_weight
         else:
-            return response
-
-    def spread_input(self, pre, activations, synapse):
-        if not self.input_dimensions:
-            return synapse.response(activations[pre])
-        input_idx = int(pre.replace('in', ''))
-        in_x = input_idx % self.input_dimensions[1]
-        in_y = (input_idx - in_x) / self.input_dimensions[1]
-        combined_response = 0.
-        response_count = 0
-        for x in range(-self.input_spread, self.input_spread + 1):
-            for y in range(-self.input_spread, self.input_spread + 1):
-                new_x = in_x + x
-                new_y = in_y + y
-                if new_x >= self.input_dimensions[0] or new_x < 0 \
-                        or new_y >= self.input_dimensions[1] or new_y < 0:
-                    continue
-                distance = np.sqrt(np.power(x, 2) + np.power(y, 2))
-                weight = max(self.input_spread + 1 - distance, 0)
-                if weight == 0:
-                    continue
-                weight /= self.input_spread + 1
-                new_idx = int(new_x + (new_y * self.input_dimensions[0]))
-                spread_response = activations['in{}'.format(new_idx)]
-                combined_response += synapse.response(spread_response) #* weight
-                response_count += 1
-        combined_response /= response_count
-        return combined_response
+            self.activity = response
+        return self.activity
 
 
 class Network():
@@ -121,14 +105,14 @@ class Network():
                  error_threshold=0.1,
                  f_width=0.3,
                  activation_threshold=0.01,
-                 maximum_net_size=20,
+                 maximum_total_synapses=20,
                  max_hidden_synapses=100,
                  activity_decay_rate=0.9,
                  always_inputs=True,
                  old_weight_modifier=1.,
                  input_dimensions=None,
-                 input_spread=3,
-                 output_synapse_maturity=1.,
+                 reward_decay=1.,
+                 delete_neuron_type='RL',
                  fixed_hidden_ratio=0.1,
                  activity_init=1.0,
                  replaying=True):
@@ -137,14 +121,17 @@ class Network():
         self.activation_threshold = activation_threshold
         self.hidden_neuron_count = 0
         self.deleted_neuron_count = 0
-        self.maximum_net_size = maximum_net_size
+        self.maximum_total_synapses = maximum_total_synapses
         self.max_hidden_synapses = max_hidden_synapses
+        self.synapse_count = 0
+        self.synapse_rewards = []
+        self.neuron_rewards = {}
         self.always_inputs = always_inputs
         self.old_weight_modifier = old_weight_modifier
         self.current_importance = 1.
         self.input_dimensions = input_dimensions
-        self.input_spread = input_spread
-        self.output_synapse_maturity = output_synapse_maturity
+        self.reward_decay = reward_decay
+        self.delete_neuron_type = delete_neuron_type
         self.fixed_hidden_ratio = fixed_hidden_ratio
         self.activity_init = activity_init
         self.replaying = replaying
@@ -195,33 +182,28 @@ class Network():
 
 
     def add_neuron(self, connections, neuron_label='', seeding=False):
-        if self.hidden_neuron_count - self.deleted_neuron_count == self.maximum_net_size:
-            self.delete_neuron()
         if self.max_hidden_synapses and not seeding:
             connections = self.limit_connections(connections)
         if neuron_label == '':
             neuron_label = 'n{}'.format(self.hidden_neuron_count)
-            if self.hidden_neuron_count == 98:
-                print("fuuuuck")
             self.hidden_neuron_count += 1
         self.neurons[neuron_label] = Neuron(neuron_label, connections, self.neuron_selectivity,
                                             f_width=self.f_width,
-                                            input_spread=self.input_spread,
-                                            input_dimensions=self.input_dimensions)
-        visualisation = self.visualise_neuron(neuron_label)
-        spread_connections = self.spread_connections(connections)
-        for conn in spread_connections:
-            pre = conn[0]
-            freq = conn[1]
-            weight = conn[2]
-            self.neurons[neuron_label].add_connection(pre, freq, weight)
+                                            input_dimensions=self.input_dimensions,
+                                            reward_decay=self.reward_decay)
+        self.synapse_count += self.neurons[neuron_label].synapse_count
+        if self.synapse_count > self.maximum_total_synapses:
+            # self.delete_synapses(self.synapse_count - self.maximum_total_synapses)
+            self.delete_neuron()
+        # visualisation = self.visualise_neuron(neuron_label)
         # self.count_synapses(connections)
         # self.age_synapses()
         self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
         # self.neuron_selectivity[neuron_label] = -1.
         return neuron_label
 
-    def delete_neuron(self, delete_type='old'):
+    def delete_neuron(self, delete_type='RL'):
+        delete_type = self.delete_neuron_type
         if delete_type == 'old':
             oldest_neuron = 'n{}'.format(self.deleted_neuron_count)
             delete_neuron = oldest_neuron
@@ -229,6 +211,11 @@ class Network():
             quiet_neuron = min(self.return_hidden_neurons(self.neuron_selectivity).items(),
                                key=operator.itemgetter(1))[0]
             delete_neuron = quiet_neuron
+        elif 'n' in delete_type:
+            delete_neuron = delete_type
+        elif delete_type == 'RL':
+            delete_neuron = min(self.neuron_rewards.items(),
+                               key=operator.itemgetter(1))[0]
         else:
             # synapse_count = [[key, self.neurons[key].synapse_count] for key in self.neurons]
             # unconnected_neuron = min(self.neuron_connectedness, key=operator.itemgetter(1))[0]
@@ -237,51 +224,31 @@ class Network():
             delete_neuron = unconnected_neuron
         if 'in' in delete_neuron or 'out' in delete_neuron:
             print("not sure what deleting does here")
+        self.synapse_count -= self.neurons[delete_neuron].synapse_count
         del self.neurons[delete_neuron]
         del self.neuron_activity[delete_neuron]
         del self.neuron_selectivity[delete_neuron]
         del self.neuron_connectedness[delete_neuron]
+        del self.neuron_rewards[delete_neuron]
+        for neuron in self.neurons:
+            if delete_neuron in self.neurons[neuron].synapses:
+                del self.neurons[neuron].synapses[delete_neuron]
         for i in range(self.number_of_classes):
             if delete_neuron in self.neurons['out{}'.format(i)].synapses:
                 del self.neurons['out{}'.format(i)].synapses[delete_neuron]
         self.deleted_neuron_count += 1
 
-    def spread_connections(self, connections):
-        if not self.input_dimensions or not self.input_spread:
-            return []
-        else:
-            new_connections = []
-            for pre in connections:
-                if 'in' in pre:
-                    input_idx = int(pre.replace('in', ''))
-                    in_x = input_idx % self.input_dimensions[1]
-                    in_y = (input_idx - in_x) / self.input_dimensions[1]
-                    for x in range(-self.input_spread, self.input_spread+1):
-                        for y in range(-self.input_spread, self.input_spread+1):
-                            if x == 0 and y == 0:
-                                continue
-                            new_x = in_x + x
-                            new_y = in_y + y
-                            if new_x >= self.input_dimensions[0] or new_x < 0 \
-                                    or new_y >= self.input_dimensions[1] or new_y < 0:
-                                continue
-                            distance = np.sqrt(np.power(x, 2) + np.power(y, 2))
-                            weight = max(self.input_spread + 1 - distance, 0)
-                            if weight == 0:
-                                continue
-                            weight /= self.input_spread + 1
-                            new_idx = int(new_x + (new_y * self.input_dimensions[0]))
-                            new_connections.append(['in{}'.format(new_idx), connections[pre], weight])
-                            # connections['in{}'.format(new_idx)] = connections[pre]
-                            # weights['in{}'.format(new_idx)] = 1. * weight
-            return new_connections
-
-
-    def age_synapses(self):
-        expected_inputs = self.always_inputs * self.number_of_inputs
-        for neuron in self.neuron_connectedness:
-            self.neuron_connectedness[neuron] -= (self.max_hidden_synapses - expected_inputs) / \
-                                                 self.maximum_net_size
+    def delete_synapses(self, amount):
+        self.synapse_rewards.sort()
+        for i in range(amount):
+            neuron = self.synapse_rewards[0][1]
+            pre = self.synapse_rewards[0][2]
+            idx = self.synapse_rewards[0][3]
+            self.neurons[neuron].remove_connection(pre, idx)
+            del self.synapse_rewards[0]
+            self.synapse_count -= 1
+            if self.neurons[neuron].synapse_count == 0:
+                self.delete_neuron(neuron)
 
     def count_synapses(self, connections):
         for pre in connections:
@@ -379,8 +346,28 @@ class Network():
             activations[self.neurons[neuron].neuron_label] = response
         return activations
 
-    def distribute_hidden_activity(self, activations):
-        return "mean and stdev or possibly the selected neurons"
+    def reinforce_synapses(self, reward):
+        self.synapse_rewards = []
+        for neuron in self.neurons:
+            for pre in self.neurons[neuron].synapses:
+                for syn in self.neurons[neuron].synapses[pre]:
+                    syn_r = syn.reinforce(reward)
+                    self.synapse_rewards.append([syn_r, neuron, pre, self.neurons[neuron].synapses[pre].index(syn)])
+        return self.synapse_rewards
+
+    def reinforce_neurons(self, reward):
+        # self.neuron_rewards = []
+        for neuron in self.neurons:
+            if 'out' not in neuron and 'in' not in neuron:
+                if neuron in self.neuron_rewards:
+                    self.neuron_rewards[neuron] = ((1. - self.reward_decay) * self.neurons[neuron].activity * reward) \
+                                                  + (self.reward_decay * self.neuron_rewards[neuron])
+                else:
+                    if len(self.neuron_rewards) == 0:
+                        self.neuron_rewards[neuron] = 0.
+                    else:
+                        self.neuron_rewards[neuron] = sum(self.neuron_rewards.values()) / len(self.neuron_rewards)
+        return self.neuron_rewards
 
     def convert_inputs_to_activations(self, inputs):
         acti = {}
@@ -458,7 +445,7 @@ class Network():
                                                                         weight=-error,
                                                                         sensitivities=self.neuron_selectivity,
                                                                         # width=0.3,
-                                                                        maturation=self.output_synapse_maturity)
+                                                                        reward_decay=self.reward_decay)
                     if self.replaying:
                         self.visualise_neuron('out{}'.format(output), only_pos=False)
                     self.neuron_connectedness[neuron_label] = 1

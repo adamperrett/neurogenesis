@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 
-test = 'pima'
+test = 'mnist'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -80,13 +80,16 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         print('test ', train_count, '/', len(indexes))
         error, choice = calculate_error(label, activations, train_count, num_outputs)
         neuron_count = len(activations) - len(features) - num_outputs
-        print("neuron count", neuron_count, "- synapse count", neuron_count * net.max_hidden_synapses)
+        print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
+              CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
+        print("Synapse count: ", CLASSnet.synapse_count)
         print(test_label)
         for ep in epoch_error:
             print(ep)
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
+                CLASSnet.reinforce_neurons(1.)
                 classifications.append(1)
                 # net.age_output_synapses(reward=True)
             print("CORRECT CLASS WAS CHOSEN")
@@ -95,8 +98,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         else:
             print("INCORRECT CLASS WAS CHOSEN")
             if 'esting' not in test_net_label:
+                CLASSnet.reinforce_neurons(-1.)
                 classifications.append(0)
-                net.error_driven_neuro_genesis(activations, error, label)
+                net.error_driven_neuro_genesis(activations, error)#, label)
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
         # classifications.append([choice, label])
         print("Performance over all current tests")
@@ -240,55 +244,55 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 100
     fixed_hidden_ratio = 0.5
-    maximum_total_synapses = 100*10000000
+    maximum_total_synapses = 100*3000
     input_spread = 0
     activity_decay_rate = 1.
-    activity_init = 1.
+    activity_init = 0.
     number_of_seeds = 0
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
-activity_init = 1.0
+delete_neuron_type = 'old'
+reward_decay = 0.5
+# activity_init = 1.0
 always_inputs = False
 replaying = False
 error_type = 'out'
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
-number_of_seeds = min(number_of_seeds, len(train_labels))
-seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'replay{} {} net{}x{}  - {}{} fullfold fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{} - inp_{}'.format(int(replaying), error_type,
+# number_of_seeds = min(number_of_seeds, len(train_labels))
+# seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
+test_label = 'del avinit {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{}'.format(error_type,
+                                            delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
-                                                   number_of_seeds, test,
+                                                   test,
                                                    fixed_hidden_ratio,
                                                    sensitivity_width,
                                                    activation_threshold,
                                                    error_threshold,
-                                                   activity_init, activity_decay_rate,
-                                                   always_inputs
+                                                   activity_init, activity_decay_rate
                                                    )
-if 'mnist' in test:
-    test_label += ' spread{}'.format(input_spread)
 
 
 average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
 fold_average_windows = [3, 10, 30, 60, 100, 1000]
 
 
-CLASSnet = Network(num_outputs, train_labels, train_feat, seed_classes,
+CLASSnet = Network(num_outputs, num_inputs,
                    error_threshold=error_threshold,
                    f_width=sensitivity_width,
                    activation_threshold=activation_threshold,
-                   maximum_net_size=maximum_net_size,
+                   maximum_total_synapses=maximum_total_synapses,
                    max_hidden_synapses=maximum_synapses_per_neuron,
                    activity_decay_rate=activity_decay_rate,
                    always_inputs=always_inputs,
                    old_weight_modifier=old_weight_modifier,
                    input_dimensions=input_dimensions,
-                   input_spread=input_spread,
-                   output_synapse_maturity=maturity,
+                   reward_decay=reward_decay,
+                   delete_neuron_type=delete_neuron_type,
                    fixed_hidden_ratio=fixed_hidden_ratio,
                    activity_init=activity_init,
                    replaying=replaying)
@@ -328,21 +332,21 @@ for epoch in range(epochs):
                                                               max_fold=maximum_fold_accuracy)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
         plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
-        print("visualising features")
-        if current_fold % visualise_rate == 0 and 'mnist' in test:
-            for i in range(10):
-                print("positive visualising class", i)
-                vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
-                print("plotting class", i)
-                plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-                print("saving class", i)
-                plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
-                print("negative visualising class", i)
-                vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
-                print("plotting class", i)
-                plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-                print("saving class", i)
-                plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
+        # print("visualising features")
+        # if current_fold % visualise_rate == 0 and 'mnist' in test:
+        #     for i in range(10):
+        #         print("positive visualising class", i)
+        #         vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
+        #         print("plotting class", i)
+        #         plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+        #         print("saving class", i)
+        #         plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
+        #         print("negative visualising class", i)
+        #         vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
+        #         print("plotting class", i)
+        #         plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+        #         print("saving class", i)
+        #         plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
         if current_fold % 10 == 0 and current_fold:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:

@@ -52,7 +52,11 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 all_times.append(t+1)
                 print('\nEpisode {} of repeat {} ended after {} timesteps - {}'.format(i_episode, repeat,
                                                                                        t + 1, test_label))
-                print("Neuron count: ", CLASSnet.hidden_neuron_count)
+                # CLASSnet.reinforce_synapses(t+1)
+                CLASSnet.reinforce_neurons(1.)
+                print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
+                      CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
+                print("Synapse count: ", CLASSnet.synapse_count)
                 # unless balanced
                 if t >= 499:
                     print("WOW")
@@ -74,7 +78,7 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                             # error = generate_error(r/memory_length, action, activ)
                             print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
                             net.error_driven_neuro_genesis(activ, error)
-                            plot_activations(activ, r)
+                            # plot_activations(activ, r)
                 # all_states.append(states[-memory_length:])
                 break
     return all_times
@@ -216,8 +220,8 @@ else:
     activation_threshold = 0.0
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
-    fixed_hidden_ratio = 0.6
-    maximum_total_synapses = 400*10
+    fixed_hidden_ratio = 0.0
+    maximum_total_synapses = 50*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -226,21 +230,24 @@ else:
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
+delete_neuron_type = 'old'
+reward_decay = 0.7
 # activity_init = 1.0
 always_inputs = False
 replaying = False
 error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
-number_of_episodes = 300
+number_of_episodes = 200
 repeat_test = 20
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'w{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(window_size, error_type, error_decay_rate,
+                                            delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
                                                    fixed_hidden_ratio,
@@ -261,14 +268,14 @@ for repeat in range(repeat_test):
                        error_threshold=error_threshold,
                        f_width=sensitivity_width,
                        activation_threshold=activation_threshold,
-                       maximum_net_size=maximum_net_size,
+                       maximum_total_synapses=maximum_total_synapses,
                        max_hidden_synapses=maximum_synapses_per_neuron,
                        activity_decay_rate=activity_decay_rate,
                        always_inputs=always_inputs,
                        old_weight_modifier=old_weight_modifier,
                        input_dimensions=input_dimensions,
-                       input_spread=input_spread,
-                       output_synapse_maturity=maturity,
+                       reward_decay=reward_decay,
+                       delete_neuron_type=delete_neuron_type,
                        fixed_hidden_ratio=fixed_hidden_ratio,
                        activity_init=activity_init,
                        replaying=replaying)
