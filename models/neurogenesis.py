@@ -195,10 +195,11 @@ class Network():
         if self.synapse_count > self.maximum_total_synapses:
             # self.delete_synapses(self.synapse_count - self.maximum_total_synapses)
             self.delete_neuron()
-        # visualisation = self.visualise_neuron(neuron_label)
-        # self.count_synapses(connections)
-        # self.age_synapses()
-        self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
+        visualisation = self.visualise_neuron(neuron_label)
+        hidden_activity = self.return_hidden_neurons(self.neuron_activity)
+        if len(hidden_activity) != 0:
+            self.neuron_activity[neuron_label] = sum(hidden_activity.values()) / len(hidden_activity)
+        # self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
         # self.neuron_selectivity[neuron_label] = -1.
         return neuron_label
 
@@ -321,7 +322,8 @@ class Network():
                 pruned_connections[pre] = connections[pre]
             return pruned_connections
         else:
-            print("add thresholded selection here here")
+            # print("add thresholded selection here here")
+            return dict(random.sample(list(connections.items()), self.max_hidden_synapses))
 
     def response(self, activations, replay=False):
         # for i in range(self.layers):
@@ -331,6 +333,9 @@ class Network():
             # line below can be compressed?
             activations[self.neurons[neuron].neuron_label] = response[neuron]
         for neuron in self.remove_output_neurons(activations, cap=False):
+            if neuron not in self.neuron_activity:
+                hidden_activity = self.return_hidden_neurons(activations)
+                self.neuron_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
             if self.replaying:
                 if replay:
                     self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]

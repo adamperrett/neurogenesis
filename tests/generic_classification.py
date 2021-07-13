@@ -89,7 +89,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
-                CLASSnet.reinforce_neurons(1.)
+                # CLASSnet.reinforce_neurons(1.)
                 classifications.append(1)
                 # net.age_output_synapses(reward=True)
             print("CORRECT CLASS WAS CHOSEN")
@@ -98,7 +98,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         else:
             print("INCORRECT CLASS WAS CHOSEN")
             if 'esting' not in test_net_label:
-                CLASSnet.reinforce_neurons(-1.)
+                # CLASSnet.reinforce_neurons(-1.)
                 classifications.append(0)
                 net.error_driven_neuro_genesis(activations, error)#, label)
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
@@ -244,9 +244,9 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 100
     fixed_hidden_ratio = 0.5
-    maximum_total_synapses = 100*3000
+    maximum_total_synapses = 100*30000
     input_spread = 0
-    activity_decay_rate = 1.
+    activity_decay_rate = 0.9
     activity_init = 0.
     number_of_seeds = 0
 
@@ -264,7 +264,7 @@ visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'del avinit {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'aveinit {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(error_type,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
@@ -332,21 +332,21 @@ for epoch in range(epochs):
                                                               max_fold=maximum_fold_accuracy)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
         plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
-        # print("visualising features")
-        # if current_fold % visualise_rate == 0 and 'mnist' in test:
-        #     for i in range(10):
-        #         print("positive visualising class", i)
-        #         vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
-        #         print("plotting class", i)
-        #         plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-        #         print("saving class", i)
-        #         plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
-        #         print("negative visualising class", i)
-        #         vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
-        #         print("plotting class", i)
-        #         plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-        #         print("saving class", i)
-        #         plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
+        print("visualising features")
+        if current_fold % visualise_rate == 0 and 'mnist' in test:
+            for i in range(10):
+                print("positive visualising class", i)
+                vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
+                print("plotting class", i)
+                plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+                print("saving class", i)
+                plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
+                print("negative visualising class", i)
+                vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=False)
+                print("plotting class", i)
+                plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+                print("saving class", i)
+                plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
         if current_fold % 10 == 0 and current_fold:
             print("it reached 10 folds")
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
