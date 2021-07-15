@@ -68,7 +68,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     activations = {}
     train_count = 0
     correct_classifications = 0
-    # incorrect_classes = []
+    choice_pairings = []
+    synapse_counts = []
     for test in indexes:
         train_count += 1
         features = data[test]
@@ -86,6 +87,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         print(test_label)
         for ep in epoch_error:
             print(ep)
+        choice_pairings.append([choice, label])
+        synapse_counts.append(CLASSnet.synapse_count)
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
@@ -243,8 +246,8 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 100
-    hidden_threshold = 0.7
+    maximum_synapses_per_neuron = 600
+    hidden_threshold = 0.95
     fixed_hidden_amount = 50
     # fixed_hidden_ratio = 0.5
     fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -268,7 +271,7 @@ visualise_rate = 20
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'bth thresh {} {}{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
+test_label = 'outside {} {}{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(error_type,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,

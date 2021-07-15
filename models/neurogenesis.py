@@ -147,6 +147,7 @@ class Network():
         self.neurons = {}
         self.neuron_activity = {}
         self.neuron_selectivity = {}
+        self.neuron_response = {}
         self.neuron_connectedness = {}
         self.activity_decay_rate = activity_decay_rate
         self.number_of_classes = number_of_classes
@@ -312,7 +313,7 @@ class Network():
             selected += len(sample_dic)
         return total_dic
 
-    def limit_connections(self, connections, selectivity=True):
+    def limit_connections(self, connections, selectivity=True, thresholded=False, outlier=True):
         if len(connections) <= min(self.max_hidden_synapses, self.number_of_inputs):
             return connections
         if selectivity:
@@ -320,18 +321,31 @@ class Network():
             input_selectivity, hidden_selectivity = self.process_selectivity()
             number_of_hidden = int(min(self.hidden_neuron_count - self.deleted_neuron_count,
                                         self.fixed_hidden_ratio * self.max_hidden_synapses))
-            selected_hidden = self.get_max_selectivity(hidden_selectivity,
-                                                       number_of_hidden)
-            for neuron in hidden_selectivity:
-                if self.neuron_selectivity[neuron] > self.hidden_threshold or \
-                        self.neuron_selectivity[neuron] < 1. - self.hidden_threshold:
-                    pruned_connections[neuron] = connections[neuron]
-                if len(pruned_connections) > self.max_hidden_synapses:
-                    break
+            if thresholded:
+                for neuron in hidden_selectivity:
+                    # if self.neuron_response[neuron] > self.hidden_threshold or \
+                    #         self.neuron_response[neuron] < 1. - self.hidden_threshold:
+                    if self.neuron_response[neuron] < 1. - self.hidden_threshold:
+                        pruned_connections[neuron] = connections[neuron]
+                    if len(pruned_connections) >= self.max_hidden_synapses:
+                        break
+            elif outlier and self.hidden_neuron_count:
+                hidden_response = self.return_hidden_neurons(self.neuron_response)
+                ave_response = sum(hidden_response.values()) / len(hidden_response)
+                relative_response = {}
+                for neuron in hidden_response:
+                    relative_response[neuron] = abs(hidden_response[neuron] - ave_response)
+                selected_hidden = self.get_max_selectivity(relative_response,
+                                                           number_of_hidden)
+                for pre in selected_hidden:
+                    pruned_connections[pre] = connections[pre]
+            else:
+                selected_hidden = self.get_max_selectivity(hidden_selectivity,
+                                                           number_of_hidden)
+                for pre in selected_hidden:
+                    pruned_connections[pre] = connections[pre]
             selected_input = self.get_max_selectivity(input_selectivity,
                                                       self.max_hidden_synapses - len(pruned_connections))
-            # for pre in selected_hidden:
-            #     pruned_connections[pre] = connections[pre]
             for pre in selected_input:
                 pruned_connections[pre] = connections[pre]
             return pruned_connections
@@ -355,10 +369,8 @@ class Network():
                     self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
                 self.neuron_activity[neuron] = response[neuron]
             else:
-                if 'in' in neuron:
-                    self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-                else:
-                    self.neuron_selectivity[neuron] = response[neuron] #- self.neuron_activity[neuron]
+                self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+                self.neuron_response[neuron] = response[neuron]
                 self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
                                                (response[neuron] * (1. - self.activity_decay_rate))
                 # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
@@ -376,7 +388,7 @@ class Network():
                 if i == correct_output:
                     syn_reward = 1.#reward
                 else:
-                    syn_reward = -0.1#reward
+                    syn_reward = -1#reward
                 for pre in self.neurons[neuron].synapses:
                     for syn in self.neurons[neuron].synapses[pre]:
                         syn_r = syn.reinforce(syn_reward)
