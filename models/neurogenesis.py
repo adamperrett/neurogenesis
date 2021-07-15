@@ -27,11 +27,17 @@ class Synapses():
         self.age = min(self.age, self.maturation)
         self.age_multiplier = 1. + self.age#(self.age / self.maturation)
         
-    def reinforce(self, reward):
+    def update_reward(self, reward):
         self.reward = ((1. - self.reward_decay) * self.activity * reward) + (self.reward_decay * self.reward)
         if self.reward < 0:
             print("I'm sorry, what?")
         return self.reward
+
+    def reinforce(self, reward):
+        delta_w = reward * self.activity
+        if delta_w > 0:
+            print("updating - old:", self.weight, "- new:", self.weight + (delta_w * self.reward_decay))
+        self.weight += delta_w * self.reward_decay
 
     def response(self, input):
         self.activity = max(1. - abs((input - self.freq) / self.f_width), 0) #* self.age_multiplier
@@ -115,7 +121,8 @@ class Network():
                  delete_neuron_type='RL',
                  fixed_hidden_ratio=0.1,
                  activity_init=1.0,
-                 replaying=True):
+                 replaying=True,
+                 hidden_threshold=0.9):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.activation_threshold = activation_threshold
@@ -135,6 +142,7 @@ class Network():
         self.fixed_hidden_ratio = fixed_hidden_ratio
         self.activity_init = activity_init
         self.replaying = replaying
+        self.hidden_threshold = hidden_threshold
 
         self.neurons = {}
         self.neuron_activity = {}
@@ -314,10 +322,16 @@ class Network():
                                         self.fixed_hidden_ratio * self.max_hidden_synapses))
             selected_hidden = self.get_max_selectivity(hidden_selectivity,
                                                        number_of_hidden)
+            for neuron in hidden_selectivity:
+                if self.neuron_selectivity[neuron] > self.hidden_threshold or \
+                        self.neuron_selectivity[neuron] < 1. - self.hidden_threshold:
+                    pruned_connections[neuron] = connections[neuron]
+                if len(pruned_connections) > self.max_hidden_synapses:
+                    break
             selected_input = self.get_max_selectivity(input_selectivity,
-                                                      self.max_hidden_synapses - len(selected_hidden))
-            for pre in selected_hidden:
-                pruned_connections[pre] = connections[pre]
+                                                      self.max_hidden_synapses - len(pruned_connections))
+            # for pre in selected_hidden:
+            #     pruned_connections[pre] = connections[pre]
             for pre in selected_input:
                 pruned_connections[pre] = connections[pre]
             return pruned_connections
@@ -341,7 +355,10 @@ class Network():
                     self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
                 self.neuron_activity[neuron] = response[neuron]
             else:
-                self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+                if 'in' in neuron:
+                    self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+                else:
+                    self.neuron_selectivity[neuron] = response[neuron] #- self.neuron_activity[neuron]
                 self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
                                                (response[neuron] * (1. - self.activity_decay_rate))
                 # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
@@ -351,13 +368,25 @@ class Network():
             activations[self.neurons[neuron].neuron_label] = response
         return activations
 
-    def reinforce_synapses(self, reward):
+    def reinforce_synapses(self, reward, only_output=True, correct_output=0):
         self.synapse_rewards = []
-        for neuron in self.neurons:
-            for pre in self.neurons[neuron].synapses:
-                for syn in self.neurons[neuron].synapses[pre]:
-                    syn_r = syn.reinforce(reward)
-                    self.synapse_rewards.append([syn_r, neuron, pre, self.neurons[neuron].synapses[pre].index(syn)])
+        if only_output:
+            for i in range(self.number_of_classes):
+                neuron = 'out{}'.format(i)
+                if i == correct_output:
+                    syn_reward = 1.#reward
+                else:
+                    syn_reward = -0.1#reward
+                for pre in self.neurons[neuron].synapses:
+                    for syn in self.neurons[neuron].synapses[pre]:
+                        syn_r = syn.reinforce(syn_reward)
+                        self.synapse_rewards.append([syn_r, neuron, pre, self.neurons[neuron].synapses[pre].index(syn)])
+        else:
+            for neuron in self.neurons:
+                for pre in self.neurons[neuron].synapses:
+                    for syn in self.neurons[neuron].synapses[pre]:
+                        syn_r = syn.update_reward(reward)
+                        self.synapse_rewards.append([syn_r, neuron, pre, self.neurons[neuron].synapses[pre].index(syn)])
         return self.synapse_rewards
 
     def reinforce_neurons(self, reward):

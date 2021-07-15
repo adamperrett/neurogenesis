@@ -89,7 +89,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
-                # CLASSnet.reinforce_neurons(1.)
+                # CLASSnet.reinforce_synapses(1., correct_output=label)
                 classifications.append(1)
                 # net.age_output_synapses(reward=True)
             print("CORRECT CLASS WAS CHOSEN")
@@ -98,7 +98,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         else:
             print("INCORRECT CLASS WAS CHOSEN")
             if 'esting' not in test_net_label:
-                # CLASSnet.reinforce_neurons(-1.)
+                # CLASSnet.reinforce_synapses(-1., correct_output=label)
                 classifications.append(0)
                 net.error_driven_neuro_genesis(activations, error)#, label)
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
@@ -234,7 +234,8 @@ if read_args:
     activity_init = float(sys.argv[7])
     activity_decay_rate = 1.
     number_of_seeds = int(sys.argv[8])
-    fixed_hidden_ratio = float(sys.argv[9])
+    fixed_hidden_amount = float(sys.argv[9])
+    fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     print("Variables collected")
     for i in range(9):
         print(sys.argv[i+1])
@@ -243,10 +244,13 @@ else:
     activation_threshold = 0.0
     error_threshold = 0.0
     maximum_synapses_per_neuron = 100
-    fixed_hidden_ratio = 0.5
+    hidden_threshold = 0.7
+    fixed_hidden_amount = 50
+    # fixed_hidden_ratio = 0.5
+    fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*30000
     input_spread = 0
-    activity_decay_rate = 0.9
+    activity_decay_rate = 0.9999
     activity_init = 0.
     number_of_seeds = 0
 
@@ -254,22 +258,24 @@ maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
 delete_neuron_type = 'old'
-reward_decay = 0.5
+reward_decay = 0.0
 # activity_init = 1.0
 always_inputs = False
 replaying = False
 error_type = 'out'
 epochs = 20
-visualise_rate = 5
+visualise_rate = 20
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'aveinit {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'bth thresh {} {}{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(error_type,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
-                                                   fixed_hidden_ratio,
+                                            hidden_threshold,
+                                                   # fixed_hidden_ratio,
+                                                    fixed_hidden_amount,
                                                    sensitivity_width,
                                                    activation_threshold,
                                                    error_threshold,
@@ -295,7 +301,8 @@ CLASSnet = Network(num_outputs, num_inputs,
                    delete_neuron_type=delete_neuron_type,
                    fixed_hidden_ratio=fixed_hidden_ratio,
                    activity_init=activity_init,
-                   replaying=replaying)
+                   replaying=replaying,
+                   hidden_threshold=hidden_threshold)
 all_incorrect_classes = []
 epoch_error = []
 
@@ -349,6 +356,8 @@ for epoch in range(epochs):
                 plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
         if current_fold % 10 == 0 and current_fold:
             print("it reached 10 folds")
+        # for out in range(num_outputs):
+        #     CLASSnet.add_neuron({}, 'out{}'.format(out))
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
             total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
                                               test_net_label='Testing',

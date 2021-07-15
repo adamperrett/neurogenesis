@@ -14,6 +14,10 @@ if test == 'pen':
     import gym
     num_outputs = 2
     num_inputs = 4
+if test == 'nov':
+    import gym
+    num_outputs = 2
+    num_inputs = 2
 elif test == 'rf':
     import gym
     num_outputs = 2
@@ -39,6 +43,8 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
             prev_obs = observation
             if test == 'rf':
                 observation = convert_observation_to_fields(observation)
+            elif test == 'nov':
+                observation = [observation[0], observation[2]]
             activations = net.convert_inputs_to_activations(observation)
             activations = net.response(activations)
             action = select_binary_action(activations)
