@@ -248,10 +248,10 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 600
     hidden_threshold = 0.95
-    fixed_hidden_amount = 50
+    fixed_hidden_amount = 300
     # fixed_hidden_ratio = 0.5
     fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
-    maximum_total_synapses = 100*30000
+    maximum_total_synapses = 100*3000000
     input_spread = 0
     activity_decay_rate = 0.9999
     activity_init = 0.

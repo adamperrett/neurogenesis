@@ -29,8 +29,8 @@ if 'mnist' in test:
 else:
     input_dimensions = None
 
-def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', repeat=None):
-    env = gym.make('CartPole-v1')
+def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', repeat=None, pole_length=0.5):
+    env = gym.make('CartPole-v1', length=pole_length)
 
     # The main program loop
     all_times = []
@@ -51,6 +51,8 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
             observation, reward, done, info = env.step(action)
             # Keep a store of the agent's experiences
             states.append([done, action, observation, prev_obs, deepcopy(activations)])
+            # CLASSnet.reinforce_synapses(t+1)
+            # CLASSnet.reinforce_neurons(1.)
             # epsilon decay
             if done:
                 # If the pole has tipped over, end this episode
@@ -58,8 +60,6 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 all_times.append(t+1)
                 print('\nEpisode {} of repeat {} ended after {} timesteps - {}'.format(i_episode, repeat,
                                                                                        t + 1, test_label))
-                # CLASSnet.reinforce_synapses(t+1)
-                CLASSnet.reinforce_neurons(1.)
                 print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                       CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
                 print("Synapse count: ", CLASSnet.synapse_count)
@@ -227,7 +227,7 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 50*10
+    maximum_total_synapses = 50000*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -236,23 +236,26 @@ else:
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
-delete_neuron_type = 'old'
+delete_neuron_type = 'RL'
 reward_decay = 0.7
+
+pole_length = 0.5
+
 # activity_init = 1.0
 always_inputs = False
 replaying = False
 error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
-number_of_episodes = 200
+number_of_episodes = 2500
 repeat_test = 20
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{}'.format(window_size, error_type, error_decay_rate,
+test_label = 'long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{}'.format(number_of_episodes, window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
@@ -289,7 +292,8 @@ for repeat in range(repeat_test):
     times = test_net(CLASSnet, 1000, number_of_episodes,
                      test_net_label=test_label,
                      memory_length=window_size,
-                     repeat=repeat)
+                     repeat=repeat,
+                     pole_length=pole_length)
     all_times.append(times)
 
     # all_times = np.array(all_times)
