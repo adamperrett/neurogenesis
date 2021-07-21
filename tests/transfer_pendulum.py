@@ -63,6 +63,11 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                       CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
                 print("Synapse count: ", CLASSnet.synapse_count)
+                if len(all_times) > 100 and np.average(all_times[-100:]) > 475:
+                    while len(all_times) < episodes:
+                        all_times.append(500)
+                    print("SUPER WOW")
+                    return all_times
                 # unless balanced
                 if t >= 499:
                     print("WOW")
@@ -227,7 +232,7 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 100*10
+    maximum_total_synapses = 50000*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -239,7 +244,8 @@ maturity = 100.
 delete_neuron_type = 'RL'
 reward_decay = 0.7
 
-pole_length = 0.25
+long_length = 0.5
+short_length = 0.25
 
 # activity_init = 1.0
 always_inputs = False
@@ -254,8 +260,8 @@ visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{}'.format(pole_length, number_of_episodes,
+test_label = 'long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{}'.format(number_of_episodes,
                                             window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,
                                             maximum_net_size, maximum_synapses_per_neuron,
@@ -273,6 +279,7 @@ fold_average_windows = [3, 10, 30, 60, 100, 1000]
 
 
 all_times = []
+short_times = []
 for repeat in range(repeat_test):
     CLASSnet = Network(num_outputs, num_inputs,
                        error_threshold=error_threshold,
@@ -290,12 +297,20 @@ for repeat in range(repeat_test):
                        activity_init=activity_init,
                        replaying=replaying)
 
+
     times = test_net(CLASSnet, 1000, number_of_episodes,
                      test_net_label=test_label,
                      memory_length=window_size,
                      repeat=repeat,
-                     pole_length=pole_length)
+                     pole_length=long_length)
     all_times.append(times)
+
+    times = test_net(CLASSnet, 1000, number_of_episodes,
+                     test_net_label=test_label,
+                     memory_length=window_size,
+                     repeat=repeat,
+                     pole_length=short_length)
+    short_times.append(times)
 
     # all_times = np.array(all_times)
     max_time = []
@@ -328,7 +343,42 @@ for repeat in range(repeat_test):
     figure.set_size_inches(16, 9)
     plt.tight_layout(rect=[0, 0.3, 1, 0.95])
     plt.suptitle(test_label, fontsize=16)
-    plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
+    plt.savefig("./plots/pl{} - {}.png".format(long_length, test_label), bbox_inches='tight', dpi=200)
+    # plt.show()
+    plt.close()
+
+    # all_times = np.array(all_times)
+    max_time = []
+    min_time = []
+    ave_time = []
+    std_err = []
+    for i in range(len(short_times[0])):
+        test_scores = []
+        for j in range(len(short_times)):
+            test_scores.append(short_times[j][i])
+        max_time.append(max(test_scores))
+        min_time.append(min(test_scores))
+        ave_time.append(np.average(test_scores))
+        std_err.append(np.std(test_scores))
+    plt.figure()
+    for j in range(len(short_times)):
+        plt.scatter([i for i in range(len(short_times[j]))], short_times[j], s=4)
+    # plt.title(test_label)
+    plt.ylim([-10, 510])
+    plt.plot([i for i in range(len(max_time))], max_time, 'r')
+    plt.plot([i for i in range(len(min_time))], min_time, 'r')
+    plt.plot([i for i in range(len(ave_time))], ave_time, 'b')
+    plt.plot([i for i in range(len(std_err))], (np.array(std_err)*(1/len(short_times))) + np.array(ave_time), 'g')
+    plt.plot([i for i in range(len(std_err))], (-1*np.array(std_err)*(1/len(short_times))) + np.array(ave_time), 'g')
+    plt.plot([0, len(ave_time)], [475, 475], 'g')
+    for j in range(len(short_times)):
+        ave_err100 = moving_average(short_times[j], 100)
+        plt.plot([i + 50 for i in range(len(ave_err100))], ave_err100, 'r')
+    figure = plt.gcf()
+    figure.set_size_inches(16, 9)
+    plt.tight_layout(rect=[0, 0.3, 1, 0.95])
+    plt.suptitle(test_label, fontsize=16)
+    plt.savefig("./plots/pl{}after{} - {}.png".format(short_length, long_length, test_label), bbox_inches='tight', dpi=200)
     # plt.show()
     plt.close()
 print("done")
