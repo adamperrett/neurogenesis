@@ -186,7 +186,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     data_dict['testing_confusion'] = testing_confusion
     data_dict['synapse_counts'] = synapse_counts
     data_dict['epoch error'] = epoch_error
-    np.save("./data/{}.png".format(test_label))
+    np.save("./data/{}.png".format(test_label), data_dict)
 
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
