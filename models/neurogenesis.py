@@ -245,6 +245,7 @@ class Network():
                 del self.neurons[neuron].synapses[delete_neuron]
         for i in range(self.number_of_classes):
             if delete_neuron in self.neurons['out{}'.format(i)].synapses:
+                self.synapse_count -= len(self.neurons['out{}'.format(i)].synapses[delete_neuron])
                 del self.neurons['out{}'.format(i)].synapses[delete_neuron]
         self.deleted_neuron_count += 1
 
@@ -492,6 +493,7 @@ class Network():
                                                                         sensitivities=self.neuron_selectivity,
                                                                         # width=0.3,
                                                                         reward_decay=self.reward_decay)
+                    self.synapse_count += 1
                     if self.replaying:
                         self.visualise_neuron('out{}'.format(output), only_pos=False)
                     self.neuron_connectedness[neuron_label] = 1

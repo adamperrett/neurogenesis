@@ -63,6 +63,11 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                       CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
                 print("Synapse count: ", CLASSnet.synapse_count)
+                if len(all_times) > 100 and np.average(all_times[-100:]) > 475:
+                    while len(all_times) < episodes:
+                        all_times.append(500)
+                    print("SUPER WOW")
+                    return all_times
                 # unless balanced
                 if t >= 499:
                     print("WOW")
@@ -145,8 +150,8 @@ def select_binary_action(activations):
         action = 1
         # print("1", end='')
     else:
-        # action = np.random.randint(2)
-        action = 1
+        action = np.random.randint(2)
+        # action = 1
         # print("r", end='')
     return action
 
@@ -227,7 +232,7 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 100*10
+    maximum_total_synapses = 250*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -237,7 +242,7 @@ maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
 delete_neuron_type = 'RL'
-reward_decay = 0.7
+reward_decay = 0.9999
 
 pole_length = 0.25
 
@@ -254,7 +259,7 @@ visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'random pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(pole_length, number_of_episodes,
                                             window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,
@@ -296,6 +301,7 @@ for repeat in range(repeat_test):
                      repeat=repeat,
                      pole_length=pole_length)
     all_times.append(times)
+    np.save("./data/{}.png".format(test_label), all_times)
 
     # all_times = np.array(all_times)
     max_time = []

@@ -732,7 +732,7 @@ training_set_breasts = deepcopy(norm_breast)
 training_set_labels = deepcopy(breast_labels)
 test_set_size = int(len(breast_data) * 0.3)
 import random
-random.seed(27)
+# random.seed(27)
 test_set_indexes = random.sample([i for i in range(len(breast_labels))], test_set_size)
 test_set_breasts = [norm_breast[i] for i in test_set_indexes]
 test_set_labels = [breast_labels[i] for i in test_set_indexes]

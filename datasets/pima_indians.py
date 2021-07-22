@@ -799,7 +799,7 @@ training_set_pimas = deepcopy(norm_pima)
 training_set_labels = deepcopy(pima_labels)
 test_set_size = int(len(pima_data) * 0.3)
 import random
-random.seed(27)
+# random.seed(27)
 test_set_indexes = random.sample([i for i in range(len(pima_labels))],  test_set_size)
 test_set_pimas = [norm_pima[i] for i in test_set_indexes]
 test_set_labels = [pima_labels[i] for i in test_set_indexes]

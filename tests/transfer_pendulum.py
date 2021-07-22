@@ -58,8 +58,10 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 # If the pole has tipped over, end this episode
                 # scores_last_timesteps.append(t + 1)
                 all_times.append(t+1)
-                print('\nEpisode {} of repeat {} ended after {} timesteps - {}'.format(i_episode, repeat,
-                                                                                       t + 1, test_label))
+                print('\nEpisode {} of repeat {} ended after {} timesteps - pl{} {}'.format(i_episode, repeat,
+                                                                                       t + 1,
+                                                                                            pole_length,
+                                                                                            test_label))
                 print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                       CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
                 print("Synapse count: ", CLASSnet.synapse_count)
@@ -150,8 +152,8 @@ def select_binary_action(activations):
         action = 1
         # print("1", end='')
     else:
-        # action = np.random.randint(2)
-        action = 1
+        action = np.random.randint(2)
+        # action = 1
         # print("r", end='')
     return action
 
@@ -232,7 +234,7 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 50000*10
+    maximum_total_synapses = 250*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -242,7 +244,7 @@ maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
 delete_neuron_type = 'RL'
-reward_decay = 0.7
+reward_decay = 0.9999
 
 long_length = 0.5
 short_length = 0.25
@@ -260,7 +262,7 @@ visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'trans random long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(number_of_episodes,
                                             window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,
@@ -304,13 +306,7 @@ for repeat in range(repeat_test):
                      repeat=repeat,
                      pole_length=long_length)
     all_times.append(times)
-
-    times = test_net(CLASSnet, 1000, number_of_episodes,
-                     test_net_label=test_label,
-                     memory_length=window_size,
-                     repeat=repeat,
-                     pole_length=short_length)
-    short_times.append(times)
+    np.save("./data/pl{} - {}.png".format(long_length, test_label), all_times)
 
     # all_times = np.array(all_times)
     max_time = []
@@ -346,6 +342,14 @@ for repeat in range(repeat_test):
     plt.savefig("./plots/pl{} - {}.png".format(long_length, test_label), bbox_inches='tight', dpi=200)
     # plt.show()
     plt.close()
+
+    times = test_net(CLASSnet, 1000, number_of_episodes,
+                     test_net_label=test_label,
+                     memory_length=window_size,
+                     repeat=repeat,
+                     pole_length=short_length)
+    short_times.append(times)
+    np.save("./data/pl{}after{} - {}.png".format(short_length, long_length, test_label), short_times)
 
     # all_times = np.array(all_times)
     max_time = []

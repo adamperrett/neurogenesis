@@ -6,10 +6,11 @@ import random
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sn
+import pandas as pd
 
 
-
-test = 'mnist'
+test = 'breast'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -37,15 +38,6 @@ elif test == 'mnist':
     test_feat = mnist_testing_data
     retest_rate = 1000
     retest_size = 50
-elif test == 'rmnist':
-    from datasets.mnist_csv import *
-    num_outputs = 10
-    train_labels = mnist_training_labels
-    train_feat = reduced_mnist_training_data
-    test_labels = mnist_testing_labels
-    test_feat = reduced_mnist_testing_data
-    retest_rate = 1000
-    retest_size = 50
 elif test == 'pima':
     from datasets.pima_indians import *
     num_outputs = 2
@@ -68,7 +60,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     activations = {}
     train_count = 0
     correct_classifications = 0
-    choice_pairings = []
+    confusion_matrix = np.zeros([num_outputs+1, num_outputs+1])
     synapse_counts = []
     for test in indexes:
         train_count += 1
@@ -87,7 +79,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         print(test_label)
         for ep in epoch_error:
             print(ep)
-        choice_pairings.append([choice, label])
+        confusion_matrix[choice][label] += 1
         synapse_counts.append(CLASSnet.synapse_count)
         if label == choice:
             correct_classifications += 1
@@ -125,14 +117,15 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     correct_classifications /= train_count
     print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
           correct_classifications)
-    return correct_classifications, classifications
+    return correct_classifications, classifications, confusion_matrix, synapse_counts
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
 
-def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_flag=False):
+def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, testing_confusion, synapse_counts,
+                        test_label, save_flag=False):
     fig, axs = plt.subplots(2, 2)
     ave_err10 = moving_average(correct_or_not, 10)
     ave_err100 = moving_average(correct_or_not, 100)
@@ -158,14 +151,8 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
     axs[0][1].set_xlim([0, len(fold_test_accuracy)])
     axs[0][1].set_ylim([0, 1])
     axs[0][1].set_title("fold test classification")
-    neuron_count_over_time = []
-    neuron_count = number_of_seeds
-    for classification in correct_or_not:
-        neuron_count_over_time.append(neuron_count)
-        if classification == 0:
-            neuron_count += 1
-    axs[1][0].plot([i for i in range(len(neuron_count_over_time))], neuron_count_over_time)
-    axs[1][0].set_title("neuron count")
+    axs[1][0].plot([i for i in range(len(synapse_counts))], synapse_counts)
+    axs[1][0].set_title("synapse count")
     if len(epoch_error):
         axs[1][1].set_xlim([0, len(epoch_error)])
         axs[1][1].set_ylim([0, 1])
@@ -174,13 +161,31 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
         axs[1][1].plot([i + 1 for i in range(len(ave_err10))], ave_err10, 'r')
         axs[1][1].plot([0, len(epoch_error)], [epoch_error[-1][1], epoch_error[-1][1]], 'g')
         axs[1][1].set_title("Epoch test classification")
+    if save_flag:
+        plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
+    plt.close()
+
+    fig, axs = plt.subplots(2, 1)
+    train_df = pd.DataFrame(training_confusion, range(num_outputs+1), range(num_outputs+1))
+    axs[0] = sn.heatmap(train_df, annot=True, annot_kws={'size': 8}, ax=axs[2][0])
+    axs[0].set_title("Training confusion")
+    test_df = pd.DataFrame(training_confusion, range(num_outputs+1), range(num_outputs+1))
+    axs[1] = sn.heatmap(test_df, annot=True, annot_kws={'size': 8}, ax=axs[2][1])
+    axs[1].set_title("Testing confusion")
     figure = plt.gcf()
     figure.set_size_inches(16, 9)
     plt.tight_layout(rect=[0, 0.3, 1, 0.95])
     plt.suptitle(test_label, fontsize=16)
     if save_flag:
-        plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
+        plt.savefig("./plots/confusion {}.png".format(test_label), bbox_inches='tight', dpi=200)
     plt.close()
+    data_dict = {}
+    data_dict['training classifications'] = correct_or_not
+    data_dict['fold_test_accuracy'] = fold_test_accuracy
+    data_dict['training_confusion'] = training_confusion
+    data_dict['testing_confusion'] = testing_confusion
+    data_dict['synapse_counts'] = synapse_counts
+    np.save("./data/{}.png".format(test_label))
 
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
@@ -208,7 +213,7 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     if min(softmax) != max(softmax):
         choice = softmax.argmax()
     else:
-        choice = -1
+        choice = num_outputs
     if error_type == 'zero':
         error = np.zeros(num_outputs)
     for output in range(num_outputs):
@@ -246,14 +251,14 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 600
+    maximum_synapses_per_neuron = 100
     hidden_threshold = 0.95
-    fixed_hidden_amount = 300
+    fixed_hidden_amount = 50
     # fixed_hidden_ratio = 0.5
     fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*3000000
     input_spread = 0
-    activity_decay_rate = 0.9999
+    activity_decay_rate = 0.99999
     activity_init = 0.
     number_of_seeds = 0
 
@@ -269,9 +274,10 @@ error_type = 'out'
 epochs = 20
 visualise_rate = 20
 np.random.seed(27)
+confusion_decay = 0.8
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'outside {} {}{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
+test_label = 'confusion outside {} {}{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(error_type,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
@@ -312,6 +318,9 @@ epoch_error = []
 fold_testing_accuracy = []
 maximum_fold_accuracy = [[0, 0]]
 training_classifications = []
+running_train_confusion = np.zeros([num_outputs+1, num_outputs+1])
+running_test_confusion = np.zeros([num_outputs+1, num_outputs+1])
+running_synapse_counts = np.zeros([1])
 for epoch in range(epochs):
     if epoch % 3 == 0 and epoch:
         for ep, error in enumerate(epoch_error):
@@ -324,24 +333,33 @@ for epoch in range(epochs):
         training_count += retest_rate
         current_fold = training_count / retest_rate
         fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
-        training_accuracy, training_classifications = test_net(CLASSnet, train_feat, train_labels,
-                                                               indexes=training_indexes,
-                                                               test_net_label='Training',
-                                                               fold_test_accuracy=fold_testing_accuracy,
-                                                               classifications=training_classifications,
-                                                               fold_string=fold_string,
-                                                               max_fold=maximum_fold_accuracy)
+        training_accuracy, training_classifications, \
+        training_confusion, synapse_counts = test_net(CLASSnet, train_feat, train_labels,
+                                                      indexes=training_indexes,
+                                                      test_net_label='Training',
+                                                      fold_test_accuracy=fold_testing_accuracy,
+                                                      classifications=training_classifications,
+                                                      fold_string=fold_string,
+                                                      max_fold=maximum_fold_accuracy)
+        running_synapse_counts = np.hstack([running_synapse_counts, synapse_counts])
         # training_classifications += new_classifications
         testing_indexes = random.sample([i for i in range(len(test_labels))], retest_size)
-        testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
-                                                              test_net_label='Testing',
-                                                              indexes=testing_indexes,
-                                                              classifications=training_classifications,
-                                                              fold_test_accuracy=fold_testing_accuracy,
-                                                              fold_string=fold_string,
-                                                              max_fold=maximum_fold_accuracy)
+        testing_accuracy, training_classifications, \
+        testing_confusion, _ = test_net(CLASSnet, test_feat, test_labels,
+                                        test_net_label='Testing',
+                                        indexes=testing_indexes,
+                                        classifications=training_classifications,
+                                        fold_test_accuracy=fold_testing_accuracy,
+                                        fold_string=fold_string,
+                                        max_fold=maximum_fold_accuracy)
         fold_testing_accuracy.append(round(testing_accuracy, 3))
-        plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
+        running_train_confusion *= confusion_decay
+        running_train_confusion += training_confusion
+        running_test_confusion *= confusion_decay
+        running_test_confusion += testing_confusion
+        plot_learning_curve(training_classifications, fold_testing_accuracy,
+                            running_train_confusion, running_test_confusion,
+                            running_synapse_counts, test_label, save_flag=True)
         print("visualising features")
         if current_fold % visualise_rate == 0 and 'mnist' in test:
             for i in range(10):
@@ -362,7 +380,8 @@ for epoch in range(epochs):
         # for out in range(num_outputs):
         #     CLASSnet.add_neuron({}, 'out{}'.format(out))
         if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
-            total_test_accuracy, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
+            total_test_accuracy, _, \
+            full_test_confusion, _ = test_net(CLASSnet, train_feat+test_feat, train_labels+test_labels,
                                               test_net_label='Testing',
                                               classifications=training_classifications,
                                               fold_test_accuracy=fold_testing_accuracy,
@@ -373,12 +392,13 @@ for epoch in range(epochs):
                                           CLASSnet.hidden_neuron_count])
 
     if retest_size < len(test_labels):
-        full_testing_accuracy, training_classifications = test_net(CLASSnet, test_feat, test_labels,
-                                                                   test_net_label='Testing',
-                                                                   classifications=training_classifications,
-                                                                   fold_test_accuracy=fold_testing_accuracy,
-                                                                   fold_string=fold_string,
-                                                                   max_fold=maximum_fold_accuracy)
+        full_testing_accuracy, training_classifications, \
+        full_test_confusion, _ = test_net(CLASSnet, test_feat, test_labels,
+                                          test_net_label='Testing',
+                                          classifications=training_classifications,
+                                          fold_test_accuracy=fold_testing_accuracy,
+                                          fold_string=fold_string,
+                                          max_fold=maximum_fold_accuracy)
 
         epoch_error.append([np.mean(training_classifications[-len(train_labels):]), full_testing_accuracy,
                             CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
@@ -386,7 +406,11 @@ for epoch in range(epochs):
         epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,
                             CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
 
-    plot_learning_curve(training_classifications, fold_testing_accuracy, test_label, save_flag=True)
+    running_test_confusion *= confusion_decay
+    running_test_confusion += full_test_confusion
+    plot_learning_curve(training_classifications, fold_testing_accuracy,
+                        running_train_confusion, running_test_confusion,
+                        running_synapse_counts, test_label, save_flag=True)
 
     print(test_label)
     for ep, error in enumerate(epoch_error):
