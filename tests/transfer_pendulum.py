@@ -90,6 +90,7 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                             error = generate_error(r+1, action, activ, memory_length, len(states))
                             # error = generate_error(r/memory_length, action, activ)
                             print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
+                            net.neuron_response = activ
                             net.error_driven_neuro_genesis(activ, error)
                             # plot_activations(activ, r)
                 # all_states.append(states[-memory_length:])

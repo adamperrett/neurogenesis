@@ -2,15 +2,15 @@ import os
 import subprocess
 import time
 
-sensitivity_width = [0.4]
+sensitivity_width = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 activation_threshold = [0.0]
 error_threshold = [0.01]
 maximum_total_synapses = [1000000000]
-maximum_synapses = [50, 100, 300]
+maximum_synapses = [100]
 input_spread = [0]
-activity_decay_rate = [1., 0.]
+activity_decay_rate = [0.99999]
 number_of_seeds = [0]
-fixed_hidden_ratio = [0.5, 0.7]
+fixed_hidden_amount = [50]
 
 processes = []
 logs = []
@@ -22,15 +22,15 @@ for sw in sensitivity_width:
                     for ins in input_spread:
                         for adr in activity_decay_rate:
                             for ns in number_of_seeds:
-                                for fhr in fixed_hidden_ratio:
-                                    screen_name = "sw{}_at{}_er{}_mn{}_ms{}_ins{}_adr{}_ns{}_fhr{}".format(
-                                        sw, at, er, mn, ms, ins, adr, ns, fhr)
+                                for fha in fixed_hidden_amount:
+                                    screen_name = "sw{}_at{}_er{}_mn{}_ms{}_ins{}_adr{}_ns{}_fha{}".format(
+                                        sw, at, er, mn, ms, ins, adr, ns, fha)
                                     open_screen = "screen -dmS " + screen_name + " bash -c "
                                     move_and_source = "neurogenesis_source && "
                                     # command = "\"" + move_and_source + " python3 incremental_shd.py {} {} {} {} {}\"".format(h, r, v1, v2, fb)
                                     command = "\"python3 generic_classification.py {} {} {} {} {} {} {} {} {}; " \
                                               "exec bash\"".\
-                                        format(sw, at, er, mn, ms, ins, adr, ns, fhr)
+                                        format(sw, at, er, mn, ms, ins, adr, ns, fha)
 
                                     # logs.append(open("log_output_{}.txt".format(screen_name), 'a'))
                                     # process = subprocess.Popen(open_screen+command, stdout=subprocess.PIPE)

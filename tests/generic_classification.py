@@ -10,7 +10,7 @@ import seaborn as sn
 import pandas as pd
 
 
-test = 'breast'
+test = 'mnist'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -185,6 +185,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     data_dict['training_confusion'] = training_confusion
     data_dict['testing_confusion'] = testing_confusion
     data_dict['synapse_counts'] = synapse_counts
+    data_dict['epoch error'] = epoch_error
     np.save("./data/{}.png".format(test_label))
 
 def normalise_outputs(out_activations):
@@ -258,7 +259,7 @@ else:
     fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*3000000
     input_spread = 0
-    activity_decay_rate = 0.99999
+    activity_decay_rate = 0.9999
     activity_init = 0.
     number_of_seeds = 0
 
