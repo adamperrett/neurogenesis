@@ -167,10 +167,10 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
 
     fig, axs = plt.subplots(2, 1)
     train_df = pd.DataFrame(training_confusion, range(num_outputs+1), range(num_outputs+1))
-    axs[0] = sn.heatmap(train_df, annot=True, annot_kws={'size': 8}, ax=axs[2][0])
+    axs[0] = sn.heatmap(train_df, annot=True, annot_kws={'size': 8}, ax=axs[0])
     axs[0].set_title("Training confusion")
     test_df = pd.DataFrame(training_confusion, range(num_outputs+1), range(num_outputs+1))
-    axs[1] = sn.heatmap(test_df, annot=True, annot_kws={'size': 8}, ax=axs[2][1])
+    axs[1] = sn.heatmap(test_df, annot=True, annot_kws={'size': 8}, ax=axs[1])
     axs[1].set_title("Testing confusion")
     figure = plt.gcf()
     figure.set_size_inches(16, 9)
@@ -278,7 +278,7 @@ np.random.seed(27)
 confusion_decay = 0.8
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'confusion outside {} {}{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
+test_label = '{} {}{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(error_type,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
