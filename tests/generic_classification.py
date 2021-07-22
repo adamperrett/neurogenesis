@@ -28,7 +28,7 @@ elif test == 'wine':
     test_labels = test_set_labels
     test_feat = test_set_wines
     retest_rate = 10
-    retest_size = 10
+    retest_size = len(test_set_labels)
 elif test == 'mnist':
     from datasets.mnist_csv import *
     num_outputs = 10
@@ -161,6 +161,10 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
         axs[1][1].plot([i + 1 for i in range(len(ave_err10))], ave_err10, 'r')
         axs[1][1].plot([0, len(epoch_error)], [epoch_error[-1][1], epoch_error[-1][1]], 'g')
         axs[1][1].set_title("Epoch test classification")
+    figure = plt.gcf()
+    figure.set_size_inches(16, 9)
+    plt.tight_layout(rect=[0, 0.3, 1, 0.95])
+    plt.suptitle(test_label, fontsize=16)
     if save_flag:
         plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
     plt.close()
