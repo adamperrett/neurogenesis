@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 
-test = 'pen'
+test = 'break'
 if test == 'pen':
     import gym
     num_outputs = 2
@@ -18,22 +18,34 @@ if test == 'nov':
     import gym
     num_outputs = 2
     num_inputs = 2
+if test == 'nov_full':
+    import gym
+    num_outputs = 2
+    num_inputs = 4
 elif test == 'rf':
     import gym
     num_outputs = 2
     fields_per_inp = 20
     field_width = 0.6
     num_inputs = 4 * fields_per_inp
+elif test == 'break':
+    import gym
+    num_outputs = 2
+    num_inputs = 210*160
 if 'mnist' in test:
     input_dimensions = [28, 28]
 else:
     input_dimensions = None
 
 def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', repeat=None, pole_length=0.5):
-    env = gym.make('CartPole-v1', length=pole_length)
+    if test == 'break':
+        env = gym.make('Breakout-v0')
+    else:
+        env = gym.make('CartPole-v1', length=pole_length)
 
     # The main program loop
     all_times = []
+    activations = {}
     for i_episode in range(episodes):
         states = []
         observation = env.reset()
@@ -45,7 +57,12 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 observation = convert_observation_to_fields(observation)
             elif test == 'nov':
                 observation = [observation[0], observation[2]]
-            activations = net.convert_inputs_to_activations(observation)
+            elif test == 'nov_full':
+                observation = [observation[0], 0.0, observation[2], 0.0]
+            elif test == 'break':
+                observation = observation
+            converted_observation = net.convert_inputs_to_activations(observation)
+            # activations = update_activations(t, converted_observation, activations)
             activations = net.response(activations)
             action = select_binary_action(activations)
             observation, reward, done, info = env.step(action)
@@ -116,6 +133,19 @@ def plot_activations(activations, reward):
     plt.savefig("./plots/activations {} {}.png".format(test_label, reward), bbox_inches='tight', dpi=200)
     plt.close()
     return extractivations
+
+def update_activations(current_timestep, new_activations, activations_through_time):
+    for i in reversed(range(1, min(current_timestep, maximum_delay))):
+        for neuron in new_activations:
+            if neuron in activations_through_time:
+                updated_key = neuron + '-1'
+                activations_through_time[updated_key] = new_activations[neuron]
+            else:
+                activations_through_time[neuron] = new_activations[neuron]
+            updated_key = neuron+'-{}'.format(i)
+            if updated_key in activations_through_time:
+                activations_through_time[neuron+'-{}'.format(i+1)] = activations_through_time[neuron+'-{}'.format(i)]
+    return activations_through_time
 
 def convert_observation_to_fields(observation):
     new_observations = []
@@ -233,7 +263,7 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 250*10
+    maximum_total_synapses = 10000050*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -245,7 +275,7 @@ maturity = 100.
 delete_neuron_type = 'RL'
 reward_decay = 0.9999
 
-pole_length = 0.25
+pole_length = 0.5
 
 # activity_init = 1.0
 always_inputs = False
@@ -253,6 +283,7 @@ replaying = False
 error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
+maximum_delay = 10
 number_of_episodes = 400
 repeat_test = 20
 epochs = 20

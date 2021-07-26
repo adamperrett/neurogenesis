@@ -145,7 +145,7 @@ class Network():
         self.hidden_threshold = hidden_threshold
 
         self.neurons = {}
-        self.neuron_activity = {}
+        self.input_activity = {}
         self.neuron_selectivity = {}
         self.neuron_response = {}
         self.neuron_connectedness = {}
@@ -158,7 +158,7 @@ class Network():
         #                             f_width=f_width)
         self.number_of_inputs = number_of_inputs #len(seed_features[0])
         for i in range(self.number_of_inputs):
-            self.neuron_activity['in{}'.format(i)] = 0.
+            self.input_activity['in{}'.format(i)] = 0.
         # add outputs
         for output in range(number_of_classes):
             self.add_neuron({}, 'out{}'.format(output))
@@ -186,7 +186,7 @@ class Network():
             print("Added seed", seed_count, "/", len(seeds))
         for inp in input_response:
             input_response[inp] /= seed_count
-            self.neuron_activity[inp] = input_response[inp]
+            self.input_activity[inp] = input_response[inp]
         print("Completed adding seeds")
 
 
@@ -205,10 +205,10 @@ class Network():
             # self.delete_synapses(self.synapse_count - self.maximum_total_synapses)
             self.delete_neuron()
         visualisation = self.visualise_neuron(neuron_label)
-        hidden_activity = self.return_hidden_neurons(self.neuron_activity)
+        hidden_activity = self.return_hidden_neurons(self.input_activity)
         if len(hidden_activity) != 0:
-            self.neuron_activity[neuron_label] = sum(hidden_activity.values()) / len(hidden_activity)
-        # self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
+            self.input_activity[neuron_label] = sum(hidden_activity.values()) / len(hidden_activity)
+        # self.input_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
         # self.neuron_selectivity[neuron_label] = -1.
         return neuron_label
 
@@ -236,7 +236,7 @@ class Network():
             print("not sure what deleting does here")
         self.synapse_count -= self.neurons[delete_neuron].synapse_count
         del self.neurons[delete_neuron]
-        del self.neuron_activity[delete_neuron]
+        del self.input_activity[delete_neuron]
         del self.neuron_selectivity[delete_neuron]
         del self.neuron_connectedness[delete_neuron]
         del self.neuron_rewards[delete_neuron]
@@ -362,19 +362,19 @@ class Network():
             # line below can be compressed?
             activations[self.neurons[neuron].neuron_label] = response[neuron]
         for neuron in self.remove_output_neurons(activations, cap=False):
-            if neuron not in self.neuron_activity:
+            if neuron not in self.input_activity:
                 hidden_activity = self.return_hidden_neurons(activations)
-                self.neuron_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
+                self.input_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
             if self.replaying:
                 if replay:
-                    self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-                self.neuron_activity[neuron] = response[neuron]
+                    self.neuron_selectivity[neuron] = response[neuron] - self.input_activity[neuron]
+                self.input_activity[neuron] = response[neuron]
             else:
-                self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+                self.neuron_selectivity[neuron] = response[neuron] - self.input_activity[neuron]
                 self.neuron_response[neuron] = response[neuron]
-                self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
+                self.input_activity[neuron] = (self.input_activity[neuron] * self.activity_decay_rate) + \
                                                (response[neuron] * (1. - self.activity_decay_rate))
-                # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+                # self.neuron_selectivity[neuron] = response[neuron] - self.input_activity[neuron]
         outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
         for neuron in outputs:
             response = self.neurons[neuron].response(activations)
