@@ -4,12 +4,12 @@ from copy import deepcopy
 from models.neurogenesis import Network
 import random
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
 
-test = 'pen'
+test = 'inv'
 if test == 'pen':
     import gym
     num_outputs = 2
@@ -24,19 +24,27 @@ elif test == 'rf':
     fields_per_inp = 20
     field_width = 0.6
     num_inputs = 4 * fields_per_inp
+elif test == 'inv':
+    import gym
+    num_outputs = 3
+    num_inputs = 3
 if 'mnist' in test:
     input_dimensions = [28, 28]
 else:
     input_dimensions = None
 
 def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', repeat=None, pole_length=0.5):
-    env = gym.make('CartPole-v1', length=pole_length)
+    if test == 'inv':
+        env = gym.make('Pendulum-v0')
+    else:
+        env = gym.make('CartPole-v1', length=pole_length)
 
     # The main program loop
     all_times = []
     for i_episode in range(episodes):
         states = []
         observation = env.reset()
+        rewards = []
         # Iterating through time steps within an episode
         for t in range(max_timesteps):
             # env.render()
@@ -47,19 +55,47 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 observation = [observation[0], observation[2]]
             activations = net.convert_inputs_to_activations(observation)
             activations = net.response(activations)
-            action = select_binary_action(activations)
-            observation, reward, done, info = env.step(action)
-            # Keep a store of the agent's experiences
-            states.append([done, action, observation, prev_obs, deepcopy(activations)])
+            if test == 'inv':
+                action, output_choice = select_actions_in_range(activations, -2, 2, num_outputs)
+                observation, reward, done, info = env.step([action])
+                # Keep a store of the agent's experiences
+                states.append([done, output_choice, observation, prev_obs, deepcopy(activations)])
+            else:
+                action = select_binary_action(activations)
+                observation, reward, done, info = env.step(action)
+                # Keep a store of the agent's experiences
+                states.append([done, action, observation, prev_obs, deepcopy(activations)])
             # CLASSnet.reinforce_synapses(t+1)
-            CLASSnet.reinforce_neurons(1.)
+            if test != 'inv':
+                CLASSnet.reinforce_neurons(1.)
+            else:
+                error = np.zeros(num_outputs)
+                print("\n", t, " - ", observation)
+                print(action, "from bin", output_choice, " - reward = ", reward, " for: ")
+                rewards.append(reward)
+                if reward > -16 and len(rewards) > 100:
+                    for r, state in enumerate(states[-memory_length:]):
+                        activ = state[4]
+                        output_choice = state[1]
+                        for i in range(num_outputs):
+                            error[i] += activ['out{}'.format(i)]
+                            if i == output_choice:
+                                error[i] -= (16 + reward) / (memory_length - r)
+                            print(r, i, ":", activations['out{}'.format(i)], " - error:", error[i])
+                        net.error_driven_neuro_genesis(activ, error)
+                CLASSnet.reinforce_neurons(reward)
             # epsilon decay
             if done:
                 # If the pole has tipped over, end this episode
                 # scores_last_timesteps.append(t + 1)
-                all_times.append(t+1)
-                print('\nEpisode {} of repeat {} ended after {} timesteps - {}'.format(i_episode, repeat,
-                                                                                       t + 1, test_label))
+                if test == 'inv':
+                    all_times.append(np.average(rewards))
+                    print('\nEpisode {} of repeat {} ended with average reward - {}'.format(i_episode, repeat,
+                                                                                           all_times[-1], test_label))
+                else:
+                    all_times.append(t+1)
+                    print('\nEpisode {} of repeat {} ended after {} timesteps - {}'.format(i_episode, repeat,
+                                                                                           t + 1, test_label))
                 print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                       CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
                 print("Synapse count: ", CLASSnet.synapse_count)
@@ -71,6 +107,8 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 # unless balanced
                 if t >= 499:
                     print("WOW")
+                elif test == 'inv':
+                    print(all_times, "\n\n")
                 else:
                     if 'exp' in error_type:
                         for r, state in reversed(list(enumerate(states))):
@@ -142,6 +180,17 @@ def generate_error(reward, action, activations, memory_length, test_duration):
     # error[0] -= activations['out0']
     # error[1] -= activations['out1']
     return error
+
+def select_actions_in_range(activations, min_v, max_v, discrete_v):
+    range_v = max_v - min_v
+    bin_range = range_v / (discrete_v - 1)
+    out_activations = []
+    for i in range(num_outputs):
+        out_activations.append(activations['out{}'.format(i)])
+    bin_choice = out_activations.index(max(out_activations))
+    if out_activations[bin_choice] == 0:
+        bin_choice = np.random.randint(discrete_v)
+    return (bin_choice * bin_range) + min_v, bin_choice
 
 def select_binary_action(activations):
     if activations['out0'] > activations['out1']:
@@ -228,12 +277,12 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.6
+    sensitivity_width = 0.9
     activation_threshold = 0.0
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 250*10
+    maximum_total_synapses = 25000000*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
