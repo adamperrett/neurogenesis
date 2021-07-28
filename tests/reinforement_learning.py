@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 
-test = 'break'
+test = 'atari'
 if test == 'pen':
     import gym
     num_outputs = 2
@@ -28,30 +28,47 @@ elif test == 'rf':
     fields_per_inp = 20
     field_width = 0.6
     num_inputs = 4 * fields_per_inp
-elif test == 'break':
+elif test == 'atari':
     import gym
     num_outputs = 2
     num_inputs = 210*160
+elif test == 'ram':
+    import gym
+    num_outputs = 2
+    num_inputs = 128
 if 'mnist' in test:
     input_dimensions = [28, 28]
 else:
     input_dimensions = None
 
 def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', repeat=None, pole_length=0.5):
-    if test == 'break':
+    global epsilon
+    if test == 'atari':
         env = gym.make('Breakout-v0')
+    elif test == 'ram':
+        env = gym.make('Pong-ram-v0')
     else:
         env = gym.make('CartPole-v1', length=pole_length)
 
     # The main program loop
     all_times = []
     activations = {}
+    scored = 0
+    conceded = 0
     for i_episode in range(episodes):
         states = []
+        current_score = [0, 0]
         observation = env.reset()
+        if test == 'atari':
+            observation = combine_atari_rgb(observation)
+        elif test == 'ram':
+            observation = observation / 256.
         # Iterating through time steps within an episode
-        for t in range(max_timesteps):
-            # env.render()
+        # observation, reward, done, info = env.step(0)
+        observation, reward, done, info = env.step(1)
+        current_lives = 5
+        while current_lives > 0:
+            env.render()
             prev_obs = observation
             if test == 'rf':
                 observation = convert_observation_to_fields(observation)
@@ -59,57 +76,55 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 observation = [observation[0], observation[2]]
             elif test == 'nov_full':
                 observation = [observation[0], 0.0, observation[2], 0.0]
-            elif test == 'break':
-                observation = observation
+            elif test == 'atari':
+                observation = combine_atari_rgb(observation)
+                # print(info, t, reward)
+            elif test == 'ram':
+                observation = observation / 256.
             converted_observation = net.convert_inputs_to_activations(observation)
             # activations = update_activations(t, converted_observation, activations)
-            activations = net.response(activations)
+            # activations = net.response(activations)
+            activations = net.response(converted_observation)
             action = select_binary_action(activations)
             observation, reward, done, info = env.step(action)
+                # print(info, t, reward)
             # Keep a store of the agent's experiences
             states.append([done, action, observation, prev_obs, deepcopy(activations)])
+            if info['ale.lives'] != current_lives:
+                current_lives -= 1
+                observation, reward, done, info = env.step(1)
+                observation = combine_atari_rgb(observation)
+                reward = -1
             # CLASSnet.reinforce_synapses(t+1)
-            CLASSnet.reinforce_neurons(1.)
+            CLASSnet.reinforce_neurons(0.1)
             # epsilon decay
-            if done:
-                # If the pole has tipped over, end this episode
-                # scores_last_timesteps.append(t + 1)
-                all_times.append(t+1)
-                print('\nEpisode {} of repeat {} ended after {} timesteps - {}'.format(i_episode, repeat,
-                                                                                       t + 1, test_label))
+            if reward and (test == 'atari' or test == 'ram'):
+                epsilon *= reward_decay
+                if reward > 0:
+                    print("scored a point!  :)")
+                    current_score[1] += 1
+                    scored += 1
+                else:
+                    print("lost a life :(")
+                    current_score[0] += 1
+                    conceded += 1
+                for r, state in enumerate(states[-memory_length:]):
+                    activ = state[4]
+                    action = state[1]
+                    r *= -reward
+                    error = generate_error(r + 1, action, activ, memory_length, len(states))
+                    # error = generate_error(r/memory_length, action, activ)
+                    print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
+                    net.neuron_response = activ
+                    CLASSnet.reinforce_neurons(-r)
+                    net.error_driven_neuro_genesis(activ, error)
+                print(all_times)
                 print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                       CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
                 print("Synapse count: ", CLASSnet.synapse_count)
-                if len(all_times) > 100 and np.average(all_times[-100:]) > 475:
-                    while len(all_times) < episodes:
-                        all_times.append(500)
-                    print("SUPER WOW")
-                    return all_times
-                # unless balanced
-                if t >= 499:
-                    print("WOW")
-                else:
-                    if 'exp' in error_type:
-                        for r, state in reversed(list(enumerate(states))):
-                            activ = state[4]
-                            action = state[1]
-                            error = generate_error(r+1, action, activ, memory_length, len(states))
-                            if np.max(np.abs(error)) > error_threshold:
-                                # error = generate_error(r/memory_length, action, activ)
-                                print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
-                                net.error_driven_neuro_genesis(activ, error)
-                    else:
-                        for r, state in enumerate(states[-memory_length:]):
-                            activ = state[4]
-                            action = state[1]
-                            error = generate_error(r+1, action, activ, memory_length, len(states))
-                            # error = generate_error(r/memory_length, action, activ)
-                            print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
-                            net.neuron_response = activ
-                            net.error_driven_neuro_genesis(activ, error)
-                            # plot_activations(activ, r)
-                # all_states.append(states[-memory_length:])
-                break
+                print("current score", current_score, " - scored:", scored, " - conceded:", conceded)
+                print(i_episode, " - ep", epsilon, test_label)
+        all_times.append(current_score[1] - current_score[0])
     return all_times
 
 def plot_activations(activations, reward):
@@ -134,17 +149,37 @@ def plot_activations(activations, reward):
     plt.close()
     return extractivations
 
+def combine_atari_rgb(observation):
+    if len(np.shape(observation)) == 1:
+        return observation
+    vis = np.zeros([len(observation), len(observation[0])])
+    for row in range(len(observation)):
+        for col in range(len(observation[0])):
+            # observation[row][col][0] -= 109
+            # observation[row][col][1] -= 118
+            # observation[row][col][2] -= 43
+            if observation[row][col][0] == 142 and observation[row][col][1] == 142 and observation[row][col][2] == 142:
+                observation[row][col][0] -= 142
+                observation[row][col][1] -= 142
+                observation[row][col][2] -= 142
+            for rgb in observation[row][col]:
+                if rgb != 0:
+                    vis[row][col] = 1
+                    break
+    return vis.reshape(len(observation) * len(observation[0]))
+
 def update_activations(current_timestep, new_activations, activations_through_time):
-    for i in reversed(range(1, min(current_timestep, maximum_delay))):
-        for neuron in new_activations:
-            if neuron in activations_through_time:
-                updated_key = neuron + '-1'
-                activations_through_time[updated_key] = new_activations[neuron]
-            else:
-                activations_through_time[neuron] = new_activations[neuron]
+    for neuron in new_activations:
+        for i in reversed(range(1, min(current_timestep, maximum_delay))):
             updated_key = neuron+'-{}'.format(i)
             if updated_key in activations_through_time:
-                activations_through_time[neuron+'-{}'.format(i+1)] = activations_through_time[neuron+'-{}'.format(i)]
+                activations_through_time[neuron+'-{}'.format(i+1)] = \
+                    activations_through_time[neuron+'-{}'.format(i)]
+        if neuron in activations_through_time:
+            updated_key = neuron + '-1'
+            activations_through_time[updated_key] = new_activations[neuron]
+        else:
+            activations_through_time[neuron] = new_activations[neuron]
     return activations_through_time
 
 def convert_observation_to_fields(observation):
@@ -158,6 +193,8 @@ def convert_observation_to_fields(observation):
 def generate_error(reward, action, activations, memory_length, test_duration):
     # add in neuron activations to error
     error = np.zeros(num_outputs)
+    if test == 'atari' or test == 'ram':
+        action -= 2
     if error_type == 'mem':
         error[action] += reward / memory_length
     elif error_type == 'len':
@@ -174,16 +211,21 @@ def generate_error(reward, action, activations, memory_length, test_duration):
     return error
 
 def select_binary_action(activations):
-    if activations['out0'] > activations['out1']:
-        action = 0
-        # print("0", end='')
-    elif activations['out0'] < activations['out1']:
-        action = 1
-        # print("1", end='')
-    else:
+    if np.random.random() < epsilon:
         action = np.random.randint(2)
-        # action = 1
-        # print("r", end='')
+    else:
+        if activations['out0'] > activations['out1']:
+            action = 0
+            # print("0", end='')
+        elif activations['out0'] < activations['out1']:
+            action = 1
+            # print("1", end='')
+        else:
+            action = np.random.randint(2)
+            # action = 1
+            # print("r", end='')
+    if test == 'atari' or test == 'ram':
+        action += 2
     return action
 
 def moving_average(a, n=3):
@@ -258,14 +300,14 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.6
+    sensitivity_width = 0.8
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 10
+    maximum_synapses_per_neuron = 128
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 10000050*10
+    maximum_total_synapses = 5000*10
     input_spread = 0
-    activity_decay_rate = 1.
+    activity_decay_rate = 0.
     activity_init = 1.
     number_of_seeds = 0
 
@@ -274,6 +316,7 @@ old_weight_modifier = 1.01
 maturity = 100.
 delete_neuron_type = 'RL'
 reward_decay = 0.9999
+epsilon = 0.0
 
 pole_length = 0.5
 
@@ -283,15 +326,16 @@ replaying = False
 error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
-maximum_delay = 10
-number_of_episodes = 400
+maximum_delay = 0
+num_inputs *= maximum_delay + 1
+number_of_episodes = 5000
 repeat_test = 20
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'random pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'moreR pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(pole_length, number_of_episodes,
                                             window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,
