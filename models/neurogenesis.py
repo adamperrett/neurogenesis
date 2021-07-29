@@ -206,6 +206,7 @@ class Network():
             self.delete_neuron()
         visualisation = self.visualise_neuron(neuron_label)
         hidden_activity = self.return_hidden_neurons(self.neuron_activity)
+        self.neuron_response[neuron_label] = 0.
         if len(hidden_activity) != 0:
             self.neuron_activity[neuron_label] = sum(hidden_activity.values()) / len(hidden_activity)
         # self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
@@ -406,8 +407,8 @@ class Network():
         # self.neuron_rewards = []
         for neuron in self.neurons:
             if 'out' not in neuron and 'in' not in neuron:
-                if neuron in self.neuron_rewards:
-                    self.neuron_rewards[neuron] = ((1. - self.reward_decay) * self.neurons[neuron].activity * reward) \
+                if neuron in self.neuron_rewards and neuron in self.neuron_response:
+                    self.neuron_rewards[neuron] = ((1. - self.reward_decay) * self.neuron_response[neuron] * reward) \
                                                   + (self.reward_decay * self.neuron_rewards[neuron])
                 else:
                     if len(self.neuron_rewards) == 0:

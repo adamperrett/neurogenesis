@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 
-test = 'inv'
+test = 'hill'
 if test == 'pen':
     import gym
     num_outputs = 2
@@ -28,6 +28,10 @@ elif test == 'inv':
     import gym
     num_outputs = 3
     num_inputs = 3
+elif test == 'hill':
+    import gym
+    num_outputs = 2
+    num_inputs = 2
 if 'mnist' in test:
     input_dimensions = [28, 28]
 else:
@@ -36,23 +40,30 @@ else:
 def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', repeat=None, pole_length=0.5):
     if test == 'inv':
         env = gym.make('Pendulum-v0')
+    elif test == 'hill':
+        env = gym.make('MountainCar-v0')
     else:
         env = gym.make('CartPole-v1', length=pole_length)
 
     # The main program loop
     all_times = []
+    rewards = []
     for i_episode in range(episodes):
         states = []
         observation = env.reset()
-        rewards = []
         # Iterating through time steps within an episode
         for t in range(max_timesteps):
-            # env.render()
+            env.render()
             prev_obs = observation
             if test == 'rf':
                 observation = convert_observation_to_fields(observation)
             elif test == 'nov':
                 observation = [observation[0], observation[2]]
+            elif test == 'hill':
+                observation[0] += 1.2
+                observation[0] /= 1.7
+                observation[1] += 0.07
+                observation[1] /= 0.14
             activations = net.convert_inputs_to_activations(observation)
             activations = net.response(activations)
             if test == 'inv':
@@ -62,12 +73,38 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 states.append([done, output_choice, observation, prev_obs, deepcopy(activations)])
             else:
                 action = select_binary_action(activations)
+                if test == 'hill':
+                    if action == 1:
+                        action += 1
                 observation, reward, done, info = env.step(action)
+                if test == 'hill':
+                    observation[0] += 1.2
+                    observation[0] /= 1.7
+                    observation[1] += 0.07
+                    observation[1] /= 0.14
                 # Keep a store of the agent's experiences
                 states.append([done, action, observation, prev_obs, deepcopy(activations)])
             # CLASSnet.reinforce_synapses(t+1)
             if test != 'inv':
-                CLASSnet.reinforce_neurons(1.)
+                if test == 'hill':
+                    CLASSnet.reinforce_neurons(-1.)
+                    if reward > -1 or observation[0] > 1:
+                        reward = 1
+                        rewards.append(t+1)
+                        for r, state in enumerate(states[-200:]):
+                            activ = state[4]
+                            action = state[1]
+                            if action == 2:
+                                action -= 1
+                            error = generate_error(r+1, action, activ, 200, len(states))
+                            # error = generate_error(r/memory_length, action, activ)
+                            print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
+                            net.neuron_response = activ
+                            CLASSnet.reinforce_neurons(r)
+                            net.error_driven_neuro_genesis(activ, -error)
+                        print(rewards)
+                else:
+                    CLASSnet.reinforce_neurons(1.)
             else:
                 error = np.zeros(num_outputs)
                 print("\n", t, " - ", observation)
@@ -85,7 +122,7 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                         net.error_driven_neuro_genesis(activ, error)
                 CLASSnet.reinforce_neurons(reward)
             # epsilon decay
-            if done:
+            if done and reward > -1:
                 # If the pole has tipped over, end this episode
                 # scores_last_timesteps.append(t + 1)
                 if test == 'inv':
@@ -109,6 +146,8 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                     print("WOW")
                 elif test == 'inv':
                     print(all_times, "\n\n")
+                elif test == 'hill':
+                    print(all_times, "\n\n")
                 else:
                     if 'exp' in error_type:
                         for r, state in reversed(list(enumerate(states))):
@@ -131,6 +170,19 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                             # plot_activations(activ, r)
                 # all_states.append(states[-memory_length:])
                 break
+        if t >= max_timesteps - 1 and test == 'hill':
+            rewards.append(t + 1)
+            for r, state in enumerate(states[-200:]):
+                activ = state[4]
+                action = state[1]
+                if action == 2:
+                    action -= 1
+                error = generate_error(r + 1, action, activ, 200, len(states))
+                # error = generate_error(r/memory_length, action, activ)
+                print(r, action, "error = ", error, " for ", activ['out0'], " & ", activ['out1'])
+                net.neuron_response = activ
+                CLASSnet.reinforce_neurons(-r)
+                net.error_driven_neuro_genesis(activ, error)
     return all_times
 
 def plot_activations(activations, reward):
@@ -282,7 +334,7 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 25000000*10
+    maximum_total_synapses = 2500000*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -302,8 +354,8 @@ replaying = False
 error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
-number_of_episodes = 400
-repeat_test = 20
+number_of_episodes = 40000000
+repeat_test = 2000
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
@@ -345,7 +397,7 @@ for repeat in range(repeat_test):
                        activity_init=activity_init,
                        replaying=replaying)
 
-    times = test_net(CLASSnet, 1000, number_of_episodes,
+    times = test_net(CLASSnet, 30000, number_of_episodes,
                      test_net_label=test_label,
                      memory_length=window_size,
                      repeat=repeat,
