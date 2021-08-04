@@ -149,6 +149,7 @@ class Network():
         self.neuron_selectivity = {}
         self.neuron_response = {}
         self.neuron_connectedness = {}
+        self.deleted_outputs = {}
         self.activity_decay_rate = activity_decay_rate
         self.number_of_classes = number_of_classes
         # add seed neuron
@@ -207,6 +208,11 @@ class Network():
         visualisation = self.visualise_neuron(neuron_label)
         hidden_activity = self.return_hidden_neurons(self.neuron_activity)
         self.neuron_response[neuron_label] = 0.
+        if len(self.neuron_rewards) > 0:
+            self.neuron_rewards[neuron_label] = sum(self.neuron_rewards.values()) / len(self.neuron_rewards)
+        else:
+            if 'out' not in neuron_label:
+                self.neuron_rewards[neuron_label] = 0.
         if len(hidden_activity) != 0:
             self.neuron_activity[neuron_label] = sum(hidden_activity.values()) / len(hidden_activity)
         # self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
@@ -410,12 +416,20 @@ class Network():
                 if neuron in self.neuron_rewards and neuron in self.neuron_response:
                     self.neuron_rewards[neuron] = ((1. - self.reward_decay) * self.neuron_response[neuron] * reward) \
                                                   + (self.reward_decay * self.neuron_rewards[neuron])
-                else:
-                    if len(self.neuron_rewards) == 0:
-                        self.neuron_rewards[neuron] = 0.
-                    else:
-                        self.neuron_rewards[neuron] = sum(self.neuron_rewards.values()) / len(self.neuron_rewards)
+                # else:
+                #     if neuron not in self.deleted_outputs: ### check this
+                #         self.neuron_rewards[neuron] = sum(self.neuron_rewards.values()) / len(self.neuron_rewards)
         return self.neuron_rewards
+
+    def remove_worst_output(self):
+        delete_neuron = min(self.neuron_rewards.items(),
+                            key=operator.itemgetter(1))[0]
+        self.deleted_outputs[delete_neuron] = True
+        del self.neuron_rewards[delete_neuron]
+        for i in range(self.number_of_classes):
+            if delete_neuron in self.neurons['out{}'.format(i)].synapses:
+                self.synapse_count -= 1
+                del self.neurons['out{}'.format(i)].synapses[delete_neuron]
 
     def convert_inputs_to_activations(self, inputs):
         acti = {}
@@ -498,6 +512,7 @@ class Network():
                     if self.replaying:
                         self.visualise_neuron('out{}'.format(output), only_pos=False)
                     self.neuron_connectedness[neuron_label] = 1
+        return neuron_label
 
     def consolidate(self):
         return "new connections to create neurons"

@@ -84,7 +84,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
-                # CLASSnet.reinforce_synapses(1., correct_output=label)
+                # net.reinforce_neurons(1.)
                 classifications.append(1)
                 # net.age_output_synapses(reward=True)
             print("CORRECT CLASS WAS CHOSEN")
@@ -93,9 +93,18 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         else:
             print("INCORRECT CLASS WAS CHOSEN")
             if 'esting' not in test_net_label:
-                # CLASSnet.reinforce_synapses(-1., correct_output=label)
+                # net.reinforce_neurons(-1.)
                 classifications.append(0)
-                net.error_driven_neuro_genesis(activations, error)#, label)
+                neuron_label = net.error_driven_neuro_genesis(activations, error)#, label)
+                # print("total visualising neuron", CLASSnet.hidden_neuron_count)
+                # vis = CLASSnet.visualise_neuron(neuron_label, only_pos=False)
+                # print("plotting neuron", CLASSnet.hidden_neuron_count)
+                # plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+                # plt.savefig("./plots/{}neuron cl{} {}.png".format(CLASSnet.hidden_neuron_count,
+                #                                                   label, test_label),
+                #             bbox_inches='tight', dpi=20)
+                # if net.hidden_neuron_count > max_out_synapses:
+                #     net.remove_worst_output()
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
         # classifications.append([choice, label])
         print("Performance over all current tests")
@@ -256,8 +265,8 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 100
-    fixed_hidden_amount = 50
+    maximum_synapses_per_neuron = 400
+    fixed_hidden_amount = 0
     # fixed_hidden_ratio = 0.5
     fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*3000000
@@ -270,21 +279,22 @@ maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
 hidden_threshold = 0.95
-delete_neuron_type = 'old'
-reward_decay = 0.0
+delete_neuron_type = 'RL'
+reward_decay = 0.99999
+max_out_synapses = 50000
 # activity_init = 1.0
 always_inputs = False
 replaying = False
 error_type = 'out'
 epochs = 20
-visualise_rate = 20
+visualise_rate = 5
 np.random.seed(27)
 confusion_decay = 0.8
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = '{} {}{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
+test_label = '{} {}{}x{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(error_type,
-                                            delete_neuron_type, reward_decay,
+                                            delete_neuron_type, reward_decay, max_out_synapses,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
                                             hidden_threshold,
