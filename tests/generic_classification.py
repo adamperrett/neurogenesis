@@ -199,7 +199,8 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     data_dict['testing_confusion'] = testing_confusion
     data_dict['synapse_counts'] = synapse_counts
     data_dict['epoch error'] = epoch_error
-    np.save("./data/{}.png".format(test_label), data_dict)
+    data_dict['net'] = CLASSnet
+    np.save("./data/{}.png".format(test_label), data_dict) #data = np.load('./tests/data/file_name.npy', allow_pickle=True).item()
 
 def normalise_outputs(out_activations):
     min_out = min(out_activations)
@@ -265,13 +266,13 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 400
-    fixed_hidden_amount = 0
+    maximum_synapses_per_neuron = 100
+    fixed_hidden_amount = 50
     # fixed_hidden_ratio = 0.5
     fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*3000000
     input_spread = 0
-    activity_decay_rate = 0.9999
+    activity_decay_rate = 1.#0.9999
     activity_init = 0.
     number_of_seeds = 0
 
@@ -281,19 +282,20 @@ maturity = 100.
 hidden_threshold = 0.95
 delete_neuron_type = 'RL'
 reward_decay = 0.99999
+conv_size = 9
 max_out_synapses = 50000
 # activity_init = 1.0
 always_inputs = False
 replaying = False
 error_type = 'out'
 epochs = 20
-visualise_rate = 5
+visualise_rate = 1
 np.random.seed(27)
 confusion_decay = 0.8
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = '{} {}{}x{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{}'.format(error_type,
+test_label = 'conv{} {} {}{}x{} net{}x{}  - {} th{}fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{}'.format(conv_size, error_type,
                                             delete_neuron_type, reward_decay, max_out_synapses,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
@@ -326,7 +328,8 @@ CLASSnet = Network(num_outputs, num_inputs,
                    fixed_hidden_ratio=fixed_hidden_ratio,
                    activity_init=activity_init,
                    replaying=replaying,
-                   hidden_threshold=hidden_threshold)
+                   hidden_threshold=hidden_threshold,
+                   conv_size=conv_size)
 all_incorrect_classes = []
 epoch_error = []
 

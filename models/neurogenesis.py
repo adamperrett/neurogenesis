@@ -122,7 +122,8 @@ class Network():
                  fixed_hidden_ratio=0.1,
                  activity_init=1.0,
                  replaying=True,
-                 hidden_threshold=0.9):
+                 hidden_threshold=0.9,
+                 conv_size=4):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.activation_threshold = activation_threshold
@@ -143,6 +144,7 @@ class Network():
         self.activity_init = activity_init
         self.replaying = replaying
         self.hidden_threshold = hidden_threshold
+        self.conv_size = conv_size
 
         self.neurons = {}
         self.neuron_activity = {}
@@ -321,9 +323,48 @@ class Network():
             selected += len(sample_dic)
         return total_dic
 
-    def limit_connections(self, connections, selectivity=True, thresholded=False, outlier=True):
+    def limit_connections(self, connections, selectivity=True, thresholded=False, outlier=True, conv=True):
         if len(connections) <= min(self.max_hidden_synapses, self.number_of_inputs):
             return connections
+        if conv:
+            input_selectivity, hidden_selectivity = self.process_selectivity()
+            selected_input = self.get_max_selectivity(input_selectivity, 1)
+            input_id = int(list(selected_input.items())[0][0].replace('in', ''))
+            ids = np.array(range(self.number_of_inputs)).reshape(self.input_dimensions)
+            y, x = np.where(ids == input_id)
+            y = y[0]
+            x = x[0]
+            if x - self.conv_size < 0:
+                x = self.conv_size
+            elif x + self.conv_size >= self.input_dimensions[0]:
+                x = self.input_dimensions[0] - self.conv_size - 1
+            if y - self.conv_size < 0:
+                y = self.conv_size
+            elif y + self.conv_size >= self.input_dimensions[1]:
+                y = self.input_dimensions[1] - self.conv_size - 1
+            input_id = ids[y][x]
+            selected_input = {}
+            for i in range(-self.conv_size, self.conv_size+1):
+                for j in range(-self.conv_size, self.conv_size+1):
+                    new_id = (input_id + j) + (i * self.input_dimensions[0])
+                    selected_input['in{}'.format(new_id)] = connections['in{}'.format(new_id)]
+            pruned_connections = {}
+            for pre in selected_input:
+                pruned_connections[pre] = connections[pre]
+            if self.hidden_neuron_count:
+                number_of_hidden = int(min(self.hidden_neuron_count - self.deleted_neuron_count,
+                                           self.fixed_hidden_ratio * self.max_hidden_synapses))
+                # using outlier for hidden selection
+                hidden_response = self.return_hidden_neurons(self.neuron_response)
+                ave_response = sum(hidden_response.values()) / len(hidden_response)
+                relative_response = {}
+                for neuron in hidden_response:
+                    relative_response[neuron] = abs(hidden_response[neuron] - ave_response)
+                selected_hidden = self.get_max_selectivity(relative_response,
+                                                           number_of_hidden)
+                for pre in selected_hidden:
+                    pruned_connections[pre] = connections[pre]
+            return pruned_connections
         if selectivity:
             pruned_connections = {}
             input_selectivity, hidden_selectivity = self.process_selectivity()
