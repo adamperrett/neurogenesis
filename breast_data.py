@@ -720,7 +720,7 @@ for breast in breast_data:
     for idx in range(len(min_max)):
         val_range = min_max[idx][1] - min_max[idx][0]
         if breast[idx+1] == 'na':
-            normed_breast.append(min_max[idx][0] + (val_range/2))
+            normed_breast.append(5)#min_max[idx][0] + (val_range/2))
         else:
             normed_breast.append((breast[idx+1] - min_max[idx][0]) / val_range)
     norm_breast.append(normed_breast)

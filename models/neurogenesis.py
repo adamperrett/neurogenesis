@@ -99,7 +99,7 @@ class Neuron():
                 for synapse in self.synapses[pre]:
                     response += synapse.response(freq)
                     active_synapse_weight += 1.#synapse.weight
-        if active_synapse_weight:
+        if active_synapse_weight:# and 'out' not in self.neuron_label:
             self.activity = response / active_synapse_weight
         else:
             self.activity = response
@@ -215,14 +215,17 @@ class Network():
         else:
             if 'out' not in neuron_label:
                 self.neuron_rewards[neuron_label] = 0.
-        if len(hidden_activity) != 0:
+        if len(hidden_activity) != 0 and self.activity_decay_rate < 1.0:
             self.neuron_activity[neuron_label] = sum(hidden_activity.values()) / len(hidden_activity)
-        # self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
+        else:
+            self.neuron_activity[neuron_label] = self.activity_init
+            # self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
         # self.neuron_selectivity[neuron_label] = -1.
         return neuron_label
 
     def delete_neuron(self, delete_type='RL'):
-        delete_type = self.delete_neuron_type
+        if 'n' not in delete_type:
+            delete_type = self.delete_neuron_type
         if delete_type == 'old':
             oldest_neuron = 'n{}'.format(self.deleted_neuron_count)
             delete_neuron = oldest_neuron
@@ -323,7 +326,7 @@ class Network():
             selected += len(sample_dic)
         return total_dic
 
-    def limit_connections(self, connections, selectivity=True, thresholded=False, outlier=True, conv=True):
+    def limit_connections(self, connections, selectivity=True, thresholded=False, outlier=True, conv=False):
         if len(connections) <= min(self.max_hidden_synapses, self.number_of_inputs):
             return connections
         if conv:
@@ -411,8 +414,11 @@ class Network():
             activations[self.neurons[neuron].neuron_label] = response[neuron]
         for neuron in self.remove_output_neurons(activations, cap=False):
             if neuron not in self.neuron_activity:
-                hidden_activity = self.return_hidden_neurons(activations)
-                self.neuron_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
+                if self.activity_decay_rate < 1.0:
+                    hidden_activity = self.return_hidden_neurons(activations)
+                    self.neuron_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
+                else:
+                    self.neuron_activity[neuron] = self.activity_init
             if self.replaying:
                 if replay:
                     self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
