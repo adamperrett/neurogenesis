@@ -224,11 +224,14 @@ class Network():
         return neuron_label
 
     def delete_neuron(self, delete_type='RL'):
-        if 'n' not in delete_type:
-            delete_type = self.delete_neuron_type
+        # if 'n' not in delete_type:
+        #     delete_type = self.delete_neuron_type
         if delete_type == 'old':
             oldest_neuron = 'n{}'.format(self.deleted_neuron_count)
             delete_neuron = oldest_neuron
+        elif delete_type == 'new':
+            # oldest_neuron = 'n{}'.format(self.deleted_neuron_count)
+            delete_neuron = 'n{}'.format(self.hidden_neuron_count - 1)
         elif delete_type == 'quiet':
             quiet_neuron = min(self.return_hidden_neurons(self.neuron_selectivity).items(),
                                key=operator.itemgetter(1))[0]
@@ -252,6 +255,7 @@ class Network():
         del self.neuron_selectivity[delete_neuron]
         del self.neuron_connectedness[delete_neuron]
         del self.neuron_rewards[delete_neuron]
+        del self.neuron_response[delete_neuron]
         for neuron in self.neurons:
             if delete_neuron in self.neurons[neuron].synapses:
                 del self.neurons[neuron].synapses[delete_neuron]

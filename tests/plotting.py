@@ -5,8 +5,8 @@ import os
 top_dir = './data/'
 variables = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 for variable in variables:
-    base_file_name = 'withoutOUT out RL0.99999 net3000000x100  - wine fixed_h50 - ' \
-                     'sw{} - at0.0 - et0.0 - 1.0adr1.0'.format(variable)
+    base_file_name = 'incremental random list only improve out RL0.99999 net300000x1000  - ' \
+                     'breast fixed_h1000 - sw{} - at0.0 - et0.0 - 1.0adr1.0'.format(variable)
     # base_file_name = 'withoutOUT out RL0.99999 net3000000x100  - wine fixed_h50 - ' \
     # 'sw{} - at0.0 - et0.0 - 1.0adr1.0'.format(variable)
 
@@ -19,7 +19,8 @@ for variable in variables:
     for data_name in all_data_names:
         all_data.append(np.load(data_name, allow_pickle=True).item())
 
-    collect = 'fold_test_accuracy'
+    # collect = 'fold_test_accuracy'
+    collect = 'best_testing_accuracy'
     # collect = 'neuron_counts'
     collected_data = []
     for data in all_data:
