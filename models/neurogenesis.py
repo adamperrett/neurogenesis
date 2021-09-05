@@ -47,9 +47,10 @@ class Synapses():
 
 class Neuron():
     def __init__(self, neuron_label, connections, sensitivities, weights=None, f_width=0.3,
-                 input_dimensions=None, reward_decay=1.):
+                 input_dimensions=None, reward_decay=1., width_noise=0.):
         self.neuron_label = neuron_label
         self.f_width = f_width
+        self.width_noise = width_noise
         self.synapses = {}
         self.synapse_count = 0
         self.input_dimensions = input_dimensions
@@ -70,7 +71,7 @@ class Neuron():
 
     def add_connection(self, pre, freq, sensitivities, weight=1., reward_decay=1., width=None):
         if width == None:
-            width = self.f_width
+            width = self.f_width + np.random.normal(scale=self.width_noise)
         self.synapse_count += 1
         if pre not in self.synapses:
             self.synapses[pre] = []
@@ -110,6 +111,7 @@ class Network():
     def __init__(self, number_of_classes, number_of_inputs, seed_class=None, seed_features=None, seeds=None,
                  error_threshold=0.1,
                  f_width=0.3,
+                 width_noise=0.,
                  activation_threshold=0.01,
                  maximum_total_synapses=20,
                  max_hidden_synapses=100,
@@ -126,6 +128,7 @@ class Network():
                  conv_size=4):
         self.error_threshold = error_threshold
         self.f_width = f_width
+        self.width_noise = width_noise
         self.activation_threshold = activation_threshold
         self.hidden_neuron_count = 0
         self.deleted_neuron_count = 0
@@ -201,6 +204,7 @@ class Network():
             self.hidden_neuron_count += 1
         self.neurons[neuron_label] = Neuron(neuron_label, connections, self.neuron_selectivity,
                                             f_width=self.f_width,
+                                            width_noise=self.width_noise,
                                             input_dimensions=self.input_dimensions,
                                             reward_decay=self.reward_decay)
         self.synapse_count += self.neurons[neuron_label].synapse_count
@@ -539,7 +543,7 @@ class Network():
         return activations
 
 
-    def error_driven_neuro_genesis(self, activations, output_error):
+    def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1.):
         if np.max(np.abs(output_error)) > self.error_threshold:
             if self.replaying:
                 # self.response(self.convert_vis_to_activations('out{}'.format(correct_class)), replay=True)
@@ -555,7 +559,7 @@ class Network():
                     # self.age_output_synapses(reward=True)
                     self.neurons['out{}'.format(output)].add_connection(neuron_label,
                                                                         freq=1.,
-                                                                        weight=-error,
+                                                                        weight=-error * weight_multiplier,
                                                                         sensitivities=self.neuron_selectivity,
                                                                         # width=0.3,
                                                                         reward_decay=self.reward_decay)
