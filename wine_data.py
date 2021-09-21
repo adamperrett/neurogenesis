@@ -205,6 +205,7 @@ training_set_wines = deepcopy(norm_wine)
 training_set_labels = deepcopy(wine_labels)
 test_set_size = int(0.3 * len(wine_labels))
 import random
+random.seed(2727)
 test_set_indexes = random.sample([i for i in range(len(wine_labels))], test_set_size)
 test_set_wines = [norm_wine[i] for i in test_set_indexes]
 test_set_labels = [wine_labels[i] for i in test_set_indexes]

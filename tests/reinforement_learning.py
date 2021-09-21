@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 
-test = 'hill'
+test = 'pen'
 if test == 'pen':
     import gym
     num_outputs = 2
@@ -53,7 +53,7 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
         observation = env.reset()
         # Iterating through time steps within an episode
         for t in range(max_timesteps):
-            env.render()
+            # env.render()
             prev_obs = observation
             if test == 'rf':
                 observation = convert_observation_to_fields(observation)
@@ -311,6 +311,13 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, test_label, save_fla
     if save_flag:
         plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
     plt.close()
+    data_dict = {}
+    data_dict['training classifications'] = correct_or_not
+    data_dict['fold_test_accuracy'] = fold_test_accuracy
+    # data_dict['neuron_counts'] = neuron_counts
+    # data_dict['all_activations'] = all_activations
+    data_dict['net'] = CLASSnet
+    np.save("./data/{}.png".format(test_label), data_dict)
 
 read_args = False
 if read_args:
@@ -329,12 +336,12 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.9
+    sensitivity_width = 0.6
     activation_threshold = 0.0
     error_threshold = 0.0
     maximum_synapses_per_neuron = 10
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 2500000*10
+    maximum_total_synapses = 250*10
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -346,7 +353,7 @@ maturity = 100.
 delete_neuron_type = 'RL'
 reward_decay = 0.9999
 
-pole_length = 0.25
+pole_length = 0.5
 
 # activity_init = 1.0
 always_inputs = False
@@ -354,14 +361,14 @@ replaying = False
 error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
-number_of_episodes = 40000000
-repeat_test = 2000
+number_of_episodes = 400
+repeat_test = 20
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'random pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'outnoave pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(pole_length, number_of_episodes,
                                             window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,
@@ -397,7 +404,7 @@ for repeat in range(repeat_test):
                        activity_init=activity_init,
                        replaying=replaying)
 
-    times = test_net(CLASSnet, 30000, number_of_episodes,
+    times = test_net(CLASSnet, 500, number_of_episodes,
                      test_net_label=test_label,
                      memory_length=window_size,
                      repeat=repeat,

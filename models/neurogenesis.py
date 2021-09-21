@@ -100,7 +100,7 @@ class Neuron():
                 for synapse in self.synapses[pre]:
                     response += synapse.response(freq)
                     active_synapse_weight += 1.#synapse.weight
-        if active_synapse_weight:# and 'out' not in self.neuron_label:
+        if active_synapse_weight and 'out' not in self.neuron_label:
             self.activity = response / active_synapse_weight
         else:
             self.activity = response
@@ -567,7 +567,16 @@ class Network():
                     if self.replaying:
                         self.visualise_neuron('out{}'.format(output), only_pos=False)
                     self.neuron_connectedness[neuron_label] = 1
-        return neuron_label
+            return neuron_label
+        else:
+            return "thresholded"
+
+    def pass_errors_to_outputs(self, errors, lr):
+        for out, error in enumerate(errors):
+            for synapse in self.neurons['out{}'.format(out)].synapses:
+                for syn in self.neurons['out{}'.format(out)].synapses[synapse]:
+                    weight_d = syn.activity * error * lr
+                    syn.weight -= weight_d
 
     def consolidate(self):
         return "new connections to create neurons"
