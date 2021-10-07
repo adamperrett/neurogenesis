@@ -11,7 +11,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'breast'
+test = 'mnist'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -37,7 +37,7 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 1000
+    retest_rate = 100
     retest_size = 50
 elif test == 'pima':
     from datasets.pima_indians import *
@@ -103,9 +103,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 # net.age_output_synapses(reward=True)
                 print("CORRECT CLASS WAS CHOSEN")
                 # if np.random.random() < learning_rate:
-                neuron_label = net.error_driven_neuro_genesis(
-                    activations, error,
-                    weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale))#, label)
+                # neuron_label = net.error_driven_neuro_genesis(
+                #     activations, error,
+                #     weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale))#, label)
             # if error[choice] < -0.5:
             #     net.error_driven_neuro_genesis(activations, error, label)
         else:
@@ -150,7 +150,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 #     net.remove_worst_output()
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
         # classifications.append([choice, label])
-        if 'esting' not in test_net_label:# and len(classifications) % retest_rate == 0:
+        if 'esting' not in test_net_label and train_count % retest_rate == retest_rate - 1:# and len(classifications) % retest_rate == 0:
+            print("retesting")
             testing_accuracy, training_classifications, \
             testing_confusion, _, _ = test_net(CLASSnet, X, y,
                                                indexes=test_index,
@@ -161,6 +162,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                                                max_fold=maximum_fold_accuracy)
             fold_testing_accuracy.append(round(testing_accuracy, 3))
             best_testing_accuracy.append(round(testing_accuracy, 3))
+            print("finished")
         # neuron_counts.append(CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
         if 'esting' not in test_net_label:
             print("Performance over all current tests")
@@ -175,6 +177,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 for window in fold_average_windows:
                     print(np.average(fold_testing_accuracy[-window:]), ":", window)
             print("\n")
+        else:
+            if train_count % 1000 == 0:
+                print(train_count, "/", len(indexes))
     # print(incorrect_classes)
     # all_incorrect_classes.append(incorrect_classes)
     # for ep in all_incorrect_classes:
@@ -370,7 +375,7 @@ else:
     sensitivity_width = 0.6
     activation_threshold = 0.0
     error_threshold = 0.0003
-    maximum_synapses_per_neuron = 100
+    maximum_synapses_per_neuron = 150
     fixed_hidden_amount = 0
     # fixed_hidden_ratio = 0.5
     fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -406,8 +411,8 @@ noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'noOut thresholded-add{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
-             'at{} - et{} - {}adr{} - {}noise'.format(learning_rate, error_type, out_weight_scale,
+base_label = 'retest100-net{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+             'at{} - et{} - {}adr{} - {}noise'.format(maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
@@ -438,9 +443,13 @@ else:
     #         self.test_feat = mnist_testing_data
     #
     # sss = StratifiedShuffleSplit(n_splits=repeats, test_size=0.3, random_state=0)
+    train_index = [i for i in range(60000)]
+    test_index = [i + 60000 for i in range(10000)]
+    combined_index = [[np.array(train_index), np.array(test_index)]]
     print("Not currently setup for MNIST")
     Exception
-for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
+# for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
+for repeat, (train_index, test_index) in enumerate(combined_index):
     if repeats == 1:
         test_label = base_label
     else:
@@ -511,7 +520,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
             training_count += len(train_index)
             current_fold = training_count / len(train_index)
             fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
-            np.random.shuffle(train_index)
+            # np.random.shuffle(train_index)
             training_accuracy, training_classifications, \
             training_confusion, synapse_counts, \
             neuron_counts = test_net(CLASSnet, X, y,

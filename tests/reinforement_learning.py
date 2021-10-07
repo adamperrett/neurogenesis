@@ -4,7 +4,7 @@ from copy import deepcopy
 from models.neurogenesis import Network
 import random
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
@@ -136,6 +136,7 @@ def test_net(net, max_timesteps, episodes, memory_length=10, test_net_label='', 
                 print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                       CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
                 print("Synapse count: ", CLASSnet.synapse_count)
+                print("Running average: ", np.average(all_times[-100:]))
                 if len(all_times) > 100 and np.average(all_times[-100:]) > 475:
                     while len(all_times) < episodes:
                         all_times.append(500)
@@ -227,10 +228,11 @@ def generate_error(reward, action, activations, memory_length, test_duration):
     if 'len' in error_type:
         error /= test_duration
 
-    error[0] += activations['out0']
-    error[1] += activations['out1']
-    # error[0] -= activations['out0']
-    # error[1] -= activations['out1']
+    act = sm([activations['out0'], activations['out1']])
+    error[0] += act[0]
+    error[1] += act[1]
+    # error[0] += activations['out0']
+    # error[1] += activations['out1']
     return error
 
 def select_actions_in_range(activations, min_v, max_v, discrete_v):
@@ -339,9 +341,9 @@ else:
     sensitivity_width = 0.6
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 10
+    maximum_synapses_per_neuron = 4
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 250*10
+    maximum_total_synapses = 5000*4
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
@@ -362,13 +364,13 @@ error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
 number_of_episodes = 400
-repeat_test = 20
+repeat_test = 100
 epochs = 20
 visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'outnoave pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'smoutnoave pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(pole_length, number_of_episodes,
                                             window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,
@@ -410,7 +412,7 @@ for repeat in range(repeat_test):
                      repeat=repeat,
                      pole_length=pole_length)
     all_times.append(times)
-    np.save("./data/{}.png".format(test_label), all_times)
+    np.save("./data/{}".format(test_label), all_times)
 
     # all_times = np.array(all_times)
     max_time = []
