@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import operator
+import scipy.stats as st
 
 
 class Synapses():
@@ -40,6 +41,7 @@ class Synapses():
         self.weight += delta_w * self.reward_decay
 
     def response(self, input):
+        # self.activity = st.norm.cdf(-abs((input - self.freq) / self.f_width)) * 2
         self.activity = max(1. - abs((input - self.freq) / self.f_width), 0) #* self.age_multiplier
         return self.activity * self.weight
 
@@ -561,7 +563,7 @@ class Network():
                                                                         freq=1.,
                                                                         weight=-error * weight_multiplier,
                                                                         sensitivities=self.neuron_selectivity,
-                                                                        # width=0.3,
+                                                                        width=0.5,
                                                                         reward_decay=self.reward_decay)
                     self.synapse_count += 1
                     if self.replaying:

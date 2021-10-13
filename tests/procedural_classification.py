@@ -213,7 +213,6 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     correct_classifications /= train_count
     if 'esting' not in test_net_label:
         determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
-        memory_to_procedural(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
               correct_classifications)
     if save_activations:
