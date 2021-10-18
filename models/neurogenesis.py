@@ -2,6 +2,8 @@ import numpy as np
 import random
 import operator
 import scipy.stats as st
+from models.convert_network import create_network
+from tests.backprop_from_activations import forward_propagate
 
 
 class Synapses():
@@ -159,6 +161,9 @@ class Network():
         self.deleted_outputs = {}
         self.activity_decay_rate = activity_decay_rate
         self.number_of_classes = number_of_classes
+
+        self.procedural = []
+        self.procedural_value = [0. for i in range(number_of_classes)]
         # add seed neuron
         # self.neurons['seed{}'.format(seed_class)] = Neuron('seed{}'.format(seed_class),
         # self.neurons['n0'] = Neuron('n0',
@@ -440,9 +445,9 @@ class Network():
                                                (response[neuron] * (1. - self.activity_decay_rate))
                 # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
         outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
-        for neuron in outputs:
+        for out, neuron in enumerate(outputs):
             response = self.neurons[neuron].response(activations)
-            activations[self.neurons[neuron].neuron_label] = response
+            activations[self.neurons[neuron].neuron_label] = response + self.procedural_value[out]
         return activations
 
     def reinforce_synapses(self, reward, only_output=True, correct_output=0):
@@ -489,9 +494,13 @@ class Network():
                 del self.neurons['out{}'.format(i)].synapses[delete_neuron]
 
     def convert_inputs_to_activations(self, inputs):
+        self.procedural_value = self.procedural_output(inputs)
         acti = {}
         for idx, ele in enumerate(inputs):
             acti['in{}'.format(idx)] = ele
+        if len(self.procedural) > 0:
+            for idx, ele in enumerate(self.procedural_value):
+                acti['p{}'.format(idx)] = ele
         return acti
 
     def return_hidden_neurons(self, activations, cap=True):
@@ -544,6 +553,28 @@ class Network():
                 activations['in{}'.format(idx)] = vis[y][x]
         return activations
 
+    def remove_all_stored_values(self):
+        deleted_neurons = []
+        for neuron in self.neurons:
+            if 'out' not in neuron:
+                deleted_neurons.append(neuron)
+        for del_n in deleted_neurons:
+            self.delete_neuron(del_n)
+        # for i in range(self.number_of_classes):
+        #     self.neurons['out{}'.format(i)].synapses = {}
+
+    def convert_net_and_clean(self):
+        self.procedural = create_network(self)
+
+        # self.number_of_inputs + len(self.procedural[-1])
+        # for i in range(self.number_of_inputs):
+        #     self.neuron_activity['in{}'.format(i)] = 0.
+        self.remove_all_stored_values()
+
+    def procedural_output(self, inputs):
+        if len(self.procedural) == 0:
+            return [0. for i in range(self.number_of_classes)]
+        return forward_propagate(self.procedural, inputs)
 
     def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1.):
         if np.max(np.abs(output_error)) > self.error_threshold:

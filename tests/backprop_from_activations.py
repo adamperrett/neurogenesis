@@ -3,22 +3,31 @@ from random import seed
 from random import random
 import numpy as np
 from models.convert_network import *
+from datasets.simple_tests import *
 
 
 # Initialize a network
-def random_initialize_network(n_inputs, n_hidden, n_outputs):
+def random_initialize_network(n_inputs, n_hidden, n_outputs, layers=1):
     network = list()
-    hidden_layer = [{'weights':[random() for i in range(n_inputs + 1)]} for i in range(n_hidden)]
+    hidden_layer = [{'weights':[np.random.randn()/100. for i in range(n_inputs + 1)]} for i in range(n_hidden)]
     network.append(hidden_layer)
-    output_layer = [{'weights':[random() for i in range(n_hidden + 1)]} for i in range(n_outputs)]
+    for l in range(layers-1):
+        hidden_layer = [{'weights': [np.random.randn() / 100. for i in range(n_hidden + 1)]} for i in range(n_hidden)]
+        network.append(hidden_layer)
+    output_layer = [{'weights':[np.random.randn()/100. for i in range(n_hidden + 1)]} for i in range(n_outputs)]
     network.append(output_layer)
     return network
 
 # Initialize a network
-def create_initial_network(hidden_weights, output_weights):
+def create_initial_network(hidden_weights, output_weights, multi_layered=False):
     network = list()
-    hidden_layer = [{'weights': [w for w in weights]} for weights in hidden_weights]
-    network.append(hidden_layer)
+    if multi_layered:
+        for h_w in hidden_weights:
+            hidden_layer = [{'weights': [w for w in weights]} for weights in h_w]
+            network.append(hidden_layer)
+    else:
+        hidden_layer = [{'weights': [w for w in weights]} for weights in hidden_weights]
+        network.append(hidden_layer)
     output_layer = [{'weights': [w for w in weights]} for weights in output_weights]
     network.append(output_layer)
     return network
@@ -50,7 +59,8 @@ def forward_propagate(network, row):
 
 # Calculate the derivative of an neuron output
 def transfer_derivative(output):
-    return output * (1.0 - output)
+    return 1. - (np.tanh(output)**2)
+    # return output * (1.0 - output)
 
 # Backpropagate error and store in neurons
 def backward_propagate_error(network, expected):
@@ -89,7 +99,7 @@ def train_network(network, train, l_rate, n_epoch, n_outputs):
         for row in train:
             outputs = forward_propagate(network, row)
             expected = [0 for i in range(n_outputs)]
-            expected[row[-1]] = 1
+            expected[int(row[-1])] = 1
             sum_error += sum([(expected[i]-outputs[i])**2 for i in range(len(expected))])
             backward_propagate_error(network, expected)
             update_weights(network, row, l_rate)
@@ -102,16 +112,31 @@ if __name__ == '__main__':
     #                  'wine fixed_h0 - sw0.4n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise 0'
     # base_file_name = 'noOut no-lr0.1 out0.0 RL0.99999  - ' \
     #                  'wine fixed_h0 - sw0.4n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise 4.png'
-    base_file_name = 'simple-net150 sm0.0 RL0.99999  - ' \
-                     'simple fixed_h0 - sw0.6n0.0 - at0.0 - et0.0003 - 1.0adr1.0 - 0.0noise 0.png'
-    dataset = np.load('./data/'+base_file_name+'.npy', allow_pickle=True).item()
-
-    determine_2D_decision_boundary(dataset['net'], [-1, 2], [-1, 2], 100)
+    # base_file_name = 'simple-net150 sm0.0 RL0.99999  - ' \
+    #                  'simple fixed_h0 - sw0.6n0.0 - at0.0 - et0.0003 - 1.0adr1.0 - 0.0noise 0.png'
+    # dataset = np.load('./data/'+base_file_name+'.npy', allow_pickle=True).item()
+    #
+    # determine_2D_decision_boundary(dataset['net'], [-1, 2], [-1, 2], 100)
     # conn = np.array(convert_neurons_to_network(dataset['net']))
-
-    n_inputs = len(dataset[0]) - 1
-    n_outputs = len(set([row[-1] for row in dataset]))
-    network = random_initialize_network(n_inputs, 2, n_outputs)
-    train_network(network, dataset, 0.5, 20, n_outputs)
+    centres = [[1, 0],
+               [0, 0],
+               [-1, 0]]
+    # [0, 1]]
+    spread = 0.3
+    examples = 100
+    test_set_size = 0.1
+    num_outputs = 2
+    # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
+    simple_data, simple_labels = create_bimodal_distribution(centres, spread, examples,
+                                                             max_classes=num_outputs)
+    dataset = []
+    for data, label in zip(simple_data, simple_labels):
+        dataset.append(np.hstack([data, label]))
+    n_inputs = len(simple_data[0])
+    n_hidden = 4
+    n_outputs = num_outputs
+    network = random_initialize_network(n_inputs, n_hidden, n_outputs, layers=2)
+    train_network(network, dataset, 0.1, 200, n_outputs)
+    test_2D_network(network, [-2, 2], [-2, 2], 100, simple_data, simple_labels)
     for layer in network:
         print(layer)

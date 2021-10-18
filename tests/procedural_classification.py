@@ -2,7 +2,7 @@ import numpy as np
 from scipy.special import softmax as sm
 from copy import deepcopy
 from models.neurogenesis import Network
-from datasets.simple_tests import create_centroid_classes
+from datasets.simple_tests import create_centroid_classes, create_bimodal_distribution
 from models.convert_network import *
 import random
 import matplotlib
@@ -30,7 +30,7 @@ elif test == 'wine':
     train_feat = training_set_wines
     test_labels = test_set_labels
     test_feat = test_set_wines
-    retest_rate = len(train_labels)
+    retest_rate = 1#len(train_labels)
     retest_size = len(test_set_labels)
 elif test == 'mnist':
     from datasets.mnist_csv import *
@@ -55,16 +55,19 @@ elif test == "simple":
     #            [0, 0]]
     centres = [[1, 0],
                [0, 0],
-               [0, 1]]
+               [-1, 0]]
+               # [0, 1]]
     spread = 0.3
     examples = 100
     test_set_size = 0.1
-    simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
+    num_outputs = 2
+    # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
+    simple_data, simple_labels = create_bimodal_distribution(centres, spread, examples, max_classes=num_outputs)
     train_labels = simple_labels[:int(examples*len(centres)*(1. - test_set_size))]
     train_feat = simple_data[:int(examples*len(centres)*(1. - test_set_size))]
     test_labels = simple_labels[int(examples*len(centres)*(1. - test_set_size)):]
     test_feat = simple_data[int(examples*len(centres)*(1. - test_set_size)):]
-    num_outputs = len(centres)
+    # num_outputs = len(centres)
     retest_rate = 1
     retest_size = len(test_feat)
 if 'mnist' in test:
@@ -212,7 +215,11 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     synapse_counts.append(CLASSnet.synapse_count)
     correct_classifications /= train_count
     if 'esting' not in test_net_label:
-        determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
+        if len(train_feat[0]) == 2:
+            determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
+            memory_to_procedural(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
+            # determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
+            # memory_to_procedural(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
               correct_classifications)
     if save_activations:
@@ -432,7 +439,7 @@ noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'out0.4net{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+base_label = 'procedural0.4out{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
              'at{} - et{} - {}adr{} - {}noise'.format(maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
@@ -551,6 +558,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                      classifications=training_classifications,
                                      fold_string=fold_string,
                                      max_fold=maximum_fold_accuracy, noise_stdev=noise_level)
+            CLASSnet.convert_net_and_clean()
             running_synapse_counts = np.hstack([running_synapse_counts, synapse_counts])
             running_neuron_counts = np.hstack([running_neuron_counts, neuron_counts])
             # training_classifications += new_classifications

@@ -3,17 +3,37 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
 from scipy.spatial import distance
+from math import comb
+import random
 from tests.backprop_from_activations import create_initial_network, forward_propagate
 
-def collect_connections_per_output(net, output, weight_norm=True):
+def collect_n_centroids_per_output(net, output, n):
+    class_and_values = []
+    input_values = [[0. for i in range(net.number_of_inputs)] for j in range(n)]
+    centroid_count = 0
+    for pre in random.sample(list(net.neurons['out{}'.format(output)].synapses),
+                             len(list(net.neurons['out{}'.format(output)].synapses))):
+        weight = net.neurons['out{}'.format(output)].synapses[pre][0].weight
+        if weight > 0:
+            for inp in net.neurons[pre].synapses:
+                for syn in net.neurons[pre].synapses[inp]:
+                    if 'in' in inp:
+                        in_index = int(inp.replace('in', ''))
+                        input_values[centroid_count][in_index] += syn.freq
+            class_and_values.append([output, np.array(input_values[centroid_count])])
+            centroid_count += 1
+            if centroid_count >= n:
+                return class_and_values
+    return class_and_values
+
+def collect_centroids_per_output(net, output, weight_norm=True):
     input_values = [0. for i in range(net.number_of_inputs)]
     input_count = [0 for i in range(net.number_of_inputs)]
-    conn_values = []
     for pre in net.neurons['out{}'.format(output)].synapses:
-        for inp in net.neurons[pre].synapses:
-            for syn in net.neurons[pre].synapses[inp]:
-                weight = net.neurons['out{}'.format(output)].synapses[pre][0].weight
-                if weight > 0:
+        weight = net.neurons['out{}'.format(output)].synapses[pre][0].weight
+        if weight > 0:
+            for inp in net.neurons[pre].synapses:
+                for syn in net.neurons[pre].synapses[inp]:
                     # find a way for this to work with hidden nodes
                     in_index = int(inp.replace('in', ''))
                     if weight_norm:
@@ -22,11 +42,10 @@ def collect_connections_per_output(net, output, weight_norm=True):
                     else:
                         input_values[in_index] += syn.freq
                         input_count[in_index] += 1
-                conn_values.append([syn.freq, net.neurons['out{}'.format(output)].synapses[pre][0].weight])
     for idx, count in enumerate(input_count):
         if count != 0:
             input_values[idx] /= count
-    return input_values#, conn_values
+    return output, np.array(input_values)
 
 '''
 saved value to weight:
@@ -37,11 +56,32 @@ saved value to weight:
         as input decreases it gets further from the saved value
 '''
 
-def convert_neurons_to_network(net, weight_norm=True):
+def convert_neurons_to_centroids(net, weight_norm=True, n=50):
+    # return [[0, np.array([1, 0])],
+    #            [0, np.array([-1, 0])],
+    #            [1, np.array([0, 0])]]
     values = []
     for out in range(net.number_of_classes):
-        values.append(collect_connections_per_output(net, out, weight_norm))
-    return np.array(values)
+        if n > 1:
+            if len(values) == 0:
+                values = collect_n_centroids_per_output(net, out, n)
+            else:
+                values = np.vstack([values, collect_n_centroids_per_output(net, out, n)])
+        else:
+            values.append(collect_centroids_per_output(net, out, weight_norm))
+    return values
+
+def collect_all_stored_values(net):
+    all_values = []
+    for pre in net.neurons['out0'].synapses:
+        input_values = [0. for i in range(net.number_of_inputs)]
+        for inp in net.neurons[pre].synapses:
+            for syn in net.neurons[pre].synapses[inp]:
+                if 'in' in inp:
+                    in_index = int(inp.replace('in', ''))
+                    input_values[in_index] += syn.freq
+        all_values.append(input_values)
+    return all_values
 
 def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], labels=[], weight_norm=True):
     num_outputs = net.number_of_classes
@@ -75,32 +115,37 @@ def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], l
     for i in range(num_outputs):
         plt.scatter(np.array(data_grouped[i])[:, 0],
                         np.array(data_grouped[i])[:, 1])
-    centroids = convert_neurons_to_network(net, weight_norm)
-    for cent in centroids:
+    all_stored = collect_all_stored_values(net)
+    plt.scatter(np.array(all_stored)[:, 0],
+                    np.array(all_stored)[:, 1], marker='*')
+    centroids = convert_neurons_to_centroids(net, weight_norm, n=1)
+    for cl, cent in centroids:
         plt.scatter(cent[0], cent[1], s=200)
+    plt.xlim(x_range)
+    plt.ylim(y_range)
     plt.show()
     return points
 
 
 def determine_boundary_vectors(net):
-    centroids = convert_neurons_to_network(net)
+    centroids = convert_neurons_to_centroids(net)
     print(centroids)
     midpoints = []
     vectors = []
     done = []
-    for a, centroid_a in enumerate(centroids):
-        for b, centroid_b in enumerate(centroids):
-            if [a, b] not in done and a != b:
-                done.append([a, b])
-                done.append([b, a])
-                midpoints.append([a, b, centroid_a, centroid_b, distance.euclidean(centroid_a, centroid_b),
-                                  (np.array(centroid_a) + np.array(centroid_b)) / 2.,
-                                  (centroid_b - centroid_a)])
-                dot_product = np.dot((np.array(centroid_a) + np.array(centroid_b)) / 2.,
-                                     (centroid_b - centroid_a))
+    for a, c_a in centroids:
+        for b, c_b in centroids:
+            if a != b and '{}'.format([c_a, c_b]) not in done:
+                done.append('{}'.format([c_a, c_b]))
+                done.append('{}'.format([c_b, c_a]))
+                midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
+                                  (np.array(c_a) + np.array(c_b)) / 2.,
+                                  (c_b - c_a)])
+                dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
+                                     (c_b - c_a))
                 bias = -dot_product
                 vectors.append([a, b,
-                                np.hstack([centroid_b - centroid_a, bias]) / distance.euclidean(centroid_a, centroid_b)])
+                                np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
 
     # process for iteration finding boundary
     # for midpoint in midpoints:
@@ -111,17 +156,14 @@ def determine_boundary_vectors(net):
 
 def create_network(net):
     neurons = determine_boundary_vectors(net)
+    n_out = net.number_of_classes
+    v_out = len(neurons)
     hidden_weights = []
-    output_weights = []
+    output_weights = [[0. for i in range(v_out+1)] for j in range(n_out)]
     for idx, (out1, out2, weights) in enumerate(neurons):
         hidden_weights.append(weights)
-        out = [0. for i in range(net.number_of_classes)]
-        out[out1] = -1
-        out[out2] = 1
-        output_weights.append(out)
-    output_weights = [[-1, -1, 0, 0],
-                      [1, 0, -1, 0],
-                      [0, 1, 1, 0]]
+        output_weights[out1][idx] = -1
+        output_weights[out2][idx] = 1
     network = create_initial_network(hidden_weights, output_weights)
     return network
 
@@ -160,6 +202,8 @@ def test_2D_network(net, x_range, y_range, resolution, data=[], labels=[]):
     for i in range(num_outputs):
         plt.scatter(np.array(data_grouped[i])[:, 0],
                         np.array(data_grouped[i])[:, 1])
+    plt.xlim(x_range)
+    plt.ylim(y_range)
     plt.show()
 
 def memory_to_procedural(net, x_range, y_range, resolution, data=[], labels=[]):

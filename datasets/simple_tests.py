@@ -12,16 +12,25 @@ def create_centroid_classes(class_centres, spread, examples):
             labels.append(out)
     return data, labels
 
+def create_bimodal_distribution(class_centres, spread, examples, max_classes=2):
+    data = []
+    labels = []
+    for out, centre in enumerate(class_centres):
+        for i in range(examples):
+            data.append(np.random.normal(centre, spread))
+            labels.append(out % max_classes)
+    return data, labels
 
 if __name__ == "__main__":
-    # centres = [[1, 0],
-    #            [0, 0],
-    #            [0, 1]]
-    centres = [[1, 1],
-               [0, 0]]
+    centres = [[1, 0],
+               [0, 0],
+               [0, 1]]
+    # centres = [[1, 1],
+    #            [0, 0]]
     spread = 0.3
     examples = 100
-    data, labels = create_centroid_classes(centres, spread, examples)
+    # data, labels = create_centroid_classes(centres, spread, examples)
+    data, labels = create_bimodal_distribution(centres, spread, examples)
 
     colours = pl.cm.plasma(np.linspace(0, 1, len(centres)))
     plt.figure()
