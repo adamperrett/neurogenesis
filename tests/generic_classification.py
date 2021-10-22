@@ -13,7 +13,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'simple'
+test = 'wine'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2

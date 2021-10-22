@@ -46,6 +46,7 @@ def transfer(activation):
 
 # Forward propagate input to a network output
 def forward_propagate(network, row):
+    all_inputs = []
     inputs = row
     for layer in network:
         new_inputs = []
@@ -53,9 +54,10 @@ def forward_propagate(network, row):
             activation = activate(neuron['weights'], inputs)
             neuron['output'] = transfer(activation)
             new_inputs.append(neuron['output'])
+        all_inputs = np.hstack([all_inputs, new_inputs])
         inputs = new_inputs
         # break
-    return inputs
+    return inputs, all_inputs
 
 # Calculate the derivative of an neuron output
 def transfer_derivative(output):

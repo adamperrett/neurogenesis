@@ -61,6 +61,7 @@ class Neuron():
         self.visualisation = None
         self.reward_decay = reward_decay
         self.activity = 0
+        self.output = -1
         if not weights:
             weights = {}
         for pre in connections:
@@ -164,6 +165,7 @@ class Network():
 
         self.procedural = []
         self.procedural_value = [0. for i in range(number_of_classes)]
+        self.n_procedural_out = 0
         # add seed neuron
         # self.neurons['seed{}'.format(seed_class)] = Neuron('seed{}'.format(seed_class),
         # self.neurons['n0'] = Neuron('n0',
@@ -218,7 +220,7 @@ class Network():
         if self.synapse_count > self.maximum_total_synapses:
             # self.delete_synapses(self.synapse_count - self.maximum_total_synapses)
             self.delete_neuron()
-        visualisation = self.visualise_neuron(neuron_label)
+        # visualisation = self.visualise_neuron(neuron_label)
         hidden_activity = self.return_hidden_neurons(self.neuron_activity)
         self.neuron_response[neuron_label] = 0.
         if len(self.neuron_rewards) > 0:
@@ -263,10 +265,12 @@ class Network():
         self.synapse_count -= self.neurons[delete_neuron].synapse_count
         del self.neurons[delete_neuron]
         del self.neuron_activity[delete_neuron]
-        del self.neuron_selectivity[delete_neuron]
+        if delete_neuron in self.neuron_selectivity:
+            del self.neuron_selectivity[delete_neuron]
         del self.neuron_connectedness[delete_neuron]
         del self.neuron_rewards[delete_neuron]
-        del self.neuron_response[delete_neuron]
+        if delete_neuron in self.neuron_response:
+            del self.neuron_response[delete_neuron]
         for neuron in self.neurons:
             if delete_neuron in self.neurons[neuron].synapses:
                 del self.neurons[neuron].synapses[delete_neuron]
@@ -299,8 +303,12 @@ class Network():
         input_selectivity = {}
         hidden_selectivity = {}
         for neuron in self.neuron_selectivity:
-            if 'in' in neuron:
-                input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+            if 'in' in neuron or 'p' in neuron:
+                if len(self.procedural) >= 1:
+                    if 'p' in neuron:
+                        input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+                else:
+                    input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
             elif 'out' not in neuron:
                 if self.neuron_selectivity[neuron] == 1.:
                     print("da fuck")
@@ -418,7 +426,8 @@ class Network():
             return pruned_connections
         else:
             # print("add thresholded selection here here")
-            return dict(random.sample(list(connections.items()), self.max_hidden_synapses))
+            return dict(random.sample(list(connections.items()), min(self.max_hidden_synapses,
+                                                                     len(connections))))
 
     def response(self, activations, replay=False):
         # for i in range(self.layers):
@@ -494,12 +503,12 @@ class Network():
                 del self.neurons['out{}'.format(i)].synapses[delete_neuron]
 
     def convert_inputs_to_activations(self, inputs):
-        self.procedural_value = self.procedural_output(inputs)
+        self.procedural_value, all_p = self.procedural_output(inputs)
         acti = {}
         for idx, ele in enumerate(inputs):
             acti['in{}'.format(idx)] = ele
         if len(self.procedural) > 0:
-            for idx, ele in enumerate(self.procedural_value):
+            for idx, ele in enumerate(all_p):
                 acti['p{}'.format(idx)] = ele
         return acti
 
@@ -564,17 +573,29 @@ class Network():
         #     self.neurons['out{}'.format(i)].synapses = {}
 
     def convert_net_and_clean(self):
-        self.procedural = create_network(self)
-
+        # self.procedural.append(create_network(self))
+        # self.n_procedural_out += self.number_of_classes
+        new_net = create_network(self)
+        self.procedural.append(new_net)
+        for layer in new_net:
+            self.n_procedural_out += len(layer)
         # self.number_of_inputs + len(self.procedural[-1])
         # for i in range(self.number_of_inputs):
         #     self.neuron_activity['in{}'.format(i)] = 0.
         self.remove_all_stored_values()
 
     def procedural_output(self, inputs):
+        output = [0. for i in range(self.number_of_classes)]
         if len(self.procedural) == 0:
-            return [0. for i in range(self.number_of_classes)]
-        return forward_propagate(self.procedural, inputs)
+            return output, inputs[2:]
+        all_out = []
+        for net in self.procedural:
+            pro_out, neuron_out = forward_propagate(net, inputs)
+            inputs = np.hstack([inputs, neuron_out])
+            all_out = np.hstack([all_out, neuron_out])
+        for out, value in enumerate(pro_out):
+            output[out] += value
+        return output, all_out
 
     def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1.):
         if np.max(np.abs(output_error)) > self.error_threshold:
@@ -585,6 +606,7 @@ class Network():
                               replay=True)
             activations = self.remove_output_neurons(activations)
             neuron_label = self.add_neuron(activations)
+            self.neurons[neuron_label].output = np.abs(output_error).argmax()
             for output, error in enumerate(output_error):
                 if abs(error) > self.error_threshold:
                     # self.current_importance += self.old_weight_modifier
