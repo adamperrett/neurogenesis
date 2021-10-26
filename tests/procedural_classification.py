@@ -6,7 +6,9 @@ from datasets.simple_tests import create_centroid_classes, create_bimodal_distri
 from models.convert_network import *
 import random
 import matplotlib
-matplotlib.use('Agg')
+saving_plots = True
+if saving_plots:
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sn
 import pandas as pd
@@ -39,7 +41,7 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 1000
+    retest_rate = 5000
     retest_size = 50
 elif test == 'pima':
     from datasets.pima_indians import *
@@ -57,17 +59,17 @@ elif test == "simple":
                [0, 0],
                [-1, 0]]
                # [0, 1]]
-    spread = 0.1
+    spread = 0.3
     examples = 100
     test_set_size = 0.1
-    num_outputs = 2
     # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
+    num_outputs = 2
+    # num_outputs = len(centres)
     simple_data, simple_labels = create_bimodal_distribution(centres, spread, examples, max_classes=num_outputs)
     train_labels = simple_labels[:int(examples*len(centres)*(1. - test_set_size))]
     train_feat = simple_data[:int(examples*len(centres)*(1. - test_set_size))]
     test_labels = simple_labels[int(examples*len(centres)*(1. - test_set_size)):]
     test_feat = simple_data[int(examples*len(centres)*(1. - test_set_size)):]
-    # num_outputs = len(centres)
     retest_rate = 1
     retest_size = len(test_feat)
 if 'mnist' in test:
@@ -125,9 +127,10 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 # net.age_output_synapses(reward=True)
                 print("CORRECT CLASS WAS CHOSEN")
                 # if np.random.random() < learning_rate:
-                neuron_label = net.error_driven_neuro_genesis(
-                    activations, error,
-                    weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale))#, label)
+                if always_save:
+                    neuron_label = net.error_driven_neuro_genesis(
+                        activations, error,
+                        weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale))#, label)
             # if error[choice] < -0.5:
             #     net.error_driven_neuro_genesis(activations, error, label)
         else:
@@ -185,6 +188,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             fold_testing_accuracy.append(round(testing_accuracy, 3))
             best_testing_accuracy.append(round(testing_accuracy, 3))
             print("finished")
+            # CLASSnet.convert_net_and_clean()
             # determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         # neuron_counts.append(CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
         if 'esting' not in test_net_label:
@@ -236,7 +240,8 @@ def moving_average(a, n=3):
 def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, testing_confusion,
                         synapse_counts, neuron_counts,
                         test_label, save_flag=False):
-    # return 0
+    if not saving_plots:
+        return 0
     fig, axs = plt.subplots(2, 2)
     ave_err10 = moving_average(correct_or_not, 10)
     ave_err100 = moving_average(correct_or_not, 100)
@@ -439,13 +444,14 @@ learning_rate = 1.0
 visualise_rate = 1
 np.random.seed(27)
 confusion_decay = 0.8
+always_save = True
 
 noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'procedural2n{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
-             'at{} - et{} - {}adr{} - {}noise'.format(maximum_synapses_per_neuron, error_type, out_weight_scale,
+base_label = 'procedural_polar+pos+neg+save{}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+             'at{} - et{} - {}adr{} - {}noise'.format(retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
@@ -480,7 +486,7 @@ else:
     test_index = [i + 60000 for i in range(10000)]
     combined_index = [[np.array(train_index), np.array(test_index)]]
     print("Not currently setup for MNIST")
-    Exception
+    # Exception
 for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
 # for repeat, (train_index, test_index) in enumerate(combined_index):
     if repeats == 1:
@@ -523,7 +529,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
     running_neuron_counts = np.zeros([1])
     only_lr = True
     for epoch in range(epochs):
-        if epoch % 2 == 0:
+        if epoch % 4 == 3:
             only_lr = not only_lr
         if epoch % 10 == 0 and epoch:
         # if (epoch == 10 or epoch == 30) and epoch:
@@ -657,14 +663,16 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                                  max_fold=maximum_fold_accuracy)
 
             epoch_error.append([final_accuracy, final_procedural_accuracy, fold_testing_accuracy[-1], full_testing_accuracy,
-                                CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
+                                CLASSnet.hidden_neuron_count, CLASSnet.deleted_neuron_count])
             running_test_confusion *= confusion_decay
             running_test_confusion += full_test_confusion
         else:
             epoch_error.append([final_accuracy, final_procedural_accuracy, fold_testing_accuracy[-1], testing_accuracy,
-                                CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
+                                CLASSnet.hidden_neuron_count, CLASSnet.deleted_neuron_count])
             running_test_confusion *= confusion_decay
             running_test_confusion += testing_confusion
+        if len(epoch_error) > 1:
+            epoch_error[-1][-1] -= epoch_error[-2][-2]
         epoch_noise_results = []
         for noise_std in noise_tests:
             noise_accuracy, _, _, _, _ = test_net(CLASSnet, X, y,

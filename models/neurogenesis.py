@@ -575,7 +575,7 @@ class Network():
     def convert_net_and_clean(self):
         # self.procedural.append(create_network(self))
         # self.n_procedural_out += self.number_of_classes
-        new_net = create_network(self)
+        new_net = create_network(self, polar=True)
         self.procedural.append(new_net)
         for layer in new_net:
             self.n_procedural_out += len(layer)
