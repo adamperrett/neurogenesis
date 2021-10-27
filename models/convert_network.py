@@ -5,6 +5,7 @@ import matplotlib.pylab as pl
 from scipy.spatial import distance
 from math import comb
 import random
+from copy import deepcopy
 from tests.backprop_from_activations import create_initial_network, forward_propagate
 
 def collect_n_centroids_per_output(net, output, n, only_2D=False):
@@ -64,7 +65,7 @@ def collect_centroids_per_output(net, output, weight_norm=True, only_2D=False):
 
 
 
-def collect_polar_centroids(net, output, weight_norm=True, only_2D=False):
+def collect_polar_centroids(net, output, weight_norm=True, only_2D=False, split=True):
     positive_input_values = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
     positive_input_count = [0 for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
     negative_input_values = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
@@ -102,6 +103,18 @@ def collect_polar_centroids(net, output, weight_norm=True, only_2D=False):
     for idx, count in enumerate(negative_input_count):
         if count != 0:
             negative_input_values[idx] /= count
+    if split:
+        splits = [net.number_of_inputs]
+        for hidden in net.procedural:
+            splits.append(len(hidden) + splits[-1])# + net.number_of_classes)
+        split_neg = [negative_input_values[:splits[0]]]
+        split_pos = [positive_input_values[:splits[0]]]
+        layered_splits = [[output, np.array(split_neg[-1]), np.array(split_pos[-1]), 0]]
+        for s in range(len(splits)-1):
+            split_neg.append(negative_input_values[splits[s]:splits[s+1]])
+            split_pos.append(positive_input_values[splits[s]:splits[s+1]])
+            layered_splits.append([output, np.array(split_neg[-1]), np.array(split_pos[-1]), s+1])
+        return layered_splits
     return output, np.array(negative_input_values), np.array(positive_input_values)
 
 '''
@@ -120,7 +133,15 @@ def convert_neurons_to_centroids(net, weight_norm=True, n=5, only_2D=False, pola
     values = []
     for out in range(net.number_of_classes):
         if polar:
-            values.append(collect_polar_centroids(net, out))
+            # values.append(collect_polar_centroids(net, out))
+            if len(values) == 0:
+                values = collect_polar_centroids(net, out)
+            else:
+                new_centroids = collect_polar_centroids(net, out)
+                if len(new_centroids):
+                    values = np.vstack([values, new_centroids])
+                else:
+                    print("\n\n\n\n\nNo centroids for class\n\n\n\n\n")
         else:
             if n > 1:
                 if len(values) == 0:
@@ -206,7 +227,7 @@ def determine_boundary_vectors(net, only_2D=False, polar=False):
         print(centroids)
         pos_cent = []
         neg_cent = []
-        for out, c_a, c_b in centroids:
+        for out, c_a, c_b, layer in centroids:
             neg_cent.append([out, c_a])
             pos_cent.append([out, c_b])
             done.append('{}'.format([c_a, c_b]))
@@ -217,47 +238,49 @@ def determine_boundary_vectors(net, only_2D=False, polar=False):
             dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
                                  (c_b - c_a))
             bias = -dot_product
+            # square the distance to make it as broad as the centroids are apart
             vectors.append([out, out,
-                            np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
-        for a, c_a in pos_cent:
-            for b, c_b in pos_cent:
-                if a != b and '{}'.format([c_a, c_b]) not in done:
-                    done.append('{}'.format([c_a, c_b]))
-                    done.append('{}'.format([c_b, c_a]))
-                    midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
-                                      (np.array(c_a) + np.array(c_b)) / 2.,
-                                      (c_b - c_a)])
-                    dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
-                                         (c_b - c_a))
-                    bias = -dot_product
-                    vectors.append([a, b,
-                                    np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
-        for a, c_a in neg_cent:
-            for b, c_b in neg_cent:
-                if a != b and '{}'.format([c_a, c_b]) not in done:
-                    done.append('{}'.format([c_a, c_b]))
-                    done.append('{}'.format([c_b, c_a]))
-                    midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
-                                      (np.array(c_a) + np.array(c_b)) / 2.,
-                                      (c_b - c_a)])
-                    dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
-                                         (c_b - c_a))
-                    bias = -dot_product
-                    vectors.append([b, a,
-                                    np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
-        for a, c_a in pos_cent:
-            for b, c_b in neg_cent:
-                if a != b and '{}'.format([c_a, c_b]) not in done:# and c_a != c_b:
-                    done.append('{}'.format([c_a, c_b]))
-                    done.append('{}'.format([c_b, c_a]))
-                    midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
-                                      (np.array(c_a) + np.array(c_b)) / 2.,
-                                      (c_b - c_a)])
-                    dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
-                                         (c_b - c_a))
-                    bias = -dot_product
-                    vectors.append([b, a,
-                                    np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
+                            # np.hstack([c_b - c_a, bias]) / np.power(distance.euclidean(c_a, c_b), 2), layer])
+                            np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b), layer])
+        # for a, c_a in pos_cent:
+        #     for b, c_b in pos_cent:
+        #         if a != b and '{}'.format([c_a, c_b]) not in done and c_a.all() != c_b.all():
+        #             done.append('{}'.format([c_a, c_b]))
+        #             done.append('{}'.format([c_b, c_a]))
+        #             midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
+        #                               (np.array(c_a) + np.array(c_b)) / 2.,
+        #                               (c_b - c_a)])
+        #             dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
+        #                                  (c_b - c_a))
+        #             bias = -dot_product
+        #             vectors.append([a, b,
+        #                             np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
+        # for a, c_a in neg_cent:
+        #     for b, c_b in neg_cent:
+        #         if a != b and '{}'.format([c_a, c_b]) not in done and c_a.all() != c_b.all():
+        #             done.append('{}'.format([c_a, c_b]))
+        #             done.append('{}'.format([c_b, c_a]))
+        #             midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
+        #                               (np.array(c_a) + np.array(c_b)) / 2.,
+        #                               (c_b - c_a)])
+        #             dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
+        #                                  (c_b - c_a))
+        #             bias = -dot_product
+        #             vectors.append([b, a,
+        #                             np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
+        # for a, c_a in pos_cent:
+        #     for b, c_b in neg_cent:
+        #         if a != b and '{}'.format([c_a, c_b]) not in done and c_a.all() != c_b.all():
+        #             done.append('{}'.format([c_a, c_b]))
+        #             done.append('{}'.format([c_b, c_a]))
+        #             midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
+        #                               (np.array(c_a) + np.array(c_b)) / 2.,
+        #                               (c_b - c_a)])
+        #             dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
+        #                                  (c_b - c_a))
+        #             bias = -dot_product
+        #             vectors.append([b, a,
+        #                             np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
     else:
         centroids = convert_neurons_to_centroids(net, only_2D=only_2D)
         print(centroids)
@@ -281,6 +304,38 @@ def determine_boundary_vectors(net, only_2D=False, polar=False):
     #     activations = net.response(activations)
     #     if activations['out{}'.format(a)] > activations['out{}'.format(b)]:
     return vectors
+
+def build_network(net, only_2D=False, polar=False):
+    neurons = determine_boundary_vectors(net, only_2D=only_2D, polar=polar)
+    n_out = net.number_of_classes
+    v_out = len(neurons)
+    old_net = deepcopy(net.procedural)
+    if len(old_net) == 0:
+        old_net.append([])
+        old_net.append([{'weights': [0.]} for i in range(n_out)])
+    else:
+        old_net.append([{'weights': [int(i == j) for j in range(n_out+1)]} for i in range(n_out)])
+        old_net.append([{'weights': [int(i == j) for j in range(n_out+1)]} for i in range(n_out)])
+    layer_widths = []
+    for layer in old_net:
+        layer_widths.append(len(layer))
+
+    for idx, (out1, out2, weights, layer) in enumerate(neurons):
+        # enlarge added neurons length
+        extended_weights = [w for w in weights]
+        if layer >= 1:
+            for i in range(n_out):
+                extended_weights[-1:-1] = [0]
+        old_net[layer].append({'weights': extended_weights})
+        # enlarge the next layers connections
+        for output in range(layer_widths[layer+1]):
+            if output < n_out and output == out1:
+                old_net[layer+1][output]['weights'][-1:-1] = [1.]
+                # old_net[layer+1][output]['weights'].append(0.)
+            else:
+                old_net[layer+1][output]['weights'][-1:-1] = [0.]
+                # old_net[layer+1][output]['weights'].append(0.)
+    return old_net
 
 def create_network(net, only_2D=False, polar=False):
     neurons = determine_boundary_vectors(net, only_2D=only_2D, polar=polar)

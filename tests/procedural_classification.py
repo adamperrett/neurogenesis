@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'wine'
+test = 'breast'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -23,7 +23,7 @@ if test == 'breast':
     train_feat = training_set_breasts
     test_labels = test_set_labels
     test_feat = test_set_breasts
-    retest_rate = 20#len(train_labels)
+    retest_rate = 1#len(train_labels)
     retest_size = len(test_set_labels)
 elif test == 'wine':
     from wine_data import *
@@ -41,7 +41,7 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 5000
+    retest_rate = 50000
     retest_size = 50
 elif test == 'pima':
     from datasets.pima_indians import *
@@ -177,9 +177,13 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         # classifications.append([choice, label])
         if 'esting' not in test_net_label and train_count % retest_rate == retest_rate - 1:
             print("retesting")
+            if len(test_index) > 1000:
+                test_index_sample = np.random.choice(test_index, retest_size)
+            else:
+                test_index_sample = test_index
             testing_accuracy, training_classifications, \
             testing_confusion, _, _ = test_net(CLASSnet, X, y,
-                                               indexes=test_index,
+                                               indexes=test_index_sample,
                                                test_net_label='Testing',
                                                classifications=classifications,
                                                # fold_test_accuracy=fold_testing_accuracy,
@@ -413,7 +417,7 @@ else:
     sensitivity_width = 0.5
     activation_threshold = 0.0
     error_threshold = 0.1
-    maximum_synapses_per_neuron = 150
+    maximum_synapses_per_neuron = 1500
     fixed_hidden_amount = 0
     # fixed_hidden_ratio = 0.5
     fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -450,7 +454,7 @@ noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'procedural_polar+pos+neg+save{}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+base_label = 'polar_increment+save{}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
              'at{} - et{} - {}adr{} - {}noise'.format(retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,

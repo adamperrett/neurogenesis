@@ -2,7 +2,7 @@ import numpy as np
 import random
 import operator
 import scipy.stats as st
-from models.convert_network import create_network
+from models.convert_network import create_network, build_network
 from tests.backprop_from_activations import forward_propagate
 
 
@@ -304,11 +304,11 @@ class Network():
         hidden_selectivity = {}
         for neuron in self.neuron_selectivity:
             if 'in' in neuron or 'p' in neuron:
-                if len(self.procedural) >= 1:
-                    if 'p' in neuron:
-                        input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
-                else:
-                    input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+                # if len(self.procedural) >= 1:
+                #     if 'p' in neuron:
+                #         input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+                # else:
+                input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
             elif 'out' not in neuron:
                 if self.neuron_selectivity[neuron] == 1.:
                     print("da fuck")
@@ -575,9 +575,13 @@ class Network():
     def convert_net_and_clean(self):
         # self.procedural.append(create_network(self))
         # self.n_procedural_out += self.number_of_classes
-        new_net = create_network(self, polar=True)
-        self.procedural.append(new_net)
-        for layer in new_net:
+        # new_net = create_network(self, polar=True)
+        # self.procedural.append(new_net)
+        # for layer in new_net:
+        #     self.n_procedural_out += len(layer)
+        self.procedural = build_network(self, polar=True)
+        self.n_procedural_out = 0
+        for layer in self.procedural:
             self.n_procedural_out += len(layer)
         # self.number_of_inputs + len(self.procedural[-1])
         # for i in range(self.number_of_inputs):
@@ -589,10 +593,10 @@ class Network():
         if len(self.procedural) == 0:
             return output, inputs[2:]
         all_out = []
-        for net in self.procedural:
-            pro_out, neuron_out = forward_propagate(net, inputs)
-            inputs = np.hstack([inputs, neuron_out])
-            all_out = np.hstack([all_out, neuron_out])
+        # for net in self.procedural:
+        pro_out, neuron_out = forward_propagate(self.procedural, inputs)
+        inputs = np.hstack([inputs, neuron_out])
+        all_out = np.hstack([all_out, neuron_out])
         for out, value in enumerate(pro_out):
             output[out] += value
         return output, all_out
