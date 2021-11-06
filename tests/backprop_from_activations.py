@@ -32,6 +32,28 @@ def create_initial_network(hidden_weights, output_weights, multi_layered=False):
     network.append(output_layer)
     return network
 
+def create_matrix_network(hidden_weights, output_weights, multi_layered=False):
+    network = list()
+
+    if multi_layered:
+        for hw in hidden_weights:
+            network.append(np.array(hw))
+    else:
+        network.append(np.array(hidden_weights))
+    network.append(np.array(output_weights))
+    return network
+
+def forward_matrix_propagate(network, inputs):
+    activity = []
+    for l, layer in enumerate(network):
+        # if l < len(network) - 1:
+        activation = transfer(np.matmul(np.hstack([inputs, [1]]), layer.T))
+        # else:
+        #     activation = np.matmul(np.hstack([inputs, [1]]), layer.T)
+        activity = np.hstack([activity, activation])
+        inputs = activation
+    return inputs, activity
+
 # Calculate neuron activation for an input
 def activate(weights, inputs):
     activation = weights[-1]

@@ -3,7 +3,7 @@ import random
 import operator
 import scipy.stats as st
 from models.convert_network import create_network, build_network
-from tests.backprop_from_activations import forward_propagate
+from tests.backprop_from_activations import forward_propagate, forward_matrix_propagate
 
 
 class Synapses():
@@ -306,8 +306,11 @@ class Network():
             if 'in' in neuron or 'p' in neuron:
                 # if len(self.procedural) >= 1:
                 #     if 'p' in neuron:
+                #         # if 'p2' in neuron or 'p3' in neuron:
                 #         input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
                 # else:
+                #     if 'in' in neuron:
+                #         input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
                 input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
             elif 'out' not in neuron:
                 if self.neuron_selectivity[neuron] == 1.:
@@ -426,8 +429,10 @@ class Network():
             return pruned_connections
         else:
             # print("add thresholded selection here here")
-            return dict(random.sample(list(connections.items()), min(self.max_hidden_synapses,
-                                                                     len(connections))))
+            no_hidden = self.remove_hidden_neurons(connections)
+            return dict(random.sample(list(no_hidden.items()),
+                                      min(self.max_hidden_synapses,
+                                          len(no_hidden))))
 
     def response(self, activations, replay=False):
         # for i in range(self.layers):
@@ -572,17 +577,27 @@ class Network():
         # for i in range(self.number_of_classes):
         #     self.neurons['out{}'.format(i)].synapses = {}
 
+    def remove_hidden_neurons(self, connections):
+        new_conn = {}
+        for conn in connections:
+            if 'in' in conn or 'p' in conn:
+                new_conn[conn] = connections[conn]
+        return new_conn
+
     def convert_net_and_clean(self):
         # self.procedural.append(create_network(self))
         # self.n_procedural_out += self.number_of_classes
-        # new_net = create_network(self, polar=True)
-        # self.procedural.append(new_net)
-        # for layer in new_net:
-        #     self.n_procedural_out += len(layer)
-        self.procedural = build_network(self, polar=True)
-        self.n_procedural_out = 0
-        for layer in self.procedural:
+        if len(self.procedural) >= 1:
+            new_net = create_network(self, polar=True)
+        else:
+            new_net = create_network(self, polar=True)
+        self.procedural.append(new_net)
+        for layer in new_net:
             self.n_procedural_out += len(layer)
+        # self.procedural = build_network(self, polar=True)
+        # self.n_procedural_out = 0
+        # for layer in self.procedural:
+        #     self.n_procedural_out += len(layer)
         # self.number_of_inputs + len(self.procedural[-1])
         # for i in range(self.number_of_inputs):
         #     self.neuron_activity['in{}'.format(i)] = 0.
@@ -593,13 +608,28 @@ class Network():
         if len(self.procedural) == 0:
             return output, inputs[2:]
         all_out = []
-        # for net in self.procedural:
-        pro_out, neuron_out = forward_propagate(self.procedural, inputs)
-        inputs = np.hstack([inputs, neuron_out])
-        all_out = np.hstack([all_out, neuron_out])
-        for out, value in enumerate(pro_out):
-            output[out] += value
-        return output, all_out
+        all_act = []
+        for net in self.procedural:
+            # pro_out, neuron_out = forward_propagate(self.procedural, inputs)
+            # pro_out, neuron_out = forward_propagate(net, inputs)
+            pro_out, neuron_out = forward_matrix_propagate(net, inputs)
+            inputs = np.hstack([inputs, neuron_out])
+            all_act = np.hstack([all_act, neuron_out])
+            if len(all_out):
+                all_out = np.vstack([all_out, pro_out])
+            else:
+                all_out = [pro_out]
+        # for out, value in enumerate(pro_out):
+        #     output[out] += value
+
+        if len(self.procedural) >= 1:
+            for out, value in enumerate(all_out[-1]):
+                output[out] += value
+        else:
+            for net in all_out:
+                for out, value in enumerate(net):
+                    output[out] += value
+        return output, all_act
 
     def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1.):
         if np.max(np.abs(output_error)) > self.error_threshold:

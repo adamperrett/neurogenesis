@@ -30,7 +30,7 @@ variables = [10, 50, 100, 150, 200, 300, 400, 500, 600]
 #              0.00005, 0.000075, 0.0001, 0.00025, 0.0005, 0.00075, 0.001]
 # variables = [0.0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2]
 # variables = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-variables = [1.]
+variables = ['', '2']
 colours = pl.cm.plasma(np.linspace(0, 1, len(variables)))
 
 all_average = []
@@ -48,8 +48,8 @@ for idx, variable in enumerate(variables):
     # base_file_name = 'noOut no-lr0.1 sm0.0 RL0.99999  - wine fixed_h0 - ' \
     #                  'sw0.9n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise 4'
     # base_file_name = '{}  - mnist fixed_h0 - sw0.6 - at0.0 - et0.0 - 1.0adr0.999999'.format(variable)
-    base_file_name = 'procedural0.5out150 sm0.0 RL0.99999  - ' \
-                     'wine fixed_h0 - sw0.5n0.0 - at0.0 - et0.1 - 1.0adr1.0 - 0.0noise'
+    base_file_name = 'polar{}_increment+save1ms1500 sm0.0 RL0.99999  - ' \
+                     'breast fixed_h0 - sw0.5n0.0 - at0.0 - et0.1 - 1.0adr1.0 - 0.0noise'.format(variable)
     print(base_file_name)
     # base_file_name = pen_label
     # base_file_name = 'withoutOUT out RL0.99999 net3000000x100  - wine fixed_h50 - ' \
@@ -122,7 +122,7 @@ for idx, variable in enumerate(variables):
             except:
                 None
         max_data.append(max(time_slice))
-        average_data.append(np.average(time_slice)*variable)
+        average_data.append(np.average(time_slice))
         std_dev_data.append(np.std(time_slice))
         std_err_data.append(np.std(time_slice) / np.sqrt(j))
     if collect == 'epoch error':

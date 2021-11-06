@@ -2,11 +2,11 @@ import numpy as np
 from scipy.special import softmax as sm
 from copy import deepcopy
 from models.neurogenesis import Network
-from datasets.simple_tests import create_centroid_classes, create_bimodal_distribution
+from datasets.simple_tests import *
 from models.convert_network import *
 import random
 import matplotlib
-saving_plots = True
+saving_plots = False
 if saving_plots:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'breast'
+test = 'simple'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -41,7 +41,7 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 50000
+    retest_rate = 100
     retest_size = 50
 elif test == 'pima':
     from datasets.pima_indians import *
@@ -53,14 +53,18 @@ elif test == 'pima':
     retest_rate = 50
     retest_size = len(test_set_pimas)
 elif test == "simple":
-    # centres = [[1, 1],
-    #            [0, 0]]
+    # centres = [[.5, -.5],
+    #            [.5, .5],
+    #            [-.5, .5],
+    #            [-.5, -.5]]
     centres = [[1, 0],
                [0, 0],
+               # [0, -0.5],
                [-1, 0]]
-               # [0, 1]]
-    spread = 0.3
-    examples = 100
+    x_range = [-2, 2]
+    y_range = [-2, 2]
+    spread = 0.1
+    examples = 50
     test_set_size = 0.1
     # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
     num_outputs = 2
@@ -70,6 +74,35 @@ elif test == "simple":
     train_feat = simple_data[:int(examples*len(centres)*(1. - test_set_size))]
     test_labels = simple_labels[int(examples*len(centres)*(1. - test_set_size)):]
     test_feat = simple_data[int(examples*len(centres)*(1. - test_set_size)):]
+    retest_rate = 1
+    retest_size = len(test_feat)
+elif test == 'yinyang':
+    examples = 500
+    num_outputs = 3
+    test_set_size = 0.1
+    x_range = [-0.1, 1.1]
+    y_range = [-0.1, 1.1]
+    yy = YinYangDataset(size=examples)
+    simple_data = yy._YinYangDataset__vals
+    simple_labels = yy._YinYangDataset__cs
+    train_labels = simple_labels[:int(examples*(1. - test_set_size))]
+    train_feat = simple_data[:int(examples*(1. - test_set_size))]
+    test_labels = simple_labels[int(examples*(1. - test_set_size)):]
+    test_feat = simple_data[int(examples*(1. - test_set_size)):]
+    retest_rate = 1
+    retest_size = len(test_feat)
+elif test == 'spiral':
+    examples = 250
+    num_outputs = 2
+    simple_data, simple_labels = twospirals(examples)
+    examples *= 2
+    test_set_size = 0.1
+    train_labels = simple_labels[:int(examples*(1. - test_set_size))].tolist()
+    train_feat = simple_data[:int(examples*(1. - test_set_size))].tolist()
+    test_labels = simple_labels[int(examples*(1. - test_set_size)):].tolist()
+    test_feat = simple_data[int(examples*(1. - test_set_size)):].tolist()
+    x_range = [-0.1, 1.1]
+    y_range = [-0.1, 1.1]
     retest_rate = 1
     retest_size = len(test_feat)
 if 'mnist' in test:
@@ -95,6 +128,12 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         train_count += 1
         features = data[test]
         label = labels[test]
+        # if label == remove_class:
+        #     r = np.random.random()
+        #     if r < 1:#0.95:
+        #         continue
+        #     else:
+        #          print("random point added")
         noise = np.random.normal(scale=noise_stdev, size=np.array(features).shape)
         activations = net.convert_inputs_to_activations(np.array(features) + noise)
         activations = net.response(activations)
@@ -192,7 +231,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             fold_testing_accuracy.append(round(testing_accuracy, 3))
             best_testing_accuracy.append(round(testing_accuracy, 3))
             print("finished")
-            # CLASSnet.convert_net_and_clean()
+            # if train_count % 10 == 0:
+                # CLASSnet.convert_net_and_clean()
+                # determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
             # determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         # neuron_counts.append(CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
         if 'esting' not in test_net_label:
@@ -224,9 +265,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     correct_classifications /= train_count
     if 'esting' not in test_net_label:
         if len(train_feat[0]) == 2:
-            determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
+            # determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
             # memory_to_procedural(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
-            # determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
+            determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
             # memory_to_procedural(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
               correct_classifications)
@@ -416,11 +457,11 @@ if read_args:
 else:
     sensitivity_width = 0.5
     activation_threshold = 0.0
-    error_threshold = 0.1
-    maximum_synapses_per_neuron = 1500
-    fixed_hidden_amount = 0
-    # fixed_hidden_ratio = 0.5
-    fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
+    error_threshold = 0.0
+    maximum_synapses_per_neuron = 500
+    # fixed_hidden_amount = 0
+    fixed_hidden_ratio = 0.0
+    # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*3000000
     input_spread = 0
     activity_decay_rate = 1.#0.9999
@@ -439,7 +480,7 @@ max_out_synapses = 50000
 always_inputs = False
 replaying = False
 error_type = 'sm'
-epochs = 5
+epochs = 10
 repeats = 10
 width_noise = 0.#5
 noise_level = 0.#5
@@ -449,18 +490,19 @@ visualise_rate = 1
 np.random.seed(27)
 confusion_decay = 0.8
 always_save = True
+remove_class = 2
 
 noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'polar_increment+save{}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+base_label = 'polar_increment_caped+save{}x10ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
              'at{} - et{} - {}adr{} - {}noise'.format(retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
-                                                   # fixed_hidden_ratio,
-                                                    fixed_hidden_amount,
+                                                   fixed_hidden_ratio,
+                                                    # fixed_hidden_amount,
                                                    sensitivity_width, width_noise,
                                                    activation_threshold,
                                                    error_threshold,
@@ -532,7 +574,34 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
     running_synapse_counts = np.zeros([1])
     running_neuron_counts = np.zeros([1])
     only_lr = True
+    # CLASSnet.procedural = [[np.array([[0., -1.8, 0.],
+    #                                   [-1.8, 0., 0]]),
+    #
+    #                         np.array([[1.7, 1.7, -1.4],
+    #                                   [1.9, 1.9, 1.5]])#,
+    #
+    #                         # np.array([[1, 0]])
+    #                         # np.array([[-2.8, 2.8, 0.],
+    #                         #           [2.8, -2.8, 5.]])
+    #                         ]]
+    # CLASSnet.n_procedural_out = 4
+    CLASSnet.procedural = [[np.array([[1., 0., -0.5],
+                                      [-1., 0., -0.5]])#,
+                            # np.array([[1, -1, 0],
+                            #           [1, 1, 0],
+                            #           [-1, 1, 0]])
+                            ]]
+    CLASSnet.n_procedural_out = 2
+    # a = forward_matrix_propagate(CLASSnet.procedural[0], [-1, 0])
+    # b = forward_matrix_propagate(CLASSnet.procedural[0], [0.5, 0])
+    # c = forward_matrix_propagate(CLASSnet.procedural[0], [0, 0])
+    # d = forward_matrix_propagate(CLASSnet.procedural[0], [-0.5, 0])
+    # e = forward_matrix_propagate(CLASSnet.procedural[0], [1, 0])
+    # # forward_matrix_propagate(CLASSnet.procedural[0], [1, -1])
+    # determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
     for epoch in range(epochs):
+        if epoch > 0:
+            remove_class = (remove_class + 1) % num_outputs
         if epoch % 4 == 3:
             only_lr = not only_lr
         if epoch % 10 == 0 and epoch:
@@ -585,7 +654,8 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                                 max_fold=maximum_fold_accuracy)
             CLASSnet.convert_net_and_clean()
             if len(train_feat[0]) == 2:
-                determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
+                determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
+                # determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
             running_synapse_counts = np.hstack([running_synapse_counts, synapse_counts])
             running_neuron_counts = np.hstack([running_neuron_counts, neuron_counts])
             # training_classifications += new_classifications
@@ -635,17 +705,17 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                     plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
             if current_fold % 10 == 0 and current_fold:
                 print("it reached 10 folds")
-            if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
-                total_test_accuracy, _, \
-                full_test_confusion, _, _ = test_net(CLASSnet, X, y,
-                                                     test_net_label='Testing',
-                                                     classifications=training_classifications,
-                                                     # fold_test_accuracy=fold_testing_accuracy,
-                                                     fold_string=fold_string,
-                                                     max_fold=maximum_fold_accuracy
-                                                     )
-                maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold,
-                                              CLASSnet.hidden_neuron_count])
+            # if testing_accuracy > maximum_fold_accuracy[-1][0] and 'mnist' not in test:
+            #     total_test_accuracy, _, \
+            #     full_test_confusion, _, _ = test_net(CLASSnet, X, y,
+            #                                          test_net_label='Testing',
+            #                                          classifications=training_classifications,
+            #                                          # fold_test_accuracy=fold_testing_accuracy,
+            #                                          fold_string=fold_string,
+            #                                          max_fold=maximum_fold_accuracy
+            #                                          )
+            #     maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold,
+            #                                   CLASSnet.hidden_neuron_count])
         if 'mnist' in test:
             final_procedural_accuracy = np.mean(training_classifications[-len(train_index):])
         else:
@@ -666,12 +736,18 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                                  fold_string=fold_string,
                                                  max_fold=maximum_fold_accuracy)
 
-            epoch_error.append([final_accuracy, final_procedural_accuracy, fold_testing_accuracy[-1], full_testing_accuracy,
+            epoch_error.append([round(final_accuracy, 4),
+                                round(final_procedural_accuracy, 4),
+                                fold_testing_accuracy[-1],
+                                round(full_testing_accuracy, 4),
                                 CLASSnet.hidden_neuron_count, CLASSnet.deleted_neuron_count])
             running_test_confusion *= confusion_decay
             running_test_confusion += full_test_confusion
         else:
-            epoch_error.append([final_accuracy, final_procedural_accuracy, fold_testing_accuracy[-1], testing_accuracy,
+            epoch_error.append([round(final_accuracy, 4),
+                                round(final_procedural_accuracy, 4),
+                                fold_testing_accuracy[-1],
+                                round(testing_accuracy, 4),
                                 CLASSnet.hidden_neuron_count, CLASSnet.deleted_neuron_count])
             running_test_confusion *= confusion_decay
             running_test_confusion += testing_confusion

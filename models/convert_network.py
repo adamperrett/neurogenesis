@@ -6,7 +6,8 @@ from scipy.spatial import distance
 from math import comb
 import random
 from copy import deepcopy
-from tests.backprop_from_activations import create_initial_network, forward_propagate
+from tests.backprop_from_activations import *
+import seaborn  as sns
 
 def collect_n_centroids_per_output(net, output, n, only_2D=False):
     class_and_values = []
@@ -65,13 +66,19 @@ def collect_centroids_per_output(net, output, weight_norm=True, only_2D=False):
 
 
 
-def collect_polar_centroids(net, output, weight_norm=True, only_2D=False, split=True):
-    positive_input_values = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
-    positive_input_count = [0 for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
-    negative_input_values = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
-    negative_input_count = [0 for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+def collect_polar_centroids(net, output, weight_norm=True, only_2D=False, split=False):
+    n_positive_input_values = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+    n_positive_input_count = [0 for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+    n_negative_input_values = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+    n_negative_input_count = [0 for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+    w_positive_input_values = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+    w_positive_input_count = [0 for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+    w_negative_input_values = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+    w_negative_input_count = [0 for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+    weight_values = []
     for pre in net.neurons['out{}'.format(output)].synapses:
         weight = net.neurons['out{}'.format(output)].synapses[pre][0].weight
+        weight_values.append(weight)
         # if net.neurons[pre].output == output:
         for inp in net.neurons[pre].synapses:
             if 'in' in inp or 'p' in inp:
@@ -83,39 +90,51 @@ def collect_polar_centroids(net, output, weight_norm=True, only_2D=False, split=
                         if only_2D:
                             continue
                         in_index = int(inp.replace('p', '')) + net.number_of_inputs
-                    if weight_norm:
-                        if weight > 0:
-                            positive_input_values[in_index] += syn.freq * weight
-                            positive_input_count[in_index] += weight
-                        elif weight < 0:
-                            negative_input_values[in_index] += syn.freq * weight
-                            negative_input_count[in_index] += weight
-                    else:
-                        if weight > 0:
-                            positive_input_values[in_index] += syn.freq * weight
-                            positive_input_count[in_index] += weight
-                        elif weight < 0:
-                            negative_input_values[in_index] += syn.freq * weight
-                            negative_input_count[in_index] += weight
-    for idx, count in enumerate(positive_input_count):
+                    # if weight_norm:
+                    if weight > 0:
+                        w_positive_input_values[in_index] += syn.freq * weight
+                        w_positive_input_count[in_index] += weight
+                    elif weight < 0:
+                        w_negative_input_values[in_index] += syn.freq * weight
+                        w_negative_input_count[in_index] += weight
+                    # else:
+                    if weight > 0:
+                        n_positive_input_values[in_index] += syn.freq #* weight
+                        n_positive_input_count[in_index] += 1#weight
+                    elif weight < 0:
+                        n_negative_input_values[in_index] += syn.freq #* weight
+                        n_negative_input_count[in_index] += 1#weight
+    for idx, count in enumerate(w_positive_input_count):
         if count != 0:
-            positive_input_values[idx] /= count
-    for idx, count in enumerate(negative_input_count):
+            w_positive_input_values[idx] /= count
+    for idx, count in enumerate(w_negative_input_count):
         if count != 0:
-            negative_input_values[idx] /= count
+            w_negative_input_values[idx] /= count
+    for idx, count in enumerate(n_positive_input_count):
+        if count != 0:
+            n_positive_input_values[idx] /= count
+    for idx, count in enumerate(n_negative_input_count):
+        if count != 0:
+            n_negative_input_values[idx] /= count
+    diff_pos_values = []
+    diff_neg_values = []
+    for val in range(len(n_positive_input_values)):
+        diff_pos_values.append(n_positive_input_values[val] - w_positive_input_values[val])
+    for val in range(len(n_negative_input_values)):
+        diff_neg_values.append(n_negative_input_values[val] - w_negative_input_values[val])
     if split:
         splits = [net.number_of_inputs]
         for hidden in net.procedural:
             splits.append(len(hidden) + splits[-1])# + net.number_of_classes)
-        split_neg = [negative_input_values[:splits[0]]]
-        split_pos = [positive_input_values[:splits[0]]]
+        split_neg = [w_negative_input_values[:splits[0]]]
+        split_pos = [w_positive_input_values[:splits[0]]]
         layered_splits = [[output, np.array(split_neg[-1]), np.array(split_pos[-1]), 0]]
         for s in range(len(splits)-1):
-            split_neg.append(negative_input_values[splits[s]:splits[s+1]])
-            split_pos.append(positive_input_values[splits[s]:splits[s+1]])
+            split_neg.append(w_negative_input_values[splits[s]:splits[s+1]])
+            split_pos.append(w_positive_input_values[splits[s]:splits[s+1]])
             layered_splits.append([output, np.array(split_neg[-1]), np.array(split_pos[-1]), s+1])
         return layered_splits
-    return output, np.array(negative_input_values), np.array(positive_input_values)
+    return output, np.array(n_negative_input_values), np.array(n_positive_input_values)
 
 '''
 saved value to weight:
@@ -126,7 +145,7 @@ saved value to weight:
         as input decreases it gets further from the saved value
 '''
 
-def convert_neurons_to_centroids(net, weight_norm=True, n=5, only_2D=False, polar=False):
+def convert_neurons_to_centroids(net, weight_norm=True, n=7, only_2D=False, polar=False):
     # return [[0, np.array([1, 0])],
     #            [0, np.array([-1, 0])],
     #            [1, np.array([0, 0])]]
@@ -174,17 +193,21 @@ def collect_all_stored_values(net):
 def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], labels=[], weight_norm=True):
     num_outputs = net.number_of_classes
     points = [[] for i in range(num_outputs)]
-    for x in np.linspace(x_range[0], x_range[1], resolution):
+    heat_map = [[[0. for i in range(resolution)] for j in range(resolution)] for o in range(num_outputs+1)]
+    new_coords = [[] for i in range(num_outputs)]
+    for i, x in enumerate(np.linspace(x_range[0], x_range[1], resolution)):
         print(x, "/", x_range[1])
-        for y in np.linspace(y_range[0], y_range[1], resolution):
+        for j, y in enumerate(np.linspace(y_range[0], y_range[1], resolution)):
             activations = net.convert_inputs_to_activations(np.array([x, y]))
             activations = net.response(activations)
             output_activations = np.zeros(num_outputs)
             non_zero = True
             for output in range(num_outputs):
                 output_activations[output] = activations['out{}'.format(output)]
+                heat_map[output][j][i] = output_activations[output]
                 if output_activations[output] != 0:
                     non_zero = False
+            heat_map[-1][j][i] = heat_map[1][j][i] - heat_map[0][j][i]
             if non_zero:
                 output = num_outputs
             else:
@@ -193,6 +216,9 @@ def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], l
     data_grouped = [[] for i in range(num_outputs)]
     for d, l in zip(data, labels):
         data_grouped[l].append(d)
+        activations = net.convert_inputs_to_activations(d)
+        activations = net.response(activations)
+        new_coords[l].append([activations['out0'], activations['out1']])
     colours = pl.cm.plasma(np.linspace(0, 1, num_outputs))
     plt.figure()
     for i in range(num_outputs):
@@ -215,6 +241,36 @@ def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], l
     plt.xlim(x_range)
     plt.ylim(y_range)
     plt.show()
+    fig, ax = plt.subplots(2, 2)
+    im1 = ax[0][0].imshow(heat_map[0], cmap='viridis', extent=[x_range[0], x_range[1], y_range[0], y_range[1]])
+    im2 = ax[0][1].imshow(heat_map[1], cmap='viridis', extent=[x_range[0], x_range[1], y_range[0], y_range[1]])
+    im3 = ax[1][0].imshow(heat_map[2], cmap='viridis', extent=[x_range[0], x_range[1], y_range[0], y_range[1]])
+    for i in range(num_outputs):
+        ax[1][1].scatter(np.array(new_coords[i])[:, 0],
+                        np.array(new_coords[i])[:, 1])
+        cent = [np.average(np.array(new_coords[i])[:, 0]), np.average(np.array(new_coords[i])[:, 1])]
+        ax[1][1].scatter(cent[0], cent[1], s=200)
+    cbar1 = fig.colorbar(im1, ax=ax[0][0])
+    cbar2 = fig.colorbar(im2, ax=ax[0][1])
+    cbar3 = fig.colorbar(im3, ax=ax[1][0])
+    fig.tight_layout()
+    plt.show()
+    # ax = sns.heatmap(heat_map[0], linewidth=0.5)
+    # plt.show()
+    # ax2 = sns.heatmap(heat_map[1], linewidth=0.5)
+    # plt.show()
+    # plt.imshow(heat_map[0], cmap='hot', interpolation='nearest')
+    # plt.show()
+    # plt.imshow(heat_map[1], cmap='hot', interpolation='nearest')
+    # fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+    # a1 = sns.heatmap(heat_map[0], cmap="YlGnBu", ax=ax1, yticklabels=np.linspace(y_range[0], y_range[1], 10))
+    # a2 = sns.heatmap(heat_map[1], cmap="YlGnBu", ax=ax2, yticklabels=np.linspace(y_range[0], y_range[1], 10))
+    # a3 = sns.heatmap(heat_map[2], cmap="YlGnBu", ax=ax3, yticklabels=np.linspace(y_range[0], y_range[1], 10))
+    # plt.show()
+    # fig, (ax2) = plt.subplots(1, 1)
+    # ax1 = sns.heatmap(heat_map[0], cmap="YlGnBu")
+    # ax2 = sns.heatmap(heat_map[1], cmap="YlGnBu")
+    # plt.show()
     return points
 
 
@@ -227,34 +283,41 @@ def determine_boundary_vectors(net, only_2D=False, polar=False):
         print(centroids)
         pos_cent = []
         neg_cent = []
-        for out, c_a, c_b, layer in centroids:
+        # for out, c_a, c_b, layer in centroids:
+        for out, c_a, c_b in centroids:
             neg_cent.append([out, c_a])
             pos_cent.append([out, c_b])
+            if c_a.tolist() == c_b.tolist():
+                print("This shouldn't happen")
+                continue
+            if '{}'.format([c_a, c_b]) in done:
+                continue
             done.append('{}'.format([c_a, c_b]))
             done.append('{}'.format([c_b, c_a]))
-            midpoints.append([out, out, c_a, c_b, distance.euclidean(c_a, c_b),
-                              (np.array(c_a) + np.array(c_b)) / 2.,
-                              (c_b - c_a)])
             dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
                                  (c_b - c_a))
+            midpoints.append([out, out, c_a, c_b, distance.euclidean(c_a, c_b),
+                              (np.array(c_a) + np.array(c_b)) / 2.,
+                              (c_b - c_a), dot_product])
             bias = -dot_product
             # square the distance to make it as broad as the centroids are apart
             vectors.append([out, out,
                             # np.hstack([c_b - c_a, bias]) / np.power(distance.euclidean(c_a, c_b), 2), layer])
-                            np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b), layer])
-        # for a, c_a in pos_cent:
-        #     for b, c_b in pos_cent:
-        #         if a != b and '{}'.format([c_a, c_b]) not in done and c_a.all() != c_b.all():
-        #             done.append('{}'.format([c_a, c_b]))
-        #             done.append('{}'.format([c_b, c_a]))
-        #             midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
-        #                               (np.array(c_a) + np.array(c_b)) / 2.,
-        #                               (c_b - c_a)])
-        #             dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
-        #                                  (c_b - c_a))
-        #             bias = -dot_product
-        #             vectors.append([a, b,
-        #                             np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
+                            # np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b), layer])
+                            np.hstack([c_b - c_a, bias]) / np.power(distance.euclidean(c_a, c_b), 1)])
+        for a, c_a in pos_cent:
+            for b, c_b in pos_cent:
+                if a != b and '{}'.format([c_a, c_b]) not in done and c_a.tolist() != c_b.tolist():
+                    done.append('{}'.format([c_a, c_b]))
+                    done.append('{}'.format([c_b, c_a]))
+                    midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
+                                      (np.array(c_a) + np.array(c_b)) / 2.,
+                                      (c_b - c_a)])
+                    dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
+                                         (c_b - c_a))
+                    bias = -dot_product
+                    vectors.append([a, b,
+                                    np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
         # for a, c_a in neg_cent:
         #     for b, c_b in neg_cent:
         #         if a != b and '{}'.format([c_a, c_b]) not in done and c_a.all() != c_b.all():
@@ -303,24 +366,31 @@ def determine_boundary_vectors(net, only_2D=False, polar=False):
     #     activations = net.convert_inputs_to_activations(midpoint[4])
     #     activations = net.response(activations)
     #     if activations['out{}'.format(a)] > activations['out{}'.format(b)]:
+    print("vectors:\n", vectors)
     return vectors
 
-def build_network(net, only_2D=False, polar=False):
+def build_network(net, only_2D=False, polar=False, max_layers=6):
     neurons = determine_boundary_vectors(net, only_2D=only_2D, polar=polar)
     n_out = net.number_of_classes
     v_out = len(neurons)
     old_net = deepcopy(net.procedural)
-    if len(old_net) == 0:
-        old_net.append([])
-        old_net.append([{'weights': [0.]} for i in range(n_out)])
-    else:
-        old_net.append([{'weights': [int(i == j) for j in range(n_out+1)]} for i in range(n_out)])
-        old_net.append([{'weights': [int(i == j) for j in range(n_out+1)]} for i in range(n_out)])
+    if len(old_net) <= max_layers:
+        if len(old_net) == 0:
+            old_net.append([])
+            old_net.append([{'weights': [0.]} for i in range(n_out)])
+        else:
+            old_net.append([{'weights': [int(i == j) for j in range(n_out+1)]} for i in range(n_out)])
+            old_net.append([{'weights': [int(i == j) for j in range(n_out+1)]} for i in range(n_out)])
     layer_widths = []
     for layer in old_net:
         layer_widths.append(len(layer))
 
     for idx, (out1, out2, weights, layer) in enumerate(neurons):
+        for w in weights:
+            if w != w:
+                print("oh no")
+        if layer >= max_layers:
+            continue
         # enlarge added neurons length
         extended_weights = [w for w in weights]
         if layer >= 1:
@@ -354,7 +424,8 @@ def create_network(net, only_2D=False, polar=False):
         else:
             output_weights[out1][idx] = -1
             output_weights[out2][idx] = 1
-    network = create_initial_network(hidden_weights, output_weights)
+    # network = create_initial_network(hidden_weights, output_weights)
+    network = create_matrix_network(hidden_weights, output_weights)
     return network
 
 def test_2D_network(net, x_range, y_range, resolution, data=[], labels=[]):

@@ -37,7 +37,7 @@ elif test == 'mnist':
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
     retest_rate = 1000
-    retest_size = 50
+    retest_size = 100
 elif test == 'pima':
     from datasets.pima_indians import *
     num_outputs = 2
@@ -73,7 +73,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         print(test_net_label, "\nEpoch ", epoch, "/", epochs)
         print(fold_string)
         print('test ', train_count, '/', len(indexes))
-        error, choice = calculate_error(label, activations, train_count, num_outputs)
+        error, choice = calculate_error(label, activations, test_label, num_outputs)
         neuron_count = CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count
         print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
               CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
@@ -89,7 +89,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             if 'esting' not in test_net_label:
                 # net.reinforce_neurons(1.)
                 classifications.append(1)
-                # net.age_output_synapses(reward=True)
+                neuron_label = net.error_driven_neuro_genesis(activations, error)#, label)
             print("CORRECT CLASS WAS CHOSEN")
             # if error[choice] < -0.5:
             #     net.error_driven_neuro_genesis(activations, error, label)
@@ -109,6 +109,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 # if net.hidden_neuron_count > max_out_synapses:
                 #     net.remove_worst_output()
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
+
         # classifications.append([choice, label])
         print("Performance over all current tests")
         print(correct_classifications / train_count)
@@ -121,6 +122,11 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             print("Performance over last", len(fold_test_accuracy), "folds")
             for window in fold_average_windows:
                 print(np.average(fold_test_accuracy[-window:]), ":", window)
+        if procedural_testing_accuracy:
+            print("Procedural testing accuracy", procedural_testing_accuracy)
+            print("Performance over last", len(procedural_testing_accuracy), "folds")
+            for window in fold_average_windows:
+                print(np.average(procedural_testing_accuracy[-window:]), ":", window)
         print("\n")
     # print(incorrect_classes)
     # all_incorrect_classes.append(incorrect_classes)
@@ -168,8 +174,12 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     axs[1][0].set_title("Neuron count")
     if len(epoch_error):
         if len(epoch_error) <= 10:
-            data = np.array(epoch_error)[:, 1].reshape([len(epoch_error), 1])
-            axs[1][1].table(cellText=data, colLabels=['epoch accuracy'],
+            data = np.hstack([np.array(epoch_error)[:, 0].reshape([len(epoch_error), 1]),
+                    np.array(epoch_error)[:, 1].reshape([len(epoch_error), 1]),
+                    np.array(epoch_error)[:, 2].reshape([len(epoch_error), 1]),
+                    np.array(epoch_error)[:, 3].reshape([len(epoch_error), 1])])
+            axs[1][1].table(cellText=data, colLabels=['training accuracy', 'procedural training',
+                                                      'testing accuracy', 'procedural accuracy'],
                             rowLabels=['{}'.format(i) for i in range(len(epoch_error))],
                             loc="center")
             axs[1][1].axis('off')
@@ -265,6 +275,7 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
 
     # print("Error for test ", test_label, " is ", error)
     # print("output")
+    # if 'esting' not in test_label:
     for output in range(num_outputs):
         print("{} - {}:{} - sm:{} - err:{}".format(one_hot_encoding[output],
                                                    output,
@@ -291,12 +302,12 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.6
+    sensitivity_width = 0.5
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 150
+    maximum_synapses_per_neuron = 1500
     # fixed_hidden_amount = 0
-    fixed_hidden_ratio = 0.3
+    fixed_hidden_ratio = 0.
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*3000000
     input_spread = 0
@@ -326,7 +337,7 @@ noise_tests = np.linspace(0, .3, 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'procedural retest{} {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+base_label = 'procedural_saveall retest{} {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(retest_rate, error_type,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
@@ -384,8 +395,10 @@ for repeat in range(repeats):
     epoch_error = []
     noise_results = []
     previous_accuracy = 0
+    previous_full_accuracy = 0
 
     fold_testing_accuracy = [0]
+    procedural_testing_accuracy = [0]
     best_testing_accuracy = [0]
     maximum_fold_accuracy = [[0, 0]]
     training_classifications = []
@@ -430,6 +443,18 @@ for repeat in range(repeats):
                                                fold_test_accuracy=fold_testing_accuracy,
                                                fold_string=fold_string,
                                                max_fold=maximum_fold_accuracy)
+            fold_testing_accuracy.append(round(testing_accuracy, 3))
+            if training_count < len(train_labels):
+                CLASSnet.convert_net_and_clean()
+                procedural_accuracy, training_classifications, \
+                testing_confusion, _, _ = test_net(CLASSnet, test_feat, test_labels,
+                                                   test_net_label='Testing',
+                                                   indexes=testing_indexes,
+                                                   classifications=training_classifications,
+                                                   fold_test_accuracy=fold_testing_accuracy,
+                                                   fold_string=fold_string,
+                                                   max_fold=maximum_fold_accuracy)
+            procedural_testing_accuracy.append(round(procedural_accuracy, 3))
             if previous_accuracy > testing_accuracy + 0.1 and len(fold_testing_accuracy) > 500 and 'mnist' not in test:
                 test_training_accuracy, training_classifications, \
                 test_training_confusion, synapse_counts, \
@@ -442,7 +467,6 @@ for repeat in range(repeats):
                                          max_fold=maximum_fold_accuracy)
                 print("this si where it fucked")
             previous_accuracy = testing_accuracy
-            fold_testing_accuracy.append(round(testing_accuracy, 3))
             running_train_confusion *= confusion_decay
             running_train_confusion += training_confusion
             running_test_confusion *= confusion_decay
@@ -487,11 +511,20 @@ for repeat in range(repeats):
                                                  fold_test_accuracy=fold_testing_accuracy,
                                                  fold_string=fold_string,
                                                  max_fold=maximum_fold_accuracy)
-
-            epoch_error.append([np.mean(training_classifications[-len(train_labels):]), full_testing_accuracy,
-                                CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
             running_test_confusion *= confusion_decay
             running_test_confusion += full_test_confusion
+            CLASSnet.convert_net_and_clean()
+            full_procedural_accuracy, training_classifications, \
+            full_test_confusion, _, _ = test_net(CLASSnet, test_feat, test_labels,
+                                                 test_net_label='Testing',
+                                                 classifications=training_classifications,
+                                                 fold_test_accuracy=fold_testing_accuracy,
+                                                 fold_string=fold_string,
+                                                 max_fold=maximum_fold_accuracy)
+            epoch_error.append([np.mean(training_classifications[-len(train_labels):]), full_testing_accuracy,
+                                full_procedural_accuracy,
+                                running_neuron_counts[-1]])
+                                # CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
         else:
             epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,
                                 CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
