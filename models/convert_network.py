@@ -5,9 +5,11 @@ import matplotlib.pylab as pl
 from scipy.spatial import distance
 from math import comb
 import random
+import operator
 from copy import deepcopy
 from tests.backprop_from_activations import *
 import seaborn  as sns
+from scipy.special import softmax as sm
 
 def collect_n_centroids_per_output(net, output, n, only_2D=False):
     class_and_values = []
@@ -64,6 +66,89 @@ def collect_centroids_per_output(net, output, weight_norm=True, only_2D=False):
     #     return False
     return output, np.array(input_values)
 
+def collect_most_accurate_neurons(net, n=5, only_2D=False):
+    neuron_accuracy = [{} for i in range(net.number_of_classes)]
+    for neuron in net.neurons:
+        if 'in' in neuron or 'out' in neuron:
+            continue
+        input_vals = net.neurons[neuron].connections
+        activations = net.response(deepcopy(input_vals))
+        accuracy = [0. for i in range(net.number_of_classes)]
+        for out in range(net.number_of_classes):
+            accuracy[out] += activations['out{}'.format(out)]
+        sm_accuracy = sm(accuracy)
+        neuron_accuracy[net.neurons[neuron].output][neuron] = sm_accuracy[net.neurons[neuron].output] * 100.
+        # neuron_accuracy[net.neurons[neuron].output][neuron] = accuracy[net.neurons[neuron].output] * 100.
+
+    sorted_accuracy = []
+    selected_neurons = []
+    centroids = []
+    best_neurons = [{} for i in range(net.number_of_classes)]
+    for output, accuracy in enumerate(neuron_accuracy):
+        if not len(accuracy):
+            continue
+        sorted_accuracy.append(dict(sorted(accuracy.items(),
+                                           key=operator.itemgetter(1),
+                                           reverse=True)))
+        while len(best_neurons[output]) < min(n, len(accuracy)):#len(accuracy) / 2:
+            for neuron in sorted_accuracy[-1]:
+                if neuron not in best_neurons[output]:
+                    break
+            input_vals = net.neurons[neuron].connections
+            activations = net.response(deepcopy(input_vals))
+            for neur in sorted_accuracy[-1]:
+                sorted_accuracy[-1][neur] *= 1 - activations[neur]
+            sorted_accuracy.append(dict(sorted(sorted_accuracy[-1].items(),
+                                               key=operator.itemgetter(1),
+                                               reverse=True)))
+            vals = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+            for inp in input_vals:
+                if 'in' in inp:
+                    in_index = int(inp.replace('in', ''))
+                elif 'p' in inp:
+                    if only_2D:
+                        continue
+                    in_index = int(inp.replace('p', '')) + net.number_of_inputs
+                vals[in_index] = input_vals[inp]
+            best_neurons[output][neuron] = vals
+            if len(best_neurons[output]) <= n:
+                centroids.append([output, np.array(vals)])
+            if len(best_neurons[output]) == n:
+                selected_neurons.append(best_neurons[output])
+    return centroids
+
+def collect_n_correct_neurons(net, n=5, only_2D=False):
+    sorted_dics = []
+    selected_neurons = []
+    centroids = []
+    for output, correctness in enumerate(net.correctness):
+        if len(correctness) == 0:
+            continue
+        sorted_dics.append(dict(sorted(correctness.items(),
+                                       key=operator.itemgetter(1),
+                                       reverse=True)))
+        best_neurons = {}
+        for neuron in sorted_dics[-1]:
+            input_vals = {}
+            for syn in net.neurons[neuron].synapses:
+                for s in net.neurons[neuron].synapses[syn]:
+                    input_vals[syn] = s.freq
+            vals = [0. for i in range(net.number_of_inputs + (net.n_procedural_out * (not only_2D)))]
+            for inp in input_vals:
+                if 'in' in inp:
+                    in_index = int(inp.replace('in', ''))
+                elif 'p' in inp:
+                    if only_2D:
+                        continue
+                    in_index = int(inp.replace('p', '')) + net.number_of_inputs
+                vals[in_index] = input_vals[inp]
+            best_neurons[neuron] = vals
+            if len(best_neurons) <= n:
+                centroids.append([output, np.array(vals)])
+            if len(best_neurons) == n:
+                selected_neurons.append(best_neurons)
+                # break
+    return centroids
 
 
 def collect_polar_centroids(net, output, weight_norm=True, only_2D=False, split=False):
@@ -92,11 +177,11 @@ def collect_polar_centroids(net, output, weight_norm=True, only_2D=False, split=
                         in_index = int(inp.replace('p', '')) + net.number_of_inputs
                     # if weight_norm:
                     if weight > 0:
-                        w_positive_input_values[in_index] += syn.freq * weight
-                        w_positive_input_count[in_index] += weight
+                        w_positive_input_values[in_index] += syn.freq * (1 - weight)
+                        w_positive_input_count[in_index] += (1 - weight)
                     elif weight < 0:
-                        w_negative_input_values[in_index] += syn.freq * weight
-                        w_negative_input_count[in_index] += weight
+                        w_negative_input_values[in_index] += syn.freq * (1 + weight)
+                        w_negative_input_count[in_index] += (1 + weight)
                     # else:
                     if weight > 0:
                         n_positive_input_values[in_index] += syn.freq #* weight
@@ -135,6 +220,7 @@ def collect_polar_centroids(net, output, weight_norm=True, only_2D=False, split=
             layered_splits.append([output, np.array(split_neg[-1]), np.array(split_pos[-1]), s+1])
         return layered_splits
     return output, np.array(n_negative_input_values), np.array(n_positive_input_values)
+    # return output, np.array(w_negative_input_values), np.array(w_positive_input_values)
 
 '''
 saved value to weight:
@@ -145,10 +231,14 @@ saved value to weight:
         as input decreases it gets further from the saved value
 '''
 
-def convert_neurons_to_centroids(net, weight_norm=True, n=7, only_2D=False, polar=False):
+def convert_neurons_to_centroids(net, weight_norm=True, n=5, only_2D=False, polar=False, correctness=True):
     # return [[0, np.array([1, 0])],
     #            [0, np.array([-1, 0])],
     #            [1, np.array([0, 0])]]
+    if correctness:
+        # centroids = collect_n_correct_neurons(net, n)
+        centroids = collect_most_accurate_neurons(net, n)
+        return centroids
     values = []
     for out in range(net.number_of_classes):
         if polar:
@@ -197,7 +287,7 @@ def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], l
     new_coords = [[] for i in range(num_outputs)]
     for i, x in enumerate(np.linspace(x_range[0], x_range[1], resolution)):
         print(x, "/", x_range[1])
-        for j, y in enumerate(np.linspace(y_range[0], y_range[1], resolution)):
+        for j, y in enumerate(reversed(np.linspace(y_range[0], y_range[1], resolution))):
             activations = net.convert_inputs_to_activations(np.array([x, y]))
             activations = net.response(activations)
             output_activations = np.zeros(num_outputs)
@@ -233,18 +323,21 @@ def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], l
     if len(all_stored):
         plt.scatter(np.array(all_stored)[:, 0],
                         np.array(all_stored)[:, 1], marker='*')
-    centroids = convert_neurons_to_centroids(net, weight_norm, n=1)
+    centroids = convert_neurons_to_centroids(net, weight_norm, n=10, correctness=True)
     # if centroids:
     for cl, cent in centroids:
         if cent[0] != 0 or cent[1] != 0:
-            plt.scatter(cent[0], cent[1], s=200)
+            if cl % 2:
+                plt.scatter(cent[0], cent[1], marker='+', s=800)
+            else:
+                plt.scatter(cent[0], cent[1], marker='x', s=400)
     plt.xlim(x_range)
     plt.ylim(y_range)
     plt.show()
     fig, ax = plt.subplots(2, 2)
-    im1 = ax[0][0].imshow(heat_map[0], cmap='viridis', extent=[x_range[0], x_range[1], y_range[0], y_range[1]])
-    im2 = ax[0][1].imshow(heat_map[1], cmap='viridis', extent=[x_range[0], x_range[1], y_range[0], y_range[1]])
-    im3 = ax[1][0].imshow(heat_map[2], cmap='viridis', extent=[x_range[0], x_range[1], y_range[0], y_range[1]])
+    im1 = ax[0][0].imshow(heat_map[0], cmap='viridis', extent=x_range+y_range)#[x_range[0], x_range[1], y_range[0], y_range[1]])
+    im2 = ax[0][1].imshow(heat_map[1], cmap='viridis', extent=x_range+y_range)#[x_range[0], x_range[1], y_range[0], y_range[1]])
+    im3 = ax[1][0].imshow(heat_map[2], cmap='viridis', extent=x_range+y_range)#[x_range[0], x_range[1], y_range[0], y_range[1]])
     for i in range(num_outputs):
         ax[1][1].scatter(np.array(new_coords[i])[:, 0],
                         np.array(new_coords[i])[:, 1])
@@ -274,12 +367,12 @@ def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], l
     return points
 
 
-def determine_boundary_vectors(net, only_2D=False, polar=False):
+def determine_boundary_vectors(net, only_2D=False, polar=False, correctness=False):
     midpoints = []
     vectors = []
     done = []
-    if polar:
-        centroids = convert_neurons_to_centroids(net, only_2D=only_2D, polar=polar)
+    if polar and not correctness:
+        centroids = convert_neurons_to_centroids(net, only_2D=only_2D, polar=polar, correctness=correctness)
         print(centroids)
         pos_cent = []
         neg_cent = []
@@ -296,15 +389,22 @@ def determine_boundary_vectors(net, only_2D=False, polar=False):
             done.append('{}'.format([c_b, c_a]))
             dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
                                  (c_b - c_a))
+
+            n = net.number_of_classes
+            new_vector = c_b - c_a
+            zero_ind = np.argpartition(np.abs(new_vector[:-1]), -n)[:-n]
+            new_vector[zero_ind] = 0.
+            new_dot = np.dot((np.array(c_a) + np.array(c_b)) / 2., new_vector)
             midpoints.append([out, out, c_a, c_b, distance.euclidean(c_a, c_b),
                               (np.array(c_a) + np.array(c_b)) / 2.,
-                              (c_b - c_a), dot_product])
+                              (c_b - c_a), dot_product, new_vector, new_dot])
             bias = -dot_product
             # square the distance to make it as broad as the centroids are apart
             vectors.append([out, out,
                             # np.hstack([c_b - c_a, bias]) / np.power(distance.euclidean(c_a, c_b), 2), layer])
                             # np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b), layer])
                             np.hstack([c_b - c_a, bias]) / np.power(distance.euclidean(c_a, c_b), 1)])
+                            # np.hstack([new_vector, -new_dot]) / np.power(distance.euclidean(c_a, c_b), 1)])
         for a, c_a in pos_cent:
             for b, c_b in pos_cent:
                 if a != b and '{}'.format([c_a, c_b]) not in done and c_a.tolist() != c_b.tolist():
@@ -345,21 +445,21 @@ def determine_boundary_vectors(net, only_2D=False, polar=False):
         #             vectors.append([b, a,
         #                             np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
     else:
-        centroids = convert_neurons_to_centroids(net, only_2D=only_2D)
+        centroids = convert_neurons_to_centroids(net, only_2D=only_2D, correctness=correctness)
         print(centroids)
         for a, c_a in centroids:
             for b, c_b in centroids:
                 if a != b and '{}'.format([c_a, c_b]) not in done:
                     done.append('{}'.format([c_a, c_b]))
                     done.append('{}'.format([c_b, c_a]))
-                    midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
-                                      (np.array(c_a) + np.array(c_b)) / 2.,
-                                      (c_b - c_a)])
                     dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
                                          (c_b - c_a))
+                    midpoints.append([a, b, c_a, c_b, distance.euclidean(c_a, c_b),
+                                      (np.array(c_a) + np.array(c_b)) / 2.,
+                                      (c_b - c_a), dot_product])
                     bias = -dot_product
                     vectors.append([a, b,
-                                    np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
+                                    (np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)) * 100])
 
     # process for iteration finding boundary
     # for midpoint in midpoints:
@@ -367,7 +467,7 @@ def determine_boundary_vectors(net, only_2D=False, polar=False):
     #     activations = net.response(activations)
     #     if activations['out{}'.format(a)] > activations['out{}'.format(b)]:
     print("vectors:\n", vectors)
-    return vectors
+    return vectors, centroids
 
 def build_network(net, only_2D=False, polar=False, max_layers=6):
     neurons = determine_boundary_vectors(net, only_2D=only_2D, polar=polar)
@@ -407,8 +507,8 @@ def build_network(net, only_2D=False, polar=False, max_layers=6):
                 # old_net[layer+1][output]['weights'].append(0.)
     return old_net
 
-def create_network(net, only_2D=False, polar=False):
-    neurons = determine_boundary_vectors(net, only_2D=only_2D, polar=polar)
+def create_network(net, only_2D=False, polar=False, correctness=False):
+    neurons, centroids = determine_boundary_vectors(net, only_2D=only_2D, polar=polar, correctness=correctness)
     n_out = net.number_of_classes
     v_out = len(neurons)
     hidden_weights = []
@@ -417,7 +517,7 @@ def create_network(net, only_2D=False, polar=False):
         for w in weights:
             if w != w:
                 print("NaN found")
-                neurons = determine_boundary_vectors(net, only_2D=only_2D, polar=polar)
+                neurons, centroids = determine_boundary_vectors(net, only_2D=only_2D, polar=polar, correctness=correctness)
         hidden_weights.append(weights)
         if out1 == out2:
             output_weights[out1][idx] = 1
@@ -426,7 +526,7 @@ def create_network(net, only_2D=False, polar=False):
             output_weights[out2][idx] = 1
     # network = create_initial_network(hidden_weights, output_weights)
     network = create_matrix_network(hidden_weights, output_weights)
-    return network
+    return network, centroids
 
 def test_2D_network(net, x_range, y_range, resolution, data=[], labels=[]):
     num_outputs = len(net[-1])

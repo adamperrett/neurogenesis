@@ -59,12 +59,12 @@ elif test == "simple":
     #            [-.5, -.5]]
     centres = [[1, 0],
                [0, 0],
-               # [0, -0.5],
+               # [0, 1]]#,
                [-1, 0]]
     x_range = [-2, 2]
     y_range = [-2, 2]
-    spread = 0.1
-    examples = 50
+    spread = 0.3
+    examples = 100
     test_set_size = 0.1
     # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
     num_outputs = 2
@@ -160,6 +160,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
+                # correctness = net.record_correctness(label)
                 # net.reinforce_neurons(1.)
                 classifications.append(1)
                 # best_testing_accuracy.append(best_testing_accuracy[-1])
@@ -169,7 +170,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 if always_save:
                     neuron_label = net.error_driven_neuro_genesis(
                         activations, error,
-                        weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale))#, label)
+                        weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale),
+                        label=label)#, label)
             # if error[choice] < -0.5:
             #     net.error_driven_neuro_genesis(activations, error, label)
         else:
@@ -180,7 +182,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 # if not only_lr:
                 neuron_label = net.error_driven_neuro_genesis(
                     activations, error,
-                    weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale))#, label)
+                    weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale),
+                    label=label)#, label)
                 # new_accuracy, _, _, _, _ = test_net(net, X, y,
                 #                                     indexes=train_index,
                 #                                     test_net_label='new neuron testing',
@@ -213,6 +216,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 # if net.hidden_neuron_count > max_out_synapses:
                 #     net.remove_worst_output()
             # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
+        if 'esting' not in test_net_label:
+            # print(label, features)
+            correctness = net.record_correctness(label)
         # classifications.append([choice, label])
         if 'esting' not in test_net_label and train_count % retest_rate == retest_rate - 1:
             print("retesting")
@@ -237,6 +243,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             # determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         # neuron_counts.append(CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
         if 'esting' not in test_net_label:
+            # print(label, features)
+            # correctness = net.record_correctness(label)
             print("Performance over all current tests")
             print(correct_classifications / train_count)
             print("Performance over last tests")
@@ -264,7 +272,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     synapse_counts.append(CLASSnet.synapse_count)
     correct_classifications /= train_count
     if 'esting' not in test_net_label:
-        if len(train_feat[0]) == 2:
+        if len(train_feat[0]) == 2 and 'neuron' not in test_net_label:
             # determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
             # memory_to_procedural(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
             determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
@@ -421,6 +429,10 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     else:
         choice = num_outputs
     if error_type == 'zero':
+        # softmax = sm(output_activations)
+        # for output in range(num_outputs):
+        #     if output != correct_class:
+        #         softmax[output] = 0.
         softmax = np.zeros(num_outputs)
     for output in range(num_outputs):
         error[output] += softmax[output] - one_hot_encoding[output]
@@ -455,10 +467,10 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.5
+    sensitivity_width = 0.4
     activation_threshold = 0.0
-    error_threshold = 0.0
-    maximum_synapses_per_neuron = 500
+    error_threshold = 0.1
+    maximum_synapses_per_neuron = 10
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -473,7 +485,7 @@ old_weight_modifier = 1.01
 maturity = 100.
 hidden_threshold = 0.95
 delete_neuron_type = 'RL'
-reward_decay = 0.99999
+reward_decay = 0.9999
 conv_size = 9
 max_out_synapses = 50000
 # activity_init = 1.0
@@ -575,23 +587,23 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
     running_neuron_counts = np.zeros([1])
     only_lr = True
     # CLASSnet.procedural = [[np.array([[0., -1.8, 0.],
-    #                                   [-1.8, 0., 0]]),
+    #                                   [-1.8, 0., 0]])#,
     #
-    #                         np.array([[1.7, 1.7, -1.4],
-    #                                   [1.9, 1.9, 1.5]])#,
-    #
-    #                         # np.array([[1, 0]])
-    #                         # np.array([[-2.8, 2.8, 0.],
-    #                         #           [2.8, -2.8, 5.]])
+    #                         # np.array([[1.7, 1.7, -1.4],
+    #                         #           [1.9, 1.9, 1.5]])#,
+    # #
+    # #                         # np.array([[1, 0]])
+    # #                         # np.array([[-2.8, 2.8, 0.],
+    # #                         #           [2.8, -2.8, 5.]])
     #                         ]]
-    # CLASSnet.n_procedural_out = 4
-    CLASSnet.procedural = [[np.array([[1., 0., -0.5],
-                                      [-1., 0., -0.5]])#,
-                            # np.array([[1, -1, 0],
-                            #           [1, 1, 0],
-                            #           [-1, 1, 0]])
-                            ]]
-    CLASSnet.n_procedural_out = 2
+    # CLASSnet.n_procedural_out = 2
+    # CLASSnet.procedural = [[np.array([[1., 0., -0.5],
+    #                                   [-1., 0., -0.5]])#,
+    #                         # np.array([[1, -1, 0],
+    #                         #           [1, 1, 0],
+    #                         #           [-1, 1, 0]])
+    #                         ]]
+    # CLASSnet.n_procedural_out = 2
     # a = forward_matrix_propagate(CLASSnet.procedural[0], [-1, 0])
     # b = forward_matrix_propagate(CLASSnet.procedural[0], [0.5, 0])
     # c = forward_matrix_propagate(CLASSnet.procedural[0], [0, 0])
@@ -652,7 +664,20 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                                 # fold_test_accuracy=fold_testing_accuracy,
                                                 fold_string=fold_string,
                                                 max_fold=maximum_fold_accuracy)
-            CLASSnet.convert_net_and_clean()
+            centroids = CLASSnet.convert_net_and_clean()
+            # new_x = []
+            # new_y = []
+            # repeat = 20
+            # for rep in range(repeat):
+            #     for out, point in centroids:
+            #             new_x.append(point[:num_inputs])
+            #             new_y.append(out)
+            # _, _, _, _, _ = test_net(CLASSnet, new_x, new_y,
+            #                          test_net_label='Add neuron training',
+            #                          # fold_test_accuracy=fold_testing_accuracy,
+            #                          classifications=training_classifications,
+            #                          fold_string=fold_string,
+            #                          max_fold=maximum_fold_accuracy, noise_stdev=0.)
             if len(train_feat[0]) == 2:
                 determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
                 # determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)

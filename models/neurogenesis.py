@@ -62,6 +62,8 @@ class Neuron():
         self.reward_decay = reward_decay
         self.activity = 0
         self.output = -1
+        self.correctness = 0.
+        self.connections = connections
         if not weights:
             weights = {}
         for pre in connections:
@@ -93,6 +95,13 @@ class Neuron():
         if len(self.synapses[pre]) == 0:
             del self.synapses[pre]
         self.synapse_count -= 1
+
+    def record_correctness(self, correctness):
+        # self.correctness = ((1. - self.reward_decay) * self.activity * correctness) + \
+        #                    (self.reward_decay * self.correctness)
+        self.correctness += self.activity * correctness
+        # print(self.neuron_label, self.activity)
+        return self.correctness
 
     def response(self, activations):
         if not self.synapse_count:
@@ -153,6 +162,7 @@ class Network():
         self.replaying = replaying
         self.hidden_threshold = hidden_threshold
         self.conv_size = conv_size
+        self.correctness = [{} for i in range(number_of_classes)]
 
         self.neurons = {}
         self.neuron_activity = {}
@@ -263,6 +273,8 @@ class Network():
         if 'in' in delete_neuron or 'out' in delete_neuron:
             print("not sure what deleting does here")
         self.synapse_count -= self.neurons[delete_neuron].synapse_count
+        if delete_neuron in self.correctness[self.neurons[delete_neuron].output]:
+            del self.correctness[self.neurons[delete_neuron].output][delete_neuron]
         del self.neurons[delete_neuron]
         del self.neuron_activity[delete_neuron]
         if delete_neuron in self.neuron_selectivity:
@@ -304,14 +316,14 @@ class Network():
         hidden_selectivity = {}
         for neuron in self.neuron_selectivity:
             if 'in' in neuron or 'p' in neuron:
-                # if len(self.procedural) >= 1:
-                #     if 'p' in neuron:
-                #         # if 'p2' in neuron or 'p3' in neuron:
-                #         input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
-                # else:
-                #     if 'in' in neuron:
-                #         input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
-                input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+                if len(self.procedural) >= 30:
+                    if 'p' in neuron:
+                        # if 'p2' in neuron or 'p3' in neuron:
+                        input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+                else:
+                    # if 'in' in neuron:
+                    input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
+                # input_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
             elif 'out' not in neuron:
                 if self.neuron_selectivity[neuron] == 1.:
                     print("da fuck")
@@ -352,7 +364,7 @@ class Network():
             selected += len(sample_dic)
         return total_dic
 
-    def limit_connections(self, connections, selectivity=True, thresholded=False, outlier=True, conv=False):
+    def limit_connections(self, connections, selectivity=False, thresholded=False, outlier=True, conv=False):
         if len(connections) <= min(self.max_hidden_synapses, self.number_of_inputs):
             return connections
         if conv:
@@ -463,6 +475,16 @@ class Network():
             response = self.neurons[neuron].response(activations)
             activations[self.neurons[neuron].neuron_label] = response + self.procedural_value[out]
         return activations
+
+    def record_correctness(self, correct_output):
+        for neuron in self.neurons:
+            if 'out' not in neuron and 'in' not in neuron:
+                if self.neurons[neuron].output == correct_output:
+                    val = self.neurons[neuron].record_correctness(1)
+                else:
+                    val = self.neurons[neuron].record_correctness(-1)
+                self.correctness[self.neurons[neuron].output][neuron] = val
+        return self.correctness
 
     def reinforce_synapses(self, reward, only_output=True, correct_output=0):
         self.synapse_rewards = []
@@ -588,9 +610,9 @@ class Network():
         # self.procedural.append(create_network(self))
         # self.n_procedural_out += self.number_of_classes
         if len(self.procedural) >= 1:
-            new_net = create_network(self, polar=True)
+            new_net, centroids = create_network(self, polar=True, correctness=False)
         else:
-            new_net = create_network(self, polar=True)
+            new_net, centroids = create_network(self, polar=False, correctness=True)
         self.procedural.append(new_net)
         for layer in new_net:
             self.n_procedural_out += len(layer)
@@ -602,6 +624,7 @@ class Network():
         # for i in range(self.number_of_inputs):
         #     self.neuron_activity['in{}'.format(i)] = 0.
         self.remove_all_stored_values()
+        return centroids
 
     def procedural_output(self, inputs):
         output = [0. for i in range(self.number_of_classes)]
@@ -631,7 +654,7 @@ class Network():
                     output[out] += value
         return output, all_act
 
-    def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1.):
+    def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1., label=-1):
         if np.max(np.abs(output_error)) > self.error_threshold:
             if self.replaying:
                 # self.response(self.convert_vis_to_activations('out{}'.format(correct_class)), replay=True)
@@ -640,7 +663,14 @@ class Network():
                               replay=True)
             activations = self.remove_output_neurons(activations)
             neuron_label = self.add_neuron(activations)
-            self.neurons[neuron_label].output = np.abs(output_error).argmax()
+            self.neurons[neuron_label].output = label#(output_error * -1).argmax()
+            # if len(self.correctness[label]):
+            #     average_val = sum(self.correctness[label].values()) / \
+            #                   len(self.correctness[label])
+            #     self.correctness[label][neuron_label] = average_val
+            #     self.neurons[neuron_label].correctness = average_val
+            # else:
+            self.correctness[label][neuron_label] = 0.
             for output, error in enumerate(output_error):
                 if abs(error) > self.error_threshold:
                     # self.current_importance += self.old_weight_modifier
@@ -650,7 +680,7 @@ class Network():
                                                                         freq=1.,
                                                                         weight=-error * weight_multiplier,
                                                                         sensitivities=self.neuron_selectivity,
-                                                                        width=0.5,
+                                                                        # width=0.5,
                                                                         reward_decay=self.reward_decay)
                     self.synapse_count += 1
                     if self.replaying:

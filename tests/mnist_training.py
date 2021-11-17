@@ -89,7 +89,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             if 'esting' not in test_net_label:
                 # net.reinforce_neurons(1.)
                 classifications.append(1)
-                neuron_label = net.error_driven_neuro_genesis(activations, error)#, label)
+                neuron_label = net.error_driven_neuro_genesis(activations, error, label=label)
             print("CORRECT CLASS WAS CHOSEN")
             # if error[choice] < -0.5:
             #     net.error_driven_neuro_genesis(activations, error, label)
@@ -98,7 +98,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             if 'esting' not in test_net_label:
                 # net.reinforce_neurons(-1.)
                 classifications.append(0)
-                neuron_label = net.error_driven_neuro_genesis(activations, error)#, label)
+                neuron_label = net.error_driven_neuro_genesis(activations, error, label=label)
                 # print("total visualising neuron", CLASSnet.hidden_neuron_count)
                 # vis = CLASSnet.visualise_neuron(neuron_label, only_pos=False)
                 # print("plotting neuron", CLASSnet.hidden_neuron_count)
@@ -304,7 +304,7 @@ if read_args:
 else:
     sensitivity_width = 0.5
     activation_threshold = 0.0
-    error_threshold = 0.0
+    error_threshold = 0.1
     maximum_synapses_per_neuron = 1500
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.
@@ -337,7 +337,7 @@ noise_tests = np.linspace(0, .3, 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'procedural_saveall retest{} {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+base_label = 'procedural_saveall n1 retest{} {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(retest_rate, error_type,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
@@ -454,7 +454,7 @@ for repeat in range(repeats):
                                                    fold_test_accuracy=fold_testing_accuracy,
                                                    fold_string=fold_string,
                                                    max_fold=maximum_fold_accuracy)
-            procedural_testing_accuracy.append(round(procedural_accuracy, 3))
+                procedural_testing_accuracy.append(round(procedural_accuracy, 3))
             if previous_accuracy > testing_accuracy + 0.1 and len(fold_testing_accuracy) > 500 and 'mnist' not in test:
                 test_training_accuracy, training_classifications, \
                 test_training_confusion, synapse_counts, \
