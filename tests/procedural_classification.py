@@ -64,7 +64,7 @@ elif test == "simple":
     x_range = [-2, 2]
     y_range = [-2, 2]
     spread = 0.3
-    examples = 100
+    examples = 200
     test_set_size = 0.1
     # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
     num_outputs = 2
@@ -470,7 +470,7 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.1
-    maximum_synapses_per_neuron = 10
+    maximum_synapses_per_neuron = 1
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron

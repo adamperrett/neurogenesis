@@ -609,7 +609,7 @@ class Network():
     def convert_net_and_clean(self):
         # self.procedural.append(create_network(self))
         # self.n_procedural_out += self.number_of_classes
-        if len(self.procedural) >= 1:
+        if len(self.procedural) >= 4:
             new_net, centroids = create_network(self, polar=True, correctness=False)
         else:
             new_net, centroids = create_network(self, polar=False, correctness=True)

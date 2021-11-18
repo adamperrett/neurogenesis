@@ -122,9 +122,11 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
                 # net.age_output_synapses(reward=True)
                 print("CORRECT CLASS WAS CHOSEN")
                 # if np.random.random() < learning_rate:
-                # neuron_label = net.error_driven_neuro_genesis(
-                #     activations, error,
-                #     weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale))#, label)
+                if always_save:
+                    neuron_label = net.error_driven_neuro_genesis(
+                        activations, error,
+                        weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale),
+                        label=label)#, label)
             # if error[choice] < -0.5:
             #     net.error_driven_neuro_genesis(activations, error, label)
         else:
@@ -171,9 +173,13 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         # classifications.append([choice, label])
         if 'esting' not in test_net_label and train_count % retest_rate == retest_rate - 1:
             print("retesting")
+            if len(test_index) > 1000:
+                test_index_sample = np.random.choice(test_index, retest_size)
+            else:
+                test_index_sample = test_index
             testing_accuracy, training_classifications, \
             testing_confusion, _, _ = test_net(CLASSnet, X, y,
-                                               indexes=test_index,
+                                               indexes=test_index_sample,
                                                test_net_label='Testing',
                                                classifications=classifications,
                                                # fold_test_accuracy=fold_testing_accuracy,
@@ -212,8 +218,11 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     synapse_counts.append(CLASSnet.synapse_count)
     correct_classifications /= train_count
     if 'esting' not in test_net_label:
-        determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
-        memory_to_procedural(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
+        if len(train_feat[0]) == 2 and 'neuron' not in test_net_label:
+            # determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
+            # memory_to_procedural(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
+            determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
+            # memory_to_procedural(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
               correct_classifications)
     if save_activations:
@@ -428,6 +437,8 @@ learning_rate = 1.0
 visualise_rate = 1
 np.random.seed(27)
 confusion_decay = 0.8
+always_save = True
+remove_class = 2
 
 noise_tests = np.linspace(0, 2., 21)
 

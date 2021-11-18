@@ -323,7 +323,7 @@ def determine_2D_decision_boundary(net, x_range, y_range, resolution, data=[], l
     if len(all_stored):
         plt.scatter(np.array(all_stored)[:, 0],
                         np.array(all_stored)[:, 1], marker='*')
-    centroids = convert_neurons_to_centroids(net, weight_norm, n=10, correctness=True)
+    centroids = convert_neurons_to_centroids(net, weight_norm, n=5, correctness=True)
     # if centroids:
     for cl, cent in centroids:
         if cent[0] != 0 or cent[1] != 0:
@@ -459,7 +459,7 @@ def determine_boundary_vectors(net, only_2D=False, polar=False, correctness=Fals
                                       (c_b - c_a), dot_product])
                     bias = -dot_product
                     vectors.append([a, b,
-                                    (np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)) * 100])
+                                    (np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)) / 1])
 
     # process for iteration finding boundary
     # for midpoint in midpoints:
