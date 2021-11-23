@@ -22,15 +22,15 @@ pen_label = 'smoutnoave pl0.5 long400 w10 mem0.0 RL0.9999 net100x4  - ' \
 
 # variables = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.]#, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8]
 # variables = [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 5000]
-variables = [10, 50, 100, 150, 200, 300, 400, 500, 600]
-# variables = [0, 1, 2, 4, 8, 16, 24, 32, 64]
+# variables = [10, 50, 100, 150, 200, 300, 400, 500, 600]
+variables = [1, 2, 3, 4, 8, 100]#6, 24, 32, 64]
 # variables = [0.4, 0.3, 0.2, 0.1, 0.03, 0.01, 0.003, 0.001, 0.0003]#, 0.0001, 0.00003, 0.00001]0.9, 0.7, 0.6, 0.5,
 # variables = [0.00001, 0.0001, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4]
 # variables = [0.000001, 0.000005, 0.0000075, 0.00001, 0.000025,
 #              0.00005, 0.000075, 0.0001, 0.00025, 0.0005, 0.00075, 0.001]
 # variables = [0.0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2]
 # variables = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-variables = ['', '2']
+# variables = ['', '2']
 colours = pl.cm.plasma(np.linspace(0, 1, len(variables)))
 
 all_average = []
@@ -48,8 +48,8 @@ for idx, variable in enumerate(variables):
     # base_file_name = 'noOut no-lr0.1 sm0.0 RL0.99999  - wine fixed_h0 - ' \
     #                  'sw0.9n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise 4'
     # base_file_name = '{}  - mnist fixed_h0 - sw0.6 - at0.0 - et0.0 - 1.0adr0.999999'.format(variable)
-    base_file_name = 'polar{}_increment+save1ms1500 sm0.0 RL0.99999  - ' \
-                     'breast fixed_h0 - sw0.5n0.0 - at0.0 - et0.1 - 1.0adr1.0 - 0.0noise'.format(variable)
+    base_file_name = 'error_threshold_testing1ms{} sm0.0 RL0.9999  - ' \
+                     'wine fixed_h0.0 - sw0.4n0.0 - at0.0 - et0.1 - 1.0adr1.0 - 0.0noise'.format(variable)
     print(base_file_name)
     # base_file_name = pen_label
     # base_file_name = 'withoutOUT out RL0.99999 net3000000x100  - wine fixed_h50 - ' \
@@ -198,7 +198,7 @@ for idx, variable in enumerate(variables):
         plt.savefig("./plots/averaged {} {}.png".format(collect, base_file_name), bbox_inches='tight', dpi=200)
         plt.close()
 if combine_plots:
-    plt.savefig("./plots/averaged {} {}.png".format(collect, base_file_name), bbox_inches='tight', dpi=200)
+    plt.savefig("./plots/combined averaged {} {}.png".format(collect, base_file_name), bbox_inches='tight', dpi=200)
     plt.close()
 
 print(all_average)

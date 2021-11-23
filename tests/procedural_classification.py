@@ -6,7 +6,7 @@ from datasets.simple_tests import *
 from models.convert_network import *
 import random
 import matplotlib
-saving_plots = False
+saving_plots = True
 if saving_plots:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'simple'
+test = 'wine'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -23,7 +23,7 @@ if test == 'breast':
     train_feat = training_set_breasts
     test_labels = test_set_labels
     test_feat = test_set_breasts
-    retest_rate = 1#len(train_labels)
+    retest_rate = 10#len(train_labels)
     retest_size = len(test_set_labels)
 elif test == 'wine':
     from wine_data import *
@@ -329,8 +329,8 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
                     np.array(epoch_error)[:, 1].reshape([len(epoch_error), 1]),
                     np.array(epoch_error)[:, 2].reshape([len(epoch_error), 1]),
                     np.array(epoch_error)[:, 3].reshape([len(epoch_error), 1])])
-            axs[1][1].table(cellText=data, colLabels=['training accuracy', 'procedural training',
-                                                      'testing accuracy', 'procedural accuracy'],
+            axs[1][1].table(cellText=data, colLabels=['training accuracy', 'full final training',
+                                                      'testing accuracy', 'final testing accuracy'],
                             rowLabels=['{}'.format(i) for i in range(len(epoch_error))],
                             loc="center")
             axs[1][1].axis('off')
@@ -470,7 +470,7 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.1
-    maximum_synapses_per_neuron = 1
+    maximum_synapses_per_neuron = 8
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -492,7 +492,7 @@ max_out_synapses = 50000
 always_inputs = False
 replaying = False
 error_type = 'sm'
-epochs = 10
+epochs = 20
 repeats = 10
 width_noise = 0.#5
 noise_level = 0.#5
@@ -508,7 +508,7 @@ noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'polar_increment_caped+save{}x10ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+base_label = 'error_threshold_testing{}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
              'at{} - et{} - {}adr{} - {}noise'.format(retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
@@ -664,7 +664,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                                 # fold_test_accuracy=fold_testing_accuracy,
                                                 fold_string=fold_string,
                                                 max_fold=maximum_fold_accuracy)
-            centroids = CLASSnet.convert_net_and_clean()
+            # centroids = CLASSnet.convert_net_and_clean()
             # new_x = []
             # new_y = []
             # repeat = 20
@@ -693,17 +693,17 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                                # fold_test_accuracy=fold_testing_accuracy,
                                                fold_string=fold_string,
                                                max_fold=maximum_fold_accuracy)
-            if previous_accuracy > testing_accuracy + 0.1 and len(fold_testing_accuracy) > 100:
-                test_training_accuracy, training_classifications, \
-                test_training_confusion, synapse_counts, \
-                neuron_counts = test_net(CLASSnet, X, y,
-                                         indexes=train_index,
-                                         test_net_label='Train testing',
-                                         # fold_test_accuracy=fold_testing_accuracy,
-                                         classifications=training_classifications,
-                                         fold_string=fold_string,
-                                         max_fold=maximum_fold_accuracy)
-                print("this si where it fucked")
+            # if previous_accuracy > testing_accuracy + 0.1 and len(fold_testing_accuracy) > 100:
+            #     test_training_accuracy, training_classifications, \
+            #     test_training_confusion, synapse_counts, \
+            #     neuron_counts = test_net(CLASSnet, X, y,
+            #                              indexes=train_index,
+            #                              test_net_label='Train testing',
+            #                              # fold_test_accuracy=fold_testing_accuracy,
+            #                              classifications=training_classifications,
+            #                              fold_string=fold_string,
+            #                              max_fold=maximum_fold_accuracy)
+            #     print("this si where it fucked")
             previous_accuracy = testing_accuracy
             # fold_testing_accuracy.append(round(testing_accuracy, 3))
             running_train_confusion *= confusion_decay
@@ -741,16 +741,16 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
             #                                          )
             #     maximum_fold_accuracy.append([testing_accuracy, total_test_accuracy, epoch, current_fold,
             #                                   CLASSnet.hidden_neuron_count])
-        if 'mnist' in test:
-            final_procedural_accuracy = np.mean(training_classifications[-len(train_index):])
-        else:
-            final_procedural_accuracy, _, _, _, _ = test_net(CLASSnet, X, y,
-                                                indexes=train_index,
-                                                test_net_label='new neuron testing',
-                                                classifications=training_classifications,
-                                                # fold_test_accuracy=fold_testing_accuracy,
-                                                fold_string=fold_string,
-                                                max_fold=maximum_fold_accuracy)
+        # if 'mnist' in test:
+        #     final_procedural_accuracy = np.mean(training_classifications[-len(train_index):])
+        # else:
+        #     final_procedural_accuracy, _, _, _, _ = test_net(CLASSnet, X, y,
+        #                                         indexes=train_index,
+        #                                         test_net_label='new neuron testing',
+        #                                         classifications=training_classifications,
+        #                                         # fold_test_accuracy=fold_testing_accuracy,
+        #                                         fold_string=fold_string,
+        #                                         max_fold=maximum_fold_accuracy)
         if retest_size < len(test_labels):  #depricated with retest above
             full_testing_accuracy, training_classifications, \
             full_test_confusion, _, _ = test_net(CLASSnet, X, y,
@@ -761,35 +761,39 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                                  fold_string=fold_string,
                                                  max_fold=maximum_fold_accuracy)
 
-            epoch_error.append([round(final_accuracy, 4),
-                                round(final_procedural_accuracy, 4),
+            epoch_error.append([round(np.mean(training_classifications[-len(train_index):]), 4),
+                                round(final_accuracy, 4),
+                                # round(final_procedural_accuracy, 4),
                                 fold_testing_accuracy[-1],
                                 round(full_testing_accuracy, 4),
                                 CLASSnet.hidden_neuron_count, CLASSnet.deleted_neuron_count])
             running_test_confusion *= confusion_decay
             running_test_confusion += full_test_confusion
         else:
-            epoch_error.append([round(final_accuracy, 4),
-                                round(final_procedural_accuracy, 4),
+            epoch_error.append([round(np.mean(training_classifications[-len(train_index):]), 4),
+                                round(final_accuracy, 4),
+                                # round(final_procedural_accuracy, 4),
                                 fold_testing_accuracy[-1],
                                 round(testing_accuracy, 4),
-                                CLASSnet.hidden_neuron_count, CLASSnet.deleted_neuron_count])
+                                CLASSnet.hidden_neuron_count, CLASSnet.deleted_neuron_count]
+                               )
             running_test_confusion *= confusion_decay
             running_test_confusion += testing_confusion
         if len(epoch_error) > 1:
             epoch_error[-1][-1] -= epoch_error[-2][-2]
-        epoch_noise_results = []
-        for noise_std in noise_tests:
-            noise_accuracy, _, _, _, _ = test_net(CLASSnet, X, y,
-                                                  indexes=test_index,
-                                                  test_net_label='Testing',
-                                                  classifications=training_classifications,
-                                                  # fold_test_accuracy=fold_testing_accuracy,
-                                                  fold_string=fold_string,
-                                                  max_fold=maximum_fold_accuracy,
-                                                  noise_stdev=noise_std)
-            epoch_noise_results.append(noise_accuracy)
-        noise_results.append(epoch_noise_results)
+        if 'mnist' not in test_label:
+            epoch_noise_results = []
+            for noise_std in noise_tests:
+                noise_accuracy, _, _, _, _ = test_net(CLASSnet, X, y,
+                                                      indexes=test_index,
+                                                      test_net_label='Testing',
+                                                      classifications=training_classifications,
+                                                      # fold_test_accuracy=fold_testing_accuracy,
+                                                      fold_string=fold_string,
+                                                      max_fold=maximum_fold_accuracy,
+                                                      noise_stdev=noise_std)
+                epoch_noise_results.append(noise_accuracy)
+            noise_results.append(epoch_noise_results)
 
         plot_learning_curve(training_classifications, fold_testing_accuracy,
                             running_train_confusion, running_test_confusion,
