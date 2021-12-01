@@ -446,7 +446,7 @@ class Network():
                                       min(self.max_hidden_synapses,
                                           len(no_hidden))))
 
-    def response(self, activations, replay=False):
+    def response(self, activations, replay=False, x=None, y=None):
         # for i in range(self.layers):
         response = activations
         for neuron in self.neurons:

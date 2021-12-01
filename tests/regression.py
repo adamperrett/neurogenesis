@@ -259,7 +259,7 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.4
+    sensitivity_width = 0.8
     activation_threshold = 0.0
     error_threshold = 0.0
     maximum_synapses_per_neuron = 8
