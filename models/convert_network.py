@@ -8,7 +8,7 @@ import random
 import operator
 from copy import deepcopy
 from tests.backprop_from_activations import *
-import seaborn  as sns
+import seaborn as sns
 from scipy.special import softmax as sm
 
 def collect_n_centroids_per_output(net, output, n, only_2D=False):

@@ -670,7 +670,7 @@ class Network():
             #     self.correctness[label][neuron_label] = average_val
             #     self.neurons[neuron_label].correctness = average_val
             # else:
-            self.correctness[label][neuron_label] = 0.
+            # self.correctness[label][neuron_label] = 0.
             for output, error in enumerate(output_error):
                 if abs(error) > self.error_threshold:
                     # self.current_importance += self.old_weight_modifier
