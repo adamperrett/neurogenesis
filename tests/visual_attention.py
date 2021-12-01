@@ -23,8 +23,8 @@ if test == 'mnist':
     num_directions = 4
     num_outputs = num_classes + num_directions
     ds_factor = 4
-    first_inputs = (28 / ds_factor) ** 2
-    glimpse_size = 8
+    first_inputs = int((28 / ds_factor) ** 2)
+    glimpse_size = 14
     num_glimpses = 3
     glimps_inputs = glimpse_size ** 2
     train_labels = mnist_training_labels
@@ -47,9 +47,11 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
     all_y = []
     synapse_counts = []
     neuron_counts = []
-    all_activations = []
+    all_classifications = []
     for test in indexes:
+        classifications = []
         all_classification_errors = []
+        all_direction_errors = []
         train_count += 1
         features = data[test]
         value = values[test]
@@ -60,6 +62,7 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
         class_values, direction_values = process_activations(activations)
         error, choice = calculate_classification_error(value, class_values,
                                                        test_net_label, num_classes)
+        classifications.append(int(choice == value))
         all_classification_errors.append(error)
         all_cropped = []
         for glimpse in range(num_glimpses):
@@ -69,58 +72,76 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
             cropped_image = crop_image(features, x, y, glimpse_size)
             all_cropped.append(cropped_image)
             activations = glimpse_net.convert_inputs_to_activations(np.hstack(cropped_image))
-            activations = glimpse_net.response(activations)
+            activations = glimpse_net.response(activations, x=x, y=y)
             class_values, direction_values = process_activations(activations)
             error, choice = calculate_classification_error(value, class_values,
                                                            test_net_label, num_classes)
+            classifications.append(int(choice == value))
             all_classification_errors.append(error)
+            all_direction_errors.append(error[value])
+
+        x, y = process_directions(direction_values)
+        all_x.append(x)
+        all_y.append(y)
+        all_direction_errors.append(0.)
 
         # neurogenesis
+        first_error = np.hstack([all_classification_errors[0],
+                                 calculate_direction_error(all_x[-1-num_glimpses],
+                                                           all_y[-1-num_glimpses],
+                                                           all_direction_errors[0])])
+        activations = first_net.convert_inputs_to_activations(np.hstack(ds_image))
+        neuron_label = first_net.error_driven_neuro_genesis(activations, first_error, label=value)
 
+        # sum the outputs
+        for glimpse in range(num_glimpses):
+            glimpse_error = np.hstack([all_classification_errors[1 + glimpse],
+                                       calculate_direction_error(all_x[-num_glimpses+glimpse],
+                                                                 all_y[-num_glimpses+glimpse],
+                                                                 all_direction_errors[1+glimpse])])
+            activations = glimpse_net.convert_inputs_to_activations(np.hstack(all_cropped[glimpse]))
+            neuron_label = glimpse_net.error_driven_neuro_genesis(activations, glimpse_error, label=value,
+                                                                  x=all_x[1+glimpse], y=all_y[1+glimpse])
 
-
-        neuron_count = CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count
+        all_classifications.append(classifications)
 
         if 'esting' not in test_net_label:
-            all_errors.append(error_value)
-            # if only_lr:
-            # CLASSnet.pass_errors_to_outputs(error, learning_rate)
             print(test_net_label, "\nEpoch ", epoch, "/", epochs)
             print(fold_string)
             print('test ', train_count, '/', len(indexes))
-            print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
-                  CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
-            print("Synapse count: ", CLASSnet.synapse_count)
+            print(classifications)
+            print("Neuron count: first - ", first_net.hidden_neuron_count, " glimpse - ", glimpse_net.hidden_neuron_count)
+            # print("Synapse count: ", CLASSnet.synapse_count)
+            np_class = np.array(all_classifications)
+            average_classification = []
+            for i in range(len(np_class[0])):
+                average_classification.append(np.average(np_class[:, i]))
+            print(average_classification)
             print(test_label)
             for ep, err in enumerate(epoch_error):
                 print(ep, err)
             print(test_label)
-            synapse_counts.append(CLASSnet.synapse_count)
-            neuron_counts.append(neuron_count)
+            # synapse_counts.append(CLASSnet.synapse_count)
+            # neuron_counts.append(neuron_count)
 
-            neuron_label = net.error_driven_neuro_genesis(
-                activations, -error,
-                weight_multiplier=1.,
-                label=value)
-
-        if 'esting' not in test_net_label:
-            # print(label, features)
-            # correctness = net.record_correctness(label)
-            print("Performance over all current tests")
-            print(regression_error)
-            print("Performance over last tests")
-            for window in average_windows:
-                print(np.average(all_errors[-window:]), ":", window)
-            if fold_testing_accuracy:
-                print("Fold testing accuracy", fold_testing_accuracy)
-                print("Maximum fold = ", maximum_fold_accuracy)
-                print("Performance over last", len(fold_testing_accuracy), "folds")
-                for window in fold_average_windows:
-                    print(np.average(fold_testing_accuracy[-window:]), ":", window)
-            print("\n")
-        else:
-            if train_count % 1000 == 0:
-                print(train_count, "/", len(indexes))
+        # if 'esting' not in test_net_label:
+        #     # print(label, features)
+        #     # correctness = net.record_correctness(label)
+        #     print("Performance over all current tests")
+        #     print(regression_error)
+        #     print("Performance over last tests")
+        #     for window in average_windows:
+        #         print(np.average(all_errors[-window:]), ":", window)
+        #     if fold_testing_accuracy:
+        #         print("Fold testing accuracy", fold_testing_accuracy)
+        #         print("Maximum fold = ", maximum_fold_accuracy)
+        #         print("Performance over last", len(fold_testing_accuracy), "folds")
+        #         for window in fold_average_windows:
+        #             print(np.average(fold_testing_accuracy[-window:]), ":", window)
+        #     print("\n")
+        # else:
+        #     if train_count % 1000 == 0:
+        #         print(train_count, "/", len(indexes))
     regression_error /= train_count
     if 'esting' not in test_net_label:
         # del neuron_counts[-1]
@@ -216,7 +237,7 @@ def process_activations(activations):
     for output in range(num_classes):
         class_values[output] = activations['out{}'.format(output)]
     for output in range(num_classes, num_classes+num_directions):
-        direction_values[output] = activations['out{}'.format(output)]
+        direction_values[output-num_classes] = activations['out{}'.format(output)]
     return class_values, direction_values
 
 def process_directions(directions):
@@ -257,14 +278,14 @@ def calculate_classification_error(correct_class, output_activations, test_label
                                                        error[output]))
     return error, choice
 
-def calculate_direction_error(x, y, error, test_label):
+def calculate_direction_error(x, y, error):
     direction_error = np.array([x, 1-x, y, 1-y]) * error
 
     if 'esting' not in test_label:
-        print("Error for test ", test_label, " is ", error, " <= ", x, " \/ ", y)
+        print("Error is ", error, " <= ", x, " \/ ", y)
     return direction_error
 
-def crop_image(image, x, y, size, show_fig=True):
+def crop_image(image, x, y, size, show_fig=False):
     if len(np.shape(image)) == 1:
         dimension = int(np.sqrt(np.shape(image)))
         image = np.reshape(image, [dimension, dimension])

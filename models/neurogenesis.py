@@ -51,7 +51,7 @@ class Synapses():
 
 class Neuron():
     def __init__(self, neuron_label, connections, sensitivities, weights=None, f_width=0.3,
-                 input_dimensions=None, reward_decay=1., width_noise=0.):
+                 input_dimensions=None, reward_decay=1., width_noise=0., x=None, y=None):
         self.neuron_label = neuron_label
         self.f_width = f_width
         self.width_noise = width_noise
@@ -64,6 +64,8 @@ class Neuron():
         self.output = -1
         self.correctness = 0.
         self.connections = connections
+        self.x = x
+        self.y = y
         if not weights:
             weights = {}
         for pre in connections:
@@ -103,7 +105,7 @@ class Neuron():
         # print(self.neuron_label, self.activity)
         return self.correctness
 
-    def response(self, activations):
+    def response(self, activations, x=None, y=None):
         if not self.synapse_count:
             return 0.
         response = 0.
@@ -118,6 +120,10 @@ class Neuron():
             self.activity = response / active_synapse_weight
         else:
             self.activity = response
+        if x and y and self.x and self.y:
+            x_value = max(1. - abs((self.x - x) / self.f_width), 0)
+            y_value = max(1. - abs((self.y - y) / self.f_width), 0)
+            self.activity *= x_value * y_value
         return self.activity
 
 
@@ -215,7 +221,7 @@ class Network():
         print("Completed adding seeds")
 
 
-    def add_neuron(self, connections, neuron_label='', seeding=False):
+    def add_neuron(self, connections, neuron_label='', seeding=False, x=None, y=None):
         if self.max_hidden_synapses and not seeding:
             connections = self.limit_connections(connections)
         if neuron_label == '':
@@ -225,7 +231,8 @@ class Network():
                                             f_width=self.f_width,
                                             width_noise=self.width_noise,
                                             input_dimensions=self.input_dimensions,
-                                            reward_decay=self.reward_decay)
+                                            reward_decay=self.reward_decay,
+                                            x=x, y=y)
         self.synapse_count += self.neurons[neuron_label].synapse_count
         if self.synapse_count > self.maximum_total_synapses:
             # self.delete_synapses(self.synapse_count - self.maximum_total_synapses)
@@ -450,7 +457,7 @@ class Network():
         # for i in range(self.layers):
         response = activations
         for neuron in self.neurons:
-            response[neuron] = self.neurons[neuron].response(activations)
+            response[neuron] = self.neurons[neuron].response(activations, x, y)
             # line below can be compressed?
             activations[self.neurons[neuron].neuron_label] = response[neuron]
         for neuron in self.remove_output_neurons(activations, cap=False):
@@ -654,7 +661,8 @@ class Network():
                     output[out] += value
         return output, all_act
 
-    def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1., label=-1):
+    def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1., label=-1,
+                                   x=None, y=None):
         if np.max(np.abs(output_error)) > self.error_threshold:
             if self.replaying:
                 # self.response(self.convert_vis_to_activations('out{}'.format(correct_class)), replay=True)
@@ -662,7 +670,7 @@ class Network():
                                                                                        activations=activations)),
                               replay=True)
             activations = self.remove_output_neurons(activations)
-            neuron_label = self.add_neuron(activations)
+            neuron_label = self.add_neuron(activations, x=x, y=y)
             self.neurons[neuron_label].output = label#(output_error * -1).argmax()
             # if len(self.correctness[label]):
             #     average_val = sum(self.correctness[label].values()) / \
