@@ -60,7 +60,7 @@ class Neuron():
         self.input_dimensions = input_dimensions
         self.visualisation = None
         self.reward_decay = reward_decay
-        self.activity = 0
+        self.activity = 0.
         self.output = -1
         self.correctness = 0.
         self.connections = connections
@@ -117,13 +117,15 @@ class Neuron():
                     response += synapse.response(freq)
                     active_synapse_weight += 1.#synapse.weight
         if active_synapse_weight and 'out' not in self.neuron_label:
-            self.activity = response / active_synapse_weight
+            temp_activity = response / active_synapse_weight
         else:
-            self.activity = response
-        if x and y and self.x and self.y:
+            temp_activity = response
+        if isinstance(x, float) and isinstance(y, float) \
+                and isinstance(self.x, float) and isinstance(self.y, float):
             x_value = max(1. - abs((self.x - x) / self.f_width), 0)
             y_value = max(1. - abs((self.y - y) / self.f_width), 0)
-            self.activity *= x_value * y_value
+            temp_activity *= x_value * y_value
+        self.activity = temp_activity
         return self.activity
 
 
@@ -221,9 +223,30 @@ class Network():
         print("Completed adding seeds")
 
 
-    def add_neuron(self, connections, neuron_label='', seeding=False, x=None, y=None):
+    def add_neuron(self, connections, neuron_label='', seeding=False, x=None, y=None, output_error=[]):
         if self.max_hidden_synapses and not seeding:
             connections = self.limit_connections(connections)
+        repeated_neuron = False
+        for neuron in self.neurons:
+            if 'out' in neuron or 'in' in neuron:
+                continue
+            if connections == self.neurons[neuron].connections \
+                    and x == self.neurons[neuron].x and y == self.neurons[neuron].y:
+                repeated_neuron = neuron
+                for output, error in enumerate(output_error):
+                    if abs(error) > self.error_threshold:
+                        if neuron in self.neurons['out{}'.format(output)].synapses:
+                            self.neurons['out{}'.format(output)].synapses[neuron][0].weight -= error
+                        else:
+                            self.neurons['out{}'.format(output)
+                            ].add_connection(neuron,
+                                             freq=1.,
+                                             weight=-error,
+                                             sensitivities=self.neuron_selectivity,
+                                             # width=0.5,
+                                             reward_decay=self.reward_decay)
+        if repeated_neuron:
+            return repeated_neuron
         if neuron_label == '':
             neuron_label = 'n{}'.format(self.hidden_neuron_count)
             self.hidden_neuron_count += 1
@@ -251,6 +274,16 @@ class Network():
             self.neuron_activity[neuron_label] = self.activity_init
             # self.neuron_activity[neuron_label] = self.activity_init#self.neurons[neuron_label].response(connections)
         # self.neuron_selectivity[neuron_label] = -1.
+        for output, error in enumerate(output_error):
+            if abs(error) > self.error_threshold:
+                self.neurons['out{}'.format(output)].add_connection(neuron_label,
+                                                                    freq=1.,
+                                                                    weight=-error,
+                                                                    sensitivities=self.neuron_selectivity,
+                                                                    # width=0.5,
+                                                                    reward_decay=self.reward_decay)
+                self.synapse_count += 1
+                self.neuron_connectedness[neuron_label] = 1
         return neuron_label
 
     def delete_neuron(self, delete_type='RL'):
@@ -453,6 +486,10 @@ class Network():
                                       min(self.max_hidden_synapses,
                                           len(no_hidden))))
 
+    def reset_neuron_activity(self):
+        for neuron in self.neurons:
+            self.neurons[neuron].activity = 0.
+
     def response(self, activations, replay=False, x=None, y=None):
         # for i in range(self.layers):
         response = activations
@@ -460,22 +497,25 @@ class Network():
             response[neuron] = self.neurons[neuron].response(activations, x, y)
             # line below can be compressed?
             activations[self.neurons[neuron].neuron_label] = response[neuron]
-        for neuron in self.remove_output_neurons(activations, cap=False):
-            if neuron not in self.neuron_activity:
-                if self.activity_decay_rate < 1.0:
-                    hidden_activity = self.return_hidden_neurons(activations)
-                    self.neuron_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
-                else:
-                    self.neuron_activity[neuron] = self.activity_init
-            if self.replaying:
-                if replay:
-                    self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-                self.neuron_activity[neuron] = response[neuron]
-            else:
-                self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-                self.neuron_response[neuron] = response[neuron]
-                self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
-                                               (response[neuron] * (1. - self.activity_decay_rate))
+            # if instant_response == 1.:
+            #     repeated_input.append(neuron)
+                # response[neuron], instant_response = self.neurons[neuron].response(activations, x, y)
+        # for neuron in self.remove_output_neurons(activations, cap=False):
+        #     if neuron not in self.neuron_activity:
+        #         if self.activity_decay_rate < 1.0:
+        #             hidden_activity = self.return_hidden_neurons(activations)
+        #             self.neuron_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
+        #         else:
+        #             self.neuron_activity[neuron] = self.activity_init
+        #     if self.replaying:
+        #         if replay:
+        #             self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+        #         self.neuron_activity[neuron] = response[neuron]
+        #     else:
+        #         self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+        #         self.neuron_response[neuron] = response[neuron]
+        #         self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
+        #                                        (response[neuron] * (1. - self.activity_decay_rate))
                 # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
         outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
         for out, neuron in enumerate(outputs):
@@ -664,36 +704,9 @@ class Network():
     def error_driven_neuro_genesis(self, activations, output_error, weight_multiplier=1., label=-1,
                                    x=None, y=None):
         if np.max(np.abs(output_error)) > self.error_threshold:
-            if self.replaying:
-                # self.response(self.convert_vis_to_activations('out{}'.format(correct_class)), replay=True)
-                self.response(self.convert_vis_to_activations(vis=self.collect_all_vis(error=output_error,
-                                                                                       activations=activations)),
-                              replay=True)
             activations = self.remove_output_neurons(activations)
-            neuron_label = self.add_neuron(activations, x=x, y=y)
-            self.neurons[neuron_label].output = label#(output_error * -1).argmax()
-            # if len(self.correctness[label]):
-            #     average_val = sum(self.correctness[label].values()) / \
-            #                   len(self.correctness[label])
-            #     self.correctness[label][neuron_label] = average_val
-            #     self.neurons[neuron_label].correctness = average_val
-            # else:
-            # self.correctness[label][neuron_label] = 0.
-            for output, error in enumerate(output_error):
-                if abs(error) > self.error_threshold:
-                    # self.current_importance += self.old_weight_modifier
-                    # error *= self.current_importance
-                    # self.age_output_synapses(reward=True)
-                    self.neurons['out{}'.format(output)].add_connection(neuron_label,
-                                                                        freq=1.,
-                                                                        weight=-error * weight_multiplier,
-                                                                        sensitivities=self.neuron_selectivity,
-                                                                        # width=0.5,
-                                                                        reward_decay=self.reward_decay)
-                    self.synapse_count += 1
-                    if self.replaying:
-                        self.visualise_neuron('out{}'.format(output), only_pos=False)
-                    self.neuron_connectedness[neuron_label] = 1
+            neuron_label = self.add_neuron(activations, x=x, y=y, output_error=output_error)
+            self.neurons[neuron_label].output = label
             return neuron_label
         else:
             return "thresholded"

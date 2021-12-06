@@ -40,6 +40,7 @@ def test_net(net, data, values, indexes=None, test_net_label='', all_errors=None
         train_count += 1
         features = data[test]
         value = values[test]
+        net.reset_neuron_activity()
 
         noise = np.random.normal(scale=noise_stdev, size=np.array(features).shape)
         activations = net.convert_inputs_to_activations(np.array(features) + noise)
@@ -283,7 +284,7 @@ max_out_synapses = 50000
 # activity_init = 1.0
 always_inputs = False
 replaying = False
-error_type = 'square'
+error_type = 'linear'
 epochs = 20
 repeats = 10
 width_noise = 0.#5
