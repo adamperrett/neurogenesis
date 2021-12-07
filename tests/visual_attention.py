@@ -24,7 +24,7 @@ if test == 'mnist':
     num_outputs = num_classes + num_directions
     ds_factor = 4
     first_inputs = int((28 / ds_factor) ** 2)
-    glimpse_size = 5
+    glimpse_size = 10
     num_glimpses = 5
     glimps_inputs = glimpse_size ** 2
     train_labels = mnist_training_labels
@@ -49,6 +49,8 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
     neuron_counts = []
     all_classifications = []
     for test in indexes:
+        xs = []
+        ys = []
         classifications = []
         all_classification_errors = []
         all_direction_errors = []
@@ -66,15 +68,17 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
             process_activations(activations, total_output_activations)
         error, choice = calculate_classification_error(value, class_values,
                                                        test_net_label, num_classes)
-        print(class_values, "\n", error)
+        # print(class_values, "\n", error)
         classifications.append(int(choice == value))
         all_classification_errors.append(error)
         all_cropped = []
         for glimpse in range(num_glimpses):
+            print(direction_values)
             x, y = process_directions(direction_values)
+            print("x:", x, " - y:", y)
             cropped_image, x, y = crop_image(features, x, y, glimpse_size)
-            all_x.append(x)
-            all_y.append(y)
+            xs.append(x)
+            ys.append(y)
             all_cropped.append(cropped_image)
             activations = glimpse_net.convert_inputs_to_activations(np.hstack(cropped_image))
             activations = glimpse_net.response(activations, x=x, y=y)
@@ -87,15 +91,15 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
             all_direction_errors.append(error[value])
 
         x, y = process_directions(direction_values)
-        all_x.append(x)
-        all_y.append(y)
+        xs.append(x)
+        ys.append(y)
         all_direction_errors.append(0.)
-        print(class_values, "\n", error)
+        # print(class_values, "\n", error)
 
         # neurogenesis
         first_error = np.hstack([all_classification_errors[0],
-                                 calculate_direction_error(all_x[-1-num_glimpses],
-                                                           all_y[-1-num_glimpses],
+                                 calculate_direction_error(xs[0],
+                                                           ys[0],
                                                            all_direction_errors[0])])
         activations = first_net.convert_inputs_to_activations(np.hstack(ds_image))
         neuron_label = first_net.error_driven_neuro_genesis(activations, first_error, label=value)
@@ -103,15 +107,16 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
         # sum the outputs
         for glimpse in range(num_glimpses):
             glimpse_error = np.hstack([all_classification_errors[1 + glimpse],
-                                       calculate_direction_error(all_x[-num_glimpses+glimpse],
-                                                                 all_y[-num_glimpses+glimpse],
-                                                                 all_direction_errors[1+glimpse])])
+                                       calculate_direction_error(xs[1 + glimpse],
+                                                                 ys[1 + glimpse],
+                                                                 all_direction_errors[1 + glimpse])])
             activations = glimpse_net.convert_inputs_to_activations(np.hstack(all_cropped[glimpse]))
             neuron_label = glimpse_net.error_driven_neuro_genesis(activations, glimpse_error,
                                                                   label=value,
-                                                                  x=all_x[-num_glimpses+glimpse],
-                                                                  y=all_y[-num_glimpses+glimpse])
-
+                                                                  x=xs[1 + glimpse],
+                                                                  y=ys[1 + glimpse])
+        all_x.append(xs)
+        all_y.append(ys)
         all_classifications.append(classifications)
         first_net.reset_neuron_activity()
         glimpse_net.reset_neuron_activity()
@@ -123,36 +128,18 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
             # print(classifications)
             print("Neuron count: first - ", first_net.hidden_neuron_count, " glimpse - ", glimpse_net.hidden_neuron_count)
             # print("Synapse count: ", CLASSnet.synapse_count)
+            print(all_classifications[-1])
             np_class = np.array(all_classifications)
-            average_classification = []
-            for i in range(len(np_class[0])):
-                average_classification.append(np.average(np_class[:, i]))
-            print(average_classification)
-            print(test_label)
+            window_average = [[np.average(np_class[-w:, i]) for i in range(len(np_class[0]))]
+                              for w in average_windows]
+            for size, window in zip(average_windows, window_average):
+                print(size, "-", window)
+            # print(window_average)
+            # print(test_label)
             for ep, err in enumerate(epoch_error):
                 print(ep, err)
             print(test_label)
-            # synapse_counts.append(CLASSnet.synapse_count)
-            # neuron_counts.append(neuron_count)
 
-        # if 'esting' not in test_net_label:
-        #     # print(label, features)
-        #     # correctness = net.record_correctness(label)
-        #     print("Performance over all current tests")
-        #     print(regression_error)
-        #     print("Performance over last tests")
-        #     for window in average_windows:
-        #         print(np.average(all_errors[-window:]), ":", window)
-        #     if fold_testing_accuracy:
-        #         print("Fold testing accuracy", fold_testing_accuracy)
-        #         print("Maximum fold = ", maximum_fold_accuracy)
-        #         print("Performance over last", len(fold_testing_accuracy), "folds")
-        #         for window in fold_average_windows:
-        #             print(np.average(fold_testing_accuracy[-window:]), ":", window)
-        #     print("\n")
-        # else:
-        #     if train_count % 1000 == 0:
-        #         print(train_count, "/", len(indexes))
     regression_error /= train_count
     if 'esting' not in test_net_label:
         # del neuron_counts[-1]
@@ -247,12 +234,12 @@ def process_activations(activations, total_activations):
     direction_values = np.zeros(num_directions)
     for output in range(num_classes):
         class_values[output] = \
-            activations['out{}'.format(output)] + total_activations['out{}'.format(output)]
-        total_activations['out{}'.format(output)] += activations['out{}'.format(output)]
+            activations['out{}'.format(output)] #+ total_activations['out{}'.format(output)]
+        # total_activations['out{}'.format(output)] += activations['out{}'.format(output)]
     for output in range(num_classes, num_classes+num_directions):
         direction_values[output-num_classes] = \
-            activations['out{}'.format(output)] + total_activations['out{}'.format(output)]
-        total_activations['out{}'.format(output)] += activations['out{}'.format(output)]
+            activations['out{}'.format(output)] #+ total_activations['out{}'.format(output)]
+        # total_activations['out{}'.format(output)] += activations['out{}'.format(output)]
     return class_values, direction_values, total_activations
 
 def process_directions(directions):
@@ -265,6 +252,7 @@ def process_directions(directions):
     else:
         y = directions[2] / (directions[2] + directions[3])
     if np.abs(x - 0.5) < 0.01 and np.abs(y - 0.5) < 0.01:
+        print("RAND")
         x = np.random.random()
         y = np.random.random()
     # if 'esting' not in test_label:
@@ -405,19 +393,22 @@ noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'attention{}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
-             'at{} - et{} - {}adr{} - {}noise'.format(retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
-                                            delete_neuron_type, reward_decay,
-                                                     # maximum_net_size, maximum_synapses_per_neuron,
-                                                   test,
-                                                   fixed_hidden_ratio,
-                                                    # fixed_hidden_amount,
-                                                   sensitivity_width, width_noise,
-                                                   activation_threshold,
-                                                   error_threshold,
-                                                   activity_init, activity_decay_rate,
-                                                      noise_level
-                                                   )
+# test_label = 'attention{}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+#              'at{} - et{} - {}adr{} - {}noise'.format(retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
+#                                             delete_neuron_type, reward_decay,
+#                                                      # maximum_net_size, maximum_synapses_per_neuron,
+#                                                    test,
+#                                                    fixed_hidden_ratio,
+#                                                     # fixed_hidden_amount,
+#                                                    sensitivity_width, width_noise,
+#                                                    activation_threshold,
+#                                                    error_threshold,
+#                                                    activity_init, activity_decay_rate,
+#                                                       noise_level
+#                                                    )
+test_label = 'attention_{} g{}x{} ms{} sw{} et{}'.format(test, glimpse_size, num_glimpses,
+                                                         maximum_synapses_per_neuron, sensitivity_width,
+                                                         error_threshold)
 
 average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
 fold_average_windows = [3, 10, 30, 60, 100, 1000]
