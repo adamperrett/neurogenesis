@@ -20,11 +20,11 @@ test = 'mnist'
 if test == 'mnist':
     from datasets.mnist_csv import *
     num_classes = 10
-    num_directions = 4
+    num_directions = 5 ** 2
     num_outputs = num_classes + num_directions
     ds_factor = 4
     first_inputs = int((28 / ds_factor) ** 2)
-    glimpse_size = 10
+    glimpse_size = 5
     num_glimpses = 5
     glimps_inputs = glimpse_size ** 2
     train_labels = mnist_training_labels
@@ -54,6 +54,7 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
         classifications = []
         all_classification_errors = []
         all_direction_errors = []
+        all_inputs = []
         train_count += 1
         features = data[test]
         value = values[test]
@@ -63,7 +64,8 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
             {'out{}'.format(i): 0 for i in range(num_outputs)}
 
         activations = first_net.convert_inputs_to_activations(np.hstack(ds_image))
-        activations = first_net.response(activations)
+        all_inputs.append([deepcopy(activations), -1, -1])
+        activations = first_net.response(all_inputs)
         class_values, direction_values, total_output_activations = \
             process_activations(activations, total_output_activations)
         error, choice = calculate_classification_error(value, class_values,
@@ -80,8 +82,10 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
             xs.append(x)
             ys.append(y)
             all_cropped.append(cropped_image)
+            # inputs = np.hstack([np.hstack(c_i) for c_i in all_cropped])
             activations = glimpse_net.convert_inputs_to_activations(np.hstack(cropped_image))
-            activations = glimpse_net.response(activations, x=x, y=y)
+            all_inputs.append([deepcopy(activations), x, y])
+            activations = glimpse_net.response(all_inputs)
             class_values, direction_values, total_output_activations = \
                 process_activations(activations, total_output_activations)
             error, choice = calculate_classification_error(value, class_values,
@@ -101,20 +105,20 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
                                  calculate_direction_error(xs[0],
                                                            ys[0],
                                                            all_direction_errors[0])])
-        activations = first_net.convert_inputs_to_activations(np.hstack(ds_image))
-        neuron_label = first_net.error_driven_neuro_genesis(activations, first_error, label=value)
+        # activations = first_net.convert_inputs_to_activations(np.hstack(ds_image))
+        neuron_label = first_net.error_driven_neuro_genesis([all_inputs[0]], first_error, label=value)
 
         # sum the outputs
-        for glimpse in range(num_glimpses):
-            glimpse_error = np.hstack([all_classification_errors[1 + glimpse],
-                                       calculate_direction_error(xs[1 + glimpse],
-                                                                 ys[1 + glimpse],
-                                                                 all_direction_errors[1 + glimpse])])
-            activations = glimpse_net.convert_inputs_to_activations(np.hstack(all_cropped[glimpse]))
-            neuron_label = glimpse_net.error_driven_neuro_genesis(activations, glimpse_error,
-                                                                  label=value,
-                                                                  x=xs[1 + glimpse],
-                                                                  y=ys[1 + glimpse])
+        glimpse_error = []
+        for glimpse in range(num_glimpses + 1):
+            glimpse_error.append(np.hstack([all_classification_errors[glimpse],
+                                       calculate_direction_error(xs[glimpse],
+                                                                 ys[glimpse],
+                                                                 all_direction_errors[glimpse])]))
+            # activations = glimpse_net.convert_inputs_to_activations(np.hstack(all_cropped[glimpse]))
+            neuron_label = glimpse_net.error_driven_neuro_genesis([all_inputs[glimpse]],
+                                                                  glimpse_error[-1],
+                                                                  label=value)
         all_x.append(xs)
         all_y.append(ys)
         all_classifications.append(classifications)
@@ -135,7 +139,7 @@ def test_net(first_net, glimpse_net, data, values, indexes=None, test_net_label=
             for size, window in zip(average_windows, window_average):
                 print(size, "-", window)
             # print(window_average)
-            # print(test_label)
+            print(test_label)
             for ep, err in enumerate(epoch_error):
                 print(ep, err)
             print(test_label)
