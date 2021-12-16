@@ -260,10 +260,10 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.8
+    sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 8
+    maximum_synapses_per_neuron = 100
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -284,10 +284,10 @@ max_out_synapses = 50000
 # activity_init = 1.0
 always_inputs = False
 replaying = False
-error_type = 'linear'
-epochs = 20
+error_type = 'square'
+epochs = 2
 repeats = 10
-width_noise = 0.#5
+width_noise = 3#5
 noise_level = 0.#5
 out_weight_scale = 0.0#0075
 learning_rate = 1.0
@@ -337,7 +337,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
     CLASSnet = Network(num_outputs, num_inputs,
                        error_threshold=error_threshold,
                        f_width=sensitivity_width,
-                       width_noise=width_noise,
+                       # width_noise=width_noise,
                        activation_threshold=activation_threshold,
                        maximum_total_synapses=maximum_total_synapses,
                        max_hidden_synapses=maximum_synapses_per_neuron,

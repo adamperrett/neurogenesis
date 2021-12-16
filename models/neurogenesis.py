@@ -44,7 +44,10 @@ class Synapses():
 
     def response(self, input):
         # self.activity = st.norm.cdf(-abs((input - self.freq) / self.f_width)) * 2
-        self.activity = max(1. - abs((input - self.freq) / self.f_width), 0) #* self.age_multiplier
+        if 'out' not in self.post:
+            self.activity = max(1. - abs((input - self.freq) / self.f_width), 0) #* self.age_multiplier
+        else:
+            self.activity = max((input - (1 - self.f_width)) / self.f_width, 0)
         return self.activity * self.weight
 
 
@@ -129,10 +132,11 @@ class Neuron():
             self.activity = response
             return self.activity
 
-        response = 0.
-        active_synapse_weight = 0
+        total_response = 0.
         number_of_input_groups = len(all_inputs)
         for activations, x, y in all_inputs:
+            response = 0.
+            active_synapse_weight = 0
             for syn_x, syn_y in self.synapse_locations:
                 # x_value = 1.
                 # y_value = 1.
@@ -146,12 +150,13 @@ class Neuron():
                         freq = activations[synapse]
                         response += group[synapse].response(freq) * x_value * y_value
                         active_synapse_weight += 1
+            if active_synapse_weight:
+                total_response += response / active_synapse_weight
+            else:
+                total_response += response
 
-        if active_synapse_weight and 'out' not in self.neuron_label:
-            temp_activity = response / active_synapse_weight
-        else:
-            temp_activity = response
-        self.activity = temp_activity #/ number_of_input_groups
+
+        self.activity = total_response #/ number_of_input_groups
         return self.activity
 
 
