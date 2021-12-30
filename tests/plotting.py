@@ -23,7 +23,7 @@ pen_label = 'smoutnoave pl0.5 long400 w10 mem0.0 RL0.9999 net100x4  - ' \
 # variables = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.]#, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8]
 # variables = [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 5000]
 # variables = [10, 50, 100, 150, 200, 300, 400, 500, 600]
-variables = [1, 2, 3, 4, 8, 100]#6, 24, 32, 64]
+variables = [0]#, 1, 2, 3, 4, 5, 6, 7, 8, 9]#100]#6, 24, 32, 64]
 # variables = [0.4, 0.3, 0.2, 0.1, 0.03, 0.01, 0.003, 0.001, 0.0003]#, 0.0001, 0.00003, 0.00001]0.9, 0.7, 0.6, 0.5,
 # variables = [0.00001, 0.0001, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4]
 # variables = [0.000001, 0.000005, 0.0000075, 0.00001, 0.000025,
@@ -48,8 +48,8 @@ for idx, variable in enumerate(variables):
     # base_file_name = 'noOut no-lr0.1 sm0.0 RL0.99999  - wine fixed_h0 - ' \
     #                  'sw0.9n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise 4'
     # base_file_name = '{}  - mnist fixed_h0 - sw0.6 - at0.0 - et0.0 - 1.0adr0.999999'.format(variable)
-    base_file_name = 'error_threshold_testing1ms{} sm0.0 RL0.9999  - ' \
-                     'wine fixed_h0.0 - sw0.4n0.0 - at0.0 - et0.1 - 1.0adr1.0 - 0.0noise'.format(variable)
+    base_file_name = 'regression1ms8 square0.0 RL0.9999  - mpg fixed_h0.0 - ' \
+                     'sw0.4n'.format(variable)
     print(base_file_name)
     # base_file_name = pen_label
     # base_file_name = 'withoutOUT out RL0.99999 net3000000x100  - wine fixed_h50 - ' \
@@ -114,7 +114,7 @@ for idx, variable in enumerate(variables):
     std_dev_data = []
     std_err_data = []
     max_data = []
-    for i in range(min(time_length)):
+    for i in range(358):#min(time_length)):
         time_slice = []
         for j in range(len(collected_data)):
             try:
@@ -157,7 +157,9 @@ for idx, variable in enumerate(variables):
         plt.xlabel('Standard deviation of noise')
     else:
         if 'accuracy' in collect:
-            plt.plot([i for i in range(len(average_data))], np.ones_like(average_data), 'k--')
+            plt.plot([i for i in range(len(average_data))], np.zeros_like(average_data), 'k--')
+            plt.xlabel('Training examples')
+            plt.ylabel('Mean squared error')
         # plt.plot([i for i in range(len(average_data))], np.array(average_data) + np.array(std_dev_data), 'r')
         # plt.plot([i for i in range(len(average_data))], np.array(average_data) - np.array(std_dev_data), 'r')
         if collect == 'pen':
@@ -176,7 +178,7 @@ for idx, variable in enumerate(variables):
         if collect != 'pen':
             plt.fill_between(x, stdev1, stdev2, color=colours[idx], alpha=0.5)
             plt.plot(x, average_data, color=colours[idx], label='{}'.format(variable))
-            plt.legend(loc="upper left")
+            # plt.legend(loc="upper left")
         else:
             # for data in collected_data:
             #     running_data = moving_average(data, n=100)

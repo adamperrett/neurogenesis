@@ -284,9 +284,9 @@ max_out_synapses = 50000
 always_inputs = False
 replaying = False
 error_type = 'square'
-epochs = 20
+epochs = 2
 repeats = 10
-width_noise = 0.#5
+width_noise = 9#5
 noise_level = 0.#5
 out_weight_scale = 0.0#0075
 learning_rate = 1.0
@@ -322,7 +322,7 @@ y = norm_mpg
 
 # sss = StratifiedShuffleSplit(n_splits=repeats, test_size=0.1, random_state=27)
 # sss = StratifiedKFold(n_splits=repeats, random_state=2727, shuffle=True)
-sss = ShuffleSplit(n_splits=repeats, test_size=0.1, random_state=27272)
+sss = ShuffleSplit(n_splits=repeats, test_size=0.1, random_state=width_noise)
 # sss = LeaveOneOut()
 
 for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
@@ -336,7 +336,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
     CLASSnet = Network(num_outputs, num_inputs,
                        error_threshold=error_threshold,
                        f_width=sensitivity_width,
-                       width_noise=width_noise,
+                       # width_noise=width_noise,
                        activation_threshold=activation_threshold,
                        maximum_total_synapses=maximum_total_synapses,
                        max_hidden_synapses=maximum_synapses_per_neuron,
