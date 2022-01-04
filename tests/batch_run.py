@@ -6,7 +6,7 @@ sensitivity_width = [0.4]#[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 activation_threshold = [0.0]
 error_threshold = [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.]
 maximum_total_synapses = [1000000000]
-maximum_synapses = [1, 8, 100]
+maximum_synapses = [1, 150]
 input_spread = [0]
 activity_decay_rate = [0.99]
 number_of_seeds = [0]
@@ -28,7 +28,7 @@ for sw in sensitivity_width:
                                     open_screen = "screen -dmS " + screen_name + " bash -c "
                                     move_and_source = "neurogenesis_source && "
                                     # command = "\"" + move_and_source + " python3 incremental_shd.py {} {} {} {} {}\"".format(h, r, v1, v2, fb)
-                                    command = "\"python3 procedural_classification.py {} {} {} {} {} {} {} {} {}; " \
+                                    command = "\"python3 mnist_training.py {} {} {} {} {} {} {} {} {}; " \
                                               "exec bash\"".\
                                         format(sw, at, er, mn, ms, ins, adr, ns, fha)
 
