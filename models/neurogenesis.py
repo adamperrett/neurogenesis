@@ -230,7 +230,7 @@ class Network():
         if self.synapse_count > self.maximum_total_synapses:
             # self.delete_synapses(self.synapse_count - self.maximum_total_synapses)
             self.delete_neuron()
-        # visualisation = self.visualise_neuron(neuron_label)
+        visualisation = self.visualise_neuron(neuron_label)
         hidden_activity = self.return_hidden_neurons(self.neuron_activity)
         self.neuron_response[neuron_label] = 0.
         if len(self.neuron_rewards) > 0:

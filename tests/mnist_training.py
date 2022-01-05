@@ -284,7 +284,7 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
                                                    error[output]))
     return error, choice
 
-read_args = False
+read_args = True
 if read_args:
     import sys
     sensitivity_width = float(sys.argv[1])
@@ -329,7 +329,7 @@ replaying = False
 error_type = 'sm'
 epochs = 7
 repeats = 1
-visualise_rate = 1
+visualise_rate = 10
 np.random.seed(27)
 confusion_decay = 0.8
 
