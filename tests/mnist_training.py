@@ -284,7 +284,7 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
                                                    error[output]))
     return error, choice
 
-read_args = True
+read_args = False
 if read_args:
     import sys
     sensitivity_width = float(sys.argv[1])
@@ -305,7 +305,7 @@ else:
     sensitivity_width = 0.5
     activation_threshold = 0.0
     error_threshold = 0.1
-    maximum_synapses_per_neuron = 1500
+    maximum_synapses_per_neuron = 1
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
