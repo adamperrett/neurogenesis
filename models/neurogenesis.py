@@ -133,6 +133,7 @@ class Network():
         self.activation_threshold = activation_threshold
         self.hidden_neuron_count = 0
         self.deleted_neuron_count = 0
+        self.repeated_neuron_count = 0
         self.maximum_total_synapses = maximum_total_synapses
         self.max_hidden_synapses = max_hidden_synapses
         self.synapse_count = 0
@@ -200,6 +201,7 @@ class Network():
         if len(repeated_neurons) > 1:
             print("that ain't right")
         if len(repeated_neurons) and 'out' not in neuron_label:
+            self.repeated_neuron_count += 1
             return repeated_neurons[-1]
         if neuron_label == '':
             neuron_label = 'n{}'.format(self.hidden_neuron_count)
