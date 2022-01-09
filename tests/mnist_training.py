@@ -71,10 +71,11 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         noise = np.random.normal(scale=noise_stdev, size=np.array(features).shape)
         activations = net.convert_inputs_to_activations(np.array(features) + noise)
         activations = net.response(activations)
+        # h_act = net.return_hidden_neurons(activations=activations)
         print(test_net_label, "\nEpoch ", epoch, "/", epochs)
         print(fold_string)
         print('test ', train_count, '/', len(indexes))
-        error, choice = calculate_error(label, activations, test_label, num_outputs)
+        error, choice, softmax = calculate_error(label, activations, test_label, num_outputs)
         neuron_count = CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count
         print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
               CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
@@ -87,12 +88,55 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         synapse_counts.append(CLASSnet.synapse_count)
         neuron_counts.append(neuron_count)
         repeated_count.append(CLASSnet.repeated_neuron_count)
+
+        # if train_count % 100 == 0 and 'esti' not in test_net_label:
+        #     input = CLASSnet.convert_inputs_to_activations(np.array(features))
+        #     act_expectation = CLASSnet.collect_expectation(activations, softmax)
+        #     err_expectation = CLASSnet.collect_expectation(activations, softmax,
+        #                                                    activity_dependant=False)
+        #     general_expectation = CLASSnet.collect_expectation(activations, softmax,
+        #                                                        activity_dependant=False,
+        #                                                        error_driven=False)
+        #     input = np.reshape(CLASSnet.convert_inp_dict_to_list(input), [28, 28])
+        #     act_expectation = np.reshape(CLASSnet.convert_inp_dict_to_list(act_expectation), [28, 28])
+        #     err_expectation = np.reshape(CLASSnet.convert_inp_dict_to_list(err_expectation), [28, 28])
+        #     general_expectation = np.reshape(CLASSnet.convert_inp_dict_to_list(general_expectation), [28, 28])
+        #     fig, ax = plt.subplots(2, 2)
+        #     im1 = ax[0][0].imshow(input, cmap='viridis')#,
+        #                           # extent=x_range + y_range)
+        #     im2 = ax[0][1].imshow(act_expectation, cmap='viridis')#,
+        #                           # extent=x_range + y_range)
+        #     im3 = ax[1][0].imshow(err_expectation, cmap='viridis')#,
+        #                           # extent=x_range + y_range)
+        #     im4 = ax[1][1].imshow(general_expectation, cmap='viridis')#,
+        #                           # extent=x_range + y_range)
+        #     cbar1 = fig.colorbar(im1, ax=ax[0][0])
+        #     cbar2 = fig.colorbar(im2, ax=ax[0][1])
+        #     cbar3 = fig.colorbar(im3, ax=ax[1][0])
+        #     cbar4 = fig.colorbar(im4, ax=ax[1][1])
+        #     fig.tight_layout()
+        #     # plt.show()
+        #     plt.savefig("./plots/expectation {} {}.png".format(test_label, len(classifications)),
+        #                 bbox_inches='tight', dpi=200, format='png')
+        #     plt.close()
+        #     print("plotted")
+
+        if expect_type == 'act':
+            expectation = CLASSnet.collect_expectation(activations, softmax)
+        elif expect_type == 'err':
+            expectation = CLASSnet.collect_expectation(activations, softmax,
+                                                       activity_dependant=False)
+        else:
+            expectation = CLASSnet.collect_expectation(activations, softmax,
+                                                       activity_dependant=False,
+                                                       error_driven=False)
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
                 # net.reinforce_neurons(1.)
                 classifications.append(1)
-                neuron_label = net.error_driven_neuro_genesis(activations, error, label=label)
+                neuron_label = net.error_driven_neuro_genesis(activations, error, expectation,
+                                                              label=label)
             print("CORRECT CLASS WAS CHOSEN")
             # if error[choice] < -0.5:
             #     net.error_driven_neuro_genesis(activations, error, label)
@@ -101,7 +145,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             if 'esting' not in test_net_label:
                 # net.reinforce_neurons(-1.)
                 classifications.append(0)
-                neuron_label = net.error_driven_neuro_genesis(activations, error, label=label)
+                neuron_label = net.error_driven_neuro_genesis(activations, error, expectation,
+                                                              label=label)
                 # print("total visualising neuron", CLASSnet.hidden_neuron_count)
                 # vis = CLASSnet.visualise_neuron(neuron_label, only_pos=False)
                 # print("plotting neuron", CLASSnet.hidden_neuron_count)
@@ -125,11 +170,11 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             print("Performance over last", len(fold_test_accuracy), "folds")
             for window in fold_average_windows:
                 print(np.average(fold_test_accuracy[-window:]), ":", window)
-        if procedural_testing_accuracy:
-            print("Procedural testing accuracy", procedural_testing_accuracy)
-            print("Performance over last", len(procedural_testing_accuracy), "folds")
-            for window in fold_average_windows:
-                print(np.average(procedural_testing_accuracy[-window:]), ":", window)
+        # if procedural_testing_accuracy:
+        #     print("Procedural testing accuracy", procedural_testing_accuracy)
+        #     print("Performance over last", len(procedural_testing_accuracy), "folds")
+        #     for window in fold_average_windows:
+        #         print(np.average(procedural_testing_accuracy[-window:]), ":", window)
         print("\n")
     # print(incorrect_classes)
     # all_incorrect_classes.append(incorrect_classes)
@@ -287,7 +332,7 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
                                                    output_activations[output],
                                                    softmax[output],
                                                    error[output]))
-    return error, choice
+    return error, choice, softmax
 
 read_args = False
 if read_args:
@@ -307,10 +352,10 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.5
+    sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.1
-    maximum_synapses_per_neuron = 1
+    maximum_synapses_per_neuron = 16
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -331,6 +376,8 @@ max_out_synapses = 50000
 # activity_init = 1.0
 always_inputs = False
 replaying = False
+expecting = False
+expect_type = 'act'
 error_type = 'sm'
 epochs = 7
 repeats = 1
@@ -342,8 +389,8 @@ noise_tests = np.linspace(0, .3, 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'err_th retest{} {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{}'.format(retest_rate, error_type,
+base_label = 'expecting-{}-{} retest{} {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{}'.format(expecting, expect_type, retest_rate, error_type,
                                             delete_neuron_type, reward_decay,
                                                      maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
@@ -395,7 +442,8 @@ for repeat in range(repeats):
                        activity_init=activity_init,
                        replaying=replaying,
                        hidden_threshold=hidden_threshold,
-                       conv_size=conv_size)
+                       conv_size=conv_size,
+                       expecting=expecting)
     all_incorrect_classes = []
     epoch_error = []
     noise_results = []
