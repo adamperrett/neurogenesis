@@ -37,7 +37,7 @@ elif test == 'mnist':
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
     retest_rate = 1000
-    retest_size = 100
+    retest_size = 1#00
 elif test == 'pima':
     from datasets.pima_indians import *
     num_outputs = 2
@@ -68,6 +68,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         train_count += 1
         features = data[test]
         label = labels[test]
+        net.reset_expectation()
         noise = np.random.normal(scale=noise_stdev, size=np.array(features).shape)
         activations = net.convert_inputs_to_activations(np.array(features) + noise)
         activations = net.response(activations)
@@ -89,7 +90,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         neuron_counts.append(neuron_count)
         repeated_count.append(CLASSnet.repeated_neuron_count)
 
-        # if train_count % 100 == 0 and 'esti' not in test_net_label:
+        # if train_count % 1000 == 0 and 'esti' not in test_net_label:
         #     input = CLASSnet.convert_inputs_to_activations(np.array(features))
         #     act_expectation = CLASSnet.collect_expectation(activations, softmax)
         #     err_expectation = CLASSnet.collect_expectation(activations, softmax,
@@ -130,6 +131,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             expectation = CLASSnet.collect_expectation(activations, softmax,
                                                        activity_dependant=False,
                                                        error_driven=False)
+        if norm_expectation:
+            expectation = CLASSnet.normalise_inp_dict(expectation)
+
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
@@ -355,7 +359,7 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.1
-    maximum_synapses_per_neuron = 16
+    maximum_synapses_per_neuron = 128
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -376,8 +380,9 @@ max_out_synapses = 50000
 # activity_init = 1.0
 always_inputs = False
 replaying = False
-expecting = False
-expect_type = 'act'
+expecting = True
+expect_type = 'oa'
+norm_expectation = False
 error_type = 'sm'
 epochs = 7
 repeats = 1
@@ -389,10 +394,11 @@ noise_tests = np.linspace(0, .3, 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'expecting-{}-{} retest{} {} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{}'.format(expecting, expect_type, retest_rate, error_type,
-                                            delete_neuron_type, reward_decay,
-                                                     maximum_net_size, maximum_synapses_per_neuron,
+base_label = 'speed-{}-{}-norm{} retest{} {} ms{}  - {} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{}'.format(expecting, expect_type, norm_expectation,
+                                            retest_rate, error_type,
+                                            # delete_neuron_type, reward_decay,
+                                                     maximum_synapses_per_neuron,
                                                    test,
                                                    fixed_hidden_ratio,
                                                     # fixed_hidden_amount,

@@ -127,7 +127,8 @@ class Network():
                  replaying=True,
                  hidden_threshold=0.9,
                  conv_size=4,
-                 expecting=False):
+                 expecting=False,
+                 check_repeat=False):
         self.error_threshold = error_threshold
         self.f_width = f_width
         self.width_noise = width_noise
@@ -152,6 +153,7 @@ class Network():
         self.hidden_threshold = hidden_threshold
         self.conv_size = conv_size
         self.expecting = expecting
+        self.check_repeat = check_repeat
         self.correctness = [{} for i in range(number_of_classes)]
 
         self.neurons = {}
@@ -178,6 +180,13 @@ class Network():
         for output in range(number_of_classes):
             self.add_neuron({}, {}, 'out{}'.format(output))
 
+        self.expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
+        self.inv_expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
+
+        self.output_expectation = [[{'in{}'.format(i): 0 for i in range(self.number_of_inputs)},
+                                    {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}]
+                                   for i in range(self.number_of_classes)]
+
         # self.neurons['out{}'.format(seed_class)].add_connection('seed{}'.format(seed_class),
         self.layers = 2
 
@@ -185,29 +194,33 @@ class Network():
     def add_neuron(self, connections, expectation, neuron_label='', seeding=False, out_err=[], label=-1):
         if self.max_hidden_synapses and not seeding:
             connections = self.limit_connections(connections, expectation)
-        repeated_neurons = []
-        for neuron in self.neurons:
-            if self.neurons[neuron].connections == connections:
-                repeated_neurons.append(neuron)
-                for output, error in enumerate(out_err):
-                    if abs(error) > self.error_threshold:
-                        if neuron in self.neurons['out{}'.format(output)].synapses:
-                            self.neurons['out{}'.format(output)].synapses[neuron].weight -= error
-                        else:
-                            self.neurons['out{}'.format(output)].add_connection(neuron,
-                                                                                freq=1.,
-                                                                                weight=-error,
-                                                                                sensitivities=self.neuron_selectivity,
-                                                                                # width=0.5,
-                                                                                reward_decay=self.reward_decay)
-        if len(repeated_neurons) > 1:
-            print("that ain't right")
-        if len(repeated_neurons) and 'out' not in neuron_label:
-            self.repeated_neuron_count += 1
-            return repeated_neurons[-1]
+        if self.check_repeat:
+            repeated_neurons = []
+            for neuron in self.neurons:
+                if self.neurons[neuron].connections == connections:
+                    repeated_neurons.append(neuron)
+                    for output, error in enumerate(out_err):
+                        if abs(error) > self.error_threshold:
+                            if neuron in self.neurons['out{}'.format(output)].synapses:
+                                self.neurons['out{}'.format(output)].synapses[neuron].weight -= error
+                            else:
+                                self.neurons['out{}'.format(output)].add_connection(neuron,
+                                                                                    freq=1.,
+                                                                                    weight=-error,
+                                                                                    sensitivities=self.neuron_selectivity,
+                                                                                    # width=0.5,
+                                                                                    reward_decay=self.reward_decay)
+            if len(repeated_neurons) > 1:
+                print("that ain't right")
+            if len(repeated_neurons) and 'out' not in neuron_label:
+                self.repeated_neuron_count += 1
+                return repeated_neurons[-1]
         if neuron_label == '':
             neuron_label = 'n{}'.format(self.hidden_neuron_count)
             self.hidden_neuron_count += 1
+        for inp in connections:
+            self.output_expectation[label][0][inp] += connections[inp]
+            self.output_expectation[label][1][inp] += (1 - connections[inp])
         self.neurons[neuron_label] = Neuron(neuron_label, connections, self.neuron_selectivity,
                                             f_width=self.f_width,
                                             width_noise=self.width_noise,
@@ -462,23 +475,29 @@ class Network():
             response[neuron] = self.neurons[neuron].response(activations)
             # line below can be compressed?
             activations[self.neurons[neuron].neuron_label] = response[neuron]
-        for neuron in self.remove_output_neurons(activations, cap=False):
-            if neuron not in self.neuron_activity:
-                if self.activity_decay_rate < 1.0:
-                    hidden_activity = self.return_hidden_neurons(activations)
-                    self.neuron_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
-                else:
-                    self.neuron_activity[neuron] = self.activity_init
-            if self.replaying:
-                if replay:
-                    self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-                self.neuron_activity[neuron] = response[neuron]
-            else:
-                self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
-                self.neuron_response[neuron] = response[neuron]
-                self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
-                                               (response[neuron] * (1. - self.activity_decay_rate))
-                # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+            # if response[neuron] > 0 and 'in' not in neuron and 'out' not in neuron:
+            #     for inp in self.neurons[neuron].connections:
+            #         self.expectation[inp] += \
+            #             activations[neuron] * self.neurons[neuron].connections[inp]
+            #         self.inv_expectation[inp] += \
+            #             activations[neuron] * (1 - self.neurons[neuron].connections[inp])
+        # for neuron in self.remove_output_neurons(activations, cap=False):
+        #     if neuron not in self.neuron_activity:
+        #         if self.activity_decay_rate < 1.0:
+        #             hidden_activity = self.return_hidden_neurons(activations)
+        #             self.neuron_activity[neuron] = sum(hidden_activity.values()) / len(hidden_activity)
+        #         else:
+        #             self.neuron_activity[neuron] = self.activity_init
+        #     if self.replaying:
+        #         if replay:
+        #             self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+        #         self.neuron_activity[neuron] = response[neuron]
+        #     else:
+        #         self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
+        #         self.neuron_response[neuron] = response[neuron]
+        #         self.neuron_activity[neuron] = (self.neuron_activity[neuron] * self.activity_decay_rate) + \
+        #                                        (response[neuron] * (1. - self.activity_decay_rate))
+        #         # self.neuron_selectivity[neuron] = response[neuron] - self.neuron_activity[neuron]
         outputs = ['out{}'.format(i) for i in range(self.number_of_classes)]
         for out, neuron in enumerate(outputs):
             response = self.neurons[neuron].response(activations)
@@ -664,48 +683,62 @@ class Network():
         else:
             return "thresholded"
 
+    def reset_expectation(self):
+        self.expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
+        self.inv_expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
+
     def collect_expectation(self, activations, error, activity_dependant=True, error_driven=True):
         expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
         inv_expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
         if activity_dependant:
-            for neuron in activations:
-                if 'in' not in neuron and 'out' not in neuron:
-                    if activations[neuron] > 0:
-                        for inp in self.neurons[neuron].connections:
-                            expectation[inp] += \
-                                activations[neuron] * self.neurons[neuron].connections[inp]
-                            inv_expectation[inp] += \
-                                activations[neuron] * (1 - self.neurons[neuron].connections[inp])
+            expectation = self.expectation
+            inv_expectation = self.inv_expectation
+            # for neuron in activations:
+            #     if 'in' not in neuron and 'out' not in neuron:
+            #         if activations[neuron] > 0:
+            #             for inp in self.neurons[neuron].connections:
+            #                 expectation[inp] += \
+            #                     activations[neuron] * self.neurons[neuron].connections[inp]
+            #                 inv_expectation[inp] += \
+            #                     activations[neuron] * (1 - self.neurons[neuron].connections[inp])
         elif error_driven:
             for out in range(self.number_of_classes):
-                for neuron in self.neurons['out{}'.format(out)].synapses:
-                    for inp in self.neurons[neuron].connections:
-                        if self.neurons['out{}'.format(out)].synapses[neuron].weight > 0:
-                            expectation[inp] += \
-                                self.neurons[neuron].connections[inp] * \
-                                error[out] #* \
-                                # self.neurons['out{}'.format(out)].synapses[neuron].weight
-                            inv_expectation[inp] += \
-                                (1 - self.neurons[neuron].connections[inp]) * \
-                                error[out] #* \
-                                # self.neurons['out{}'.format(out)].synapses[neuron].weight
+                for inp in expectation:
+                    expectation[inp] += self.output_expectation[out][0][inp] * error[out]
+                    inv_expectation[inp] += self.output_expectation[out][1][inp] * error[out]
+                # for neuron in self.neurons['out{}'.format(out)].synapses:
+                #     for inp in self.neurons[neuron].connections:
+                #         if self.neurons['out{}'.format(out)].synapses[neuron].weight > 0:
+                #             expectation[inp] += \
+                #                 self.neurons[neuron].connections[inp] * \
+                #                 error[out] #* \
+                #                 # self.neurons['out{}'.format(out)].synapses[neuron].weight
+                #             inv_expectation[inp] += \
+                #                 (1 - self.neurons[neuron].connections[inp]) * \
+                #                 error[out] #* \
+                #                 # self.neurons['out{}'.format(out)].synapses[neuron].weight
         else:
             for out in range(self.number_of_classes):
-                for neuron in self.neurons['out{}'.format(out)].synapses:
-                    for inp in self.neurons[neuron].connections:
-                        if self.neurons['out{}'.format(out)].synapses[neuron].weight > 0:
-                            expectation[inp] += \
-                                self.neurons[neuron].connections[inp] * \
-                                activations['out{}'.format(out)] #* \
-                                # self.neurons['out{}'.format(out)].synapses[neuron].weight
-                            inv_expectation[inp] += \
-                                (1 - self.neurons[neuron].connections[inp]) * \
-                                activations['out{}'.format(out)] #* \
-                                # self.neurons['out{}'.format(out)].synapses[neuron].weight
+                for inp in expectation:
+                    expectation[inp] += \
+                        self.output_expectation[out][0][inp] * activations['out{}'.format(out)]
+                    inv_expectation[inp] += \
+                        self.output_expectation[out][1][inp] * activations['out{}'.format(out)]
+                # for neuron in self.neurons['out{}'.format(out)].synapses:
+                #     for inp in self.neurons[neuron].connections:
+                #         if self.neurons['out{}'.format(out)].synapses[neuron].weight > 0:
+                #             expectation[inp] += \
+                #                 self.neurons[neuron].connections[inp] * \
+                #                 activations['out{}'.format(out)] #* \
+                #                 # self.neurons['out{}'.format(out)].synapses[neuron].weight
+                #             inv_expectation[inp] += \
+                #                 (1 - self.neurons[neuron].connections[inp]) * \
+                #                 activations['out{}'.format(out)] #* \
+                #                 # self.neurons['out{}'.format(out)].synapses[neuron].weight
         overall_expectation = {}
         for inp in expectation:
             if expectation[inp] == 0 and inv_expectation[inp] == 0:
-                overall_expectation[inp] = -3
+                overall_expectation[inp] = 0#-3
             else:
                 overall_expectation[inp] = 1 - (inv_expectation[inp] /
                                                 (inv_expectation[inp] + expectation[inp]))
@@ -713,11 +746,33 @@ class Network():
                 #     print("don't think this is right")
         return overall_expectation
 
-    def convert_inp_dict_to_list(self, inp_dict):
+    def convert_inp_dict_to_list(self, inp_dict, normalise=False):
         data_list = []
         for i in range(self.number_of_inputs):
             data_list.append(inp_dict['in{}'.format(i)])
+        if normalise:
+            data_list = np.array(data_list)
+            min_v = np.min(data_list)
+            max_v = np.max(data_list)
+            data_list = (data_list - min_v) / (max_v - min_v)
         return data_list
+
+    def normalise_inp_dict(self, inp_dict):
+        data_list = []
+        for i in range(self.number_of_inputs):
+            data_list.append(inp_dict['in{}'.format(i)])
+
+        data_list = np.array(data_list)
+        min_v = np.min(data_list)
+        max_v = np.max(data_list)
+        if min_v != max_v:
+            data_list = (data_list - min_v) / (max_v - min_v)
+
+        for i in range(self.number_of_inputs):
+            inp_dict['in{}'.format(i)] = data_list[i]
+
+        return inp_dict
+
 
     def visualise_neuron(self, neuron, sensitive=False, only_pos=False):
         visualisation = np.zeros([28, 28])
