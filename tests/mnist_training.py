@@ -358,7 +358,7 @@ if read_args:
 else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
-    error_threshold = 0.1
+    error_threshold = 0.2
     maximum_synapses_per_neuron = 128
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.
@@ -382,6 +382,7 @@ always_inputs = False
 replaying = False
 expecting = True
 expect_type = 'oa'
+surprise_threshold = 0.46
 norm_expectation = False
 error_type = 'sm'
 epochs = 7
@@ -394,8 +395,8 @@ noise_tests = np.linspace(0, .3, 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'speed-{}-{}-norm{} retest{} {} ms{}  - {} fixed_h{} - sw{} - ' \
-             'at{} - et{} - {}adr{}'.format(expecting, expect_type, norm_expectation,
+base_label = 'thresholded-{}-{}-th{} retest{} {} ms{}  - {} fixed_h{} - sw{} - ' \
+             'at{} - et{} - {}adr{}'.format(expecting, expect_type, surprise_threshold,
                                             retest_rate, error_type,
                                             # delete_neuron_type, reward_decay,
                                                      maximum_synapses_per_neuron,
@@ -449,6 +450,7 @@ for repeat in range(repeats):
                        replaying=replaying,
                        hidden_threshold=hidden_threshold,
                        conv_size=conv_size,
+                       surprise_threshold=surprise_threshold,
                        expecting=expecting)
     all_incorrect_classes = []
     epoch_error = []

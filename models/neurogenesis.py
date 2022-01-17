@@ -128,6 +128,7 @@ class Network():
                  hidden_threshold=0.9,
                  conv_size=4,
                  expecting=False,
+                 surprise_threshold=0.4,
                  check_repeat=False):
         self.error_threshold = error_threshold
         self.f_width = f_width
@@ -153,6 +154,7 @@ class Network():
         self.hidden_threshold = hidden_threshold
         self.conv_size = conv_size
         self.expecting = expecting
+        self.surprise_threshold = surprise_threshold
         self.check_repeat = check_repeat
         self.correctness = [{} for i in range(number_of_classes)]
 
@@ -345,11 +347,17 @@ class Network():
                     hidden_selectivity[neuron] = abs(self.neuron_selectivity[neuron])
         return input_selectivity, hidden_selectivity
 
-    def get_max_selectivity(self, selectivity, n_select, random_sampling=False):
+    def get_max_selectivity(self, selectivity, n_select, random_sampling=False, thresholded=False):
         selected = 0
         if len(selectivity) == 0:
             return {}
         total_dic = {}
+        if thresholded:
+            thresh_dic = {}
+            for neuron in selectivity:
+                if selectivity[neuron] >= self.surprise_threshold:
+                    thresh_dic[neuron] = selectivity[neuron]
+            return thresh_dic
         if random_sampling:
             sample_dic = random.sample(selectivity.items(), min(n_select-selected, len(selectivity)))
             for key, v in sample_dic:
@@ -384,7 +392,7 @@ class Network():
             surprise = {}
             for inp in expectation:
                 surprise[inp] = np.abs(expectation[inp] - connections[inp])
-            selected = self.get_max_selectivity(surprise, self.max_hidden_synapses)
+            selected = self.get_max_selectivity(surprise, self.max_hidden_synapses, thresholded=True)
             pruned_connections = {}
             for pre in selected:
                 pruned_connections[pre] = connections[pre]
@@ -738,7 +746,7 @@ class Network():
         overall_expectation = {}
         for inp in expectation:
             if expectation[inp] == 0 and inv_expectation[inp] == 0:
-                overall_expectation[inp] = 0#-3
+                overall_expectation[inp] = -3
             else:
                 overall_expectation[inp] = 1 - (inv_expectation[inp] /
                                                 (inv_expectation[inp] + expectation[inp]))
