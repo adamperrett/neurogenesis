@@ -6,7 +6,7 @@ from datasets.simple_tests import create_centroid_classes
 from models.convert_network import *
 import random
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sn
 import pandas as pd
@@ -323,7 +323,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     data_dict['synapse_counts'] = synapse_counts
     data_dict['neuron_counts'] = neuron_counts
     data_dict['epoch error'] = epoch_error
-    data_dict['noise_results'] = noise_results
+    # data_dict['noise_results'] = noise_results
     # data_dict['all_activations'] = all_activations
     data_dict['net'] = CLASSnet
     np.save("./data/{}.png".format(test_label), data_dict) #data = np.load('./tests/data/file_name.npy', allow_pickle=True).item()
@@ -439,6 +439,9 @@ np.random.seed(27)
 confusion_decay = 0.8
 always_save = True
 remove_class = 2
+expecting = True
+expect_type = 'oa'
+surprise_threshold = 0.46
 
 noise_tests = np.linspace(0, 2., 21)
 
@@ -506,10 +509,12 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                        activity_init=activity_init,
                        replaying=replaying,
                        hidden_threshold=hidden_threshold,
-                       conv_size=conv_size)
+                       conv_size=conv_size,
+                       surprise_threshold=surprise_threshold,
+                       expecting=expecting)
     all_incorrect_classes = []
     epoch_error = []
-    noise_results = []
+    # noise_results = []
     previous_accuracy = 0
     previous_full_accuracy = 0
 
@@ -652,18 +657,18 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                 CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
             running_test_confusion *= confusion_decay
             running_test_confusion += testing_confusion
-        epoch_noise_results = []
-        for noise_std in noise_tests:
-            noise_accuracy, _, _, _, _ = test_net(CLASSnet, X, y,
-                                                  indexes=test_index,
-                                                  test_net_label='Testing',
-                                                  classifications=training_classifications,
-                                                  # fold_test_accuracy=fold_testing_accuracy,
-                                                  fold_string=fold_string,
-                                                  max_fold=maximum_fold_accuracy,
-                                                  noise_stdev=noise_std)
-            epoch_noise_results.append(noise_accuracy)
-        noise_results.append(epoch_noise_results)
+        # epoch_noise_results = []
+        # for noise_std in noise_tests:
+        #     noise_accuracy, _, _, _, _ = test_net(CLASSnet, X, y,
+        #                                           indexes=test_index,
+        #                                           test_net_label='Testing',
+        #                                           classifications=training_classifications,
+        #                                           # fold_test_accuracy=fold_testing_accuracy,
+        #                                           fold_string=fold_string,
+        #                                           max_fold=maximum_fold_accuracy,
+        #                                           noise_stdev=noise_std)
+        #     epoch_noise_results.append(noise_accuracy)
+        # noise_results.append(epoch_noise_results)
 
         plot_learning_curve(training_classifications, fold_testing_accuracy,
                             running_train_confusion, running_test_confusion,
