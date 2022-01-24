@@ -344,7 +344,7 @@ if read_args:
     sensitivity_width = float(sys.argv[1])
     activation_threshold = float(sys.argv[2])
     error_threshold = float(sys.argv[3])
-    maximum_total_synapses = int(sys.argv[4])
+    # maximum_total_synapses = int(sys.argv[4])
     maximum_synapses_per_neuron = int(sys.argv[5])
     input_spread = int(sys.argv[6])
     activity_init = 1.
@@ -382,7 +382,7 @@ always_inputs = False
 replaying = False
 expecting = True
 expect_type = 'oa'
-surprise_threshold = 0.46
+surprise_threshold = float(sys.argv[4])
 norm_expectation = False
 error_type = 'sm'
 epochs = 7

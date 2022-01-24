@@ -4,9 +4,9 @@ import time
 
 sensitivity_width = [0.4]#[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 activation_threshold = [0.0]
-error_threshold = [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.]
-maximum_total_synapses = [1000000000]
-maximum_synapses = [1, 150]
+error_threshold = [0.1, 0.2, 0.3]
+maximum_total_synapses = [0.0, 0.1, 0.2, 0.3, 0.4, 0.45, 0.5, 0.6]  # now surprise threshold
+maximum_synapses = [150]
 input_spread = [0]
 activity_decay_rate = [0.99]
 number_of_seeds = [0]
