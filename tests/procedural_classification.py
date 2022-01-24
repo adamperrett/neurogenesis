@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'breast'
+test = 'wine'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -143,10 +143,10 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                   CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
             print("Synapse count: ", CLASSnet.synapse_count)
-            print(test_label)
+            print(test_label, repeat)
             for ep, err in enumerate(epoch_error):
                 print(ep, err)
-            print(test_label)
+            print(test_label, repeat)
         confusion_matrix[choice][label] += 1
         synapse_counts.append(CLASSnet.synapse_count)
         neuron_counts.append(neuron_count)
@@ -356,7 +356,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     plt.tight_layout(rect=[0, 0.3, 1, 0.95])
     plt.suptitle(test_label, fontsize=16)
     if save_flag:
-        plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200, format='png')
+        plt.savefig("./plots/{} {}.png".format(test_label, repeat), bbox_inches='tight', dpi=200, format='png')
     plt.close()
 
     # fig, axs = plt.subplots(2, 1)
@@ -381,18 +381,18 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     #                                           fold_string=fold_string,
     #                                           max_fold=maximum_fold_accuracy,
     #                                           save_activations=True)
-    data_dict = {}
-    data_dict['training classifications'] = correct_or_not
-    data_dict['fold_test_accuracy'] = fold_test_accuracy
-    data_dict['best_testing_accuracy'] = best_testing_accuracy
-    data_dict['training_confusion'] = training_confusion
-    data_dict['testing_confusion'] = testing_confusion
-    data_dict['synapse_counts'] = synapse_counts
-    data_dict['neuron_counts'] = neuron_counts
-    data_dict['epoch error'] = epoch_error
-    # data_dict['noise_results'] = noise_results
-    # data_dict['all_activations'] = all_activations
-    data_dict['net'] = CLASSnet
+    # data_dict = {}
+    # data_dict['training classifications'] = correct_or_not
+    # data_dict['fold_test_accuracy'] = fold_test_accuracy
+    # data_dict['best_testing_accuracy'] = best_testing_accuracy
+    # data_dict['training_confusion'] = training_confusion
+    # data_dict['testing_confusion'] = testing_confusion
+    # data_dict['synapse_counts'] = synapse_counts
+    # data_dict['neuron_counts'] = neuron_counts
+    # data_dict['epoch error'] = epoch_error
+    # # data_dict['noise_results'] = noise_results
+    # # data_dict['all_activations'] = all_activations
+    # data_dict['net'] = CLASSnet
     np.save("./data/{}.png".format(test_label), data_dict) #data = np.load('./tests/data/file_name.npy', allow_pickle=True).item()
 
 def extend_data(epoch_length):
@@ -476,7 +476,7 @@ if read_args:
 else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
-    error_threshold = 0.
+    error_threshold = 0.5
     maximum_synapses_per_neuron = 8
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
@@ -510,15 +510,16 @@ np.random.seed(27)
 confusion_decay = 0.8
 always_save = True
 remove_class = 2
+check_repeat = True
 expecting = True
 expect_type = 'oa'
-surprise_threshold = 0.0
+surprise_threshold = 0.1
 
 noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'new_surprise{} - {}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+test_label = 'err_surprise{} - {}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
              'at{} - et{} - {}adr{} - {}noise'.format(surprise_threshold, retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
@@ -556,22 +557,19 @@ else:
     print("Not currently setup for MNIST")
     Exception
 
-
-all_epoch_error = []
-all_fold_testing_accuracy = []
-all_best_testing_accuracy = []
-all_training_classifications = []
-all_running_train_confusion = []
-all_running_test_confusion = []
-all_running_synapse_counts = []
-all_running_neuron_counts = []
+data_dict = {}
+data_dict['epoch_error'] = []
+data_dict['fold_testing_accuracy'] = []
+data_dict['best_testing_accuracy'] = []
+data_dict['training_classifications'] = []
+data_dict['running_train_confusion'] = []
+data_dict['running_test_confusion'] = []
+data_dict['running_synapse_counts'] = []
+data_dict['running_neuron_counts'] = []
+data_dict['net'] = []
 
 for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
 # for repeat, (train_index, test_index) in enumerate(combined_index):
-    if repeats == 1:
-        test_label = base_label
-    else:
-        test_label = base_label + ' {}'.format(repeat)
     np.random.seed(int(100*learning_rate))
 
     CLASSnet = Network(num_outputs, num_inputs,
@@ -593,7 +591,8 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                        hidden_threshold=hidden_threshold,
                        conv_size=conv_size,
                        surprise_threshold=surprise_threshold,
-                       expecting=expecting)
+                       expecting=expecting,
+                       check_repeat=check_repeat)
 
     epoch_error = []
     # noise_results = []
@@ -695,7 +694,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
             epoch_error.append([round(np.mean(training_classifications[-len(train_index):]), 4),
                                 round(final_accuracy, 4),
                                 # round(final_procedural_accuracy, 4),
-                                fold_testing_accuracy[-1],
+                                round(fold_testing_accuracy[-1]),
                                 round(full_testing_accuracy, 4),
                                 CLASSnet.hidden_neuron_count, CLASSnet.synapse_count])
             running_test_confusion *= confusion_decay
@@ -704,12 +703,13 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
             epoch_error.append([round(np.mean(training_classifications[-len(train_index):]), 4),
                                 round(final_accuracy, 4),
                                 # round(final_procedural_accuracy, 4),
-                                fold_testing_accuracy[-1],
+                                round(fold_testing_accuracy[-1], 4),
                                 round(testing_accuracy, 4),
                                 CLASSnet.hidden_neuron_count, CLASSnet.synapse_count]
                                )
             running_test_confusion *= confusion_decay
             running_test_confusion += testing_confusion
+        epoch_error[-1] = np.array(epoch_error[-1])
 
         plot_learning_curve(training_classifications, fold_testing_accuracy,
                             running_train_confusion, running_test_confusion,
@@ -719,23 +719,40 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
         for ep, error in enumerate(epoch_error):
             print(ep, error)
         print(test_label)
-    all_repeat_test_data.append(fold_testing_accuracy)
+
+    data_dict['epoch_error'].append(epoch_error)
+    data_dict['fold_testing_accuracy'].append(fold_testing_accuracy)
+    data_dict['best_testing_accuracy'].append(best_testing_accuracy)
+    data_dict['training_classifications'].append(training_classifications)
+    data_dict['running_train_confusion'].append(running_train_confusion)
+    data_dict['running_test_confusion'].append(running_test_confusion)
+    data_dict['running_synapse_counts'].append(running_synapse_counts)
+    data_dict['running_neuron_counts'].append(running_neuron_counts)
+    data_dict['net'].append(CLASSnet)
     print("Finished repeat", repeat)
 
-ave_test = []
-for j in range(len(all_repeat_test_data[0])):
-    total = 0.
-    for i in range(len(all_repeat_test_data)):
-        total += all_repeat_test_data[i][j]
-    ave_test.append(total / len(all_repeat_test_data))
+ave_data = {}
+for key in data_dict:
+    if 'net' not in key:
+        ave_test = []
+        for j in range(len(data_dict[key][0])):
+            total = 0.
+            for i in range(len(data_dict[key])):
+                total += data_dict[key][i][j]
+            ave_test.append(total / len(data_dict[key]))
+        ave_data[key] = ave_test
+data_dict['ave_data'] = ave_data
+np.save("./data/{}.png".format(test_label), data_dict)
 
 # import matplotlib.pyplot as plt
-plt.plot(ave_test)
+plt.plot(ave_data['fold_testing_accuracy'])
 plt.suptitle(test_label)
-plt.savefig("./plots/ave_test0 {}.png".format(test_label), bbox_inches='tight', dpi=200, format='png')
+plt.savefig("./plots/ave_test {}.png".format(test_label), bbox_inches='tight', dpi=200, format='png')
 
-print(ave_test)
-print(ave_test[:int(len(train_index) / retest_rate)])
+print(ave_data['fold_testing_accuracy'])
+print(test_label)
+print(ave_data['fold_testing_accuracy'][:int(len(train_index) / retest_rate)])
+print(ave_data['epoch_error'])
 
 print("done")
 
