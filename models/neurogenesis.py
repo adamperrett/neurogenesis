@@ -678,7 +678,7 @@ class Network():
                     output[out] += value
         return output, all_act
 
-    def error_driven_neuro_genesis(self, activations, output_error, expectation, weight_multiplier=1., label=-1):
+    def error_driven_neuro_genesis(self, activations, output_error, expectation=[], weight_multiplier=1., label=-1):
         if np.max(np.abs(output_error)) > self.error_threshold:
             if self.replaying:
                 # self.response(self.convert_vis_to_activations('out{}'.format(correct_class)), replay=True)
