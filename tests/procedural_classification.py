@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'wine'
+test = 'breast'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -393,7 +393,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     # # data_dict['noise_results'] = noise_results
     # # data_dict['all_activations'] = all_activations
     # data_dict['net'] = CLASSnet
-    np.save("./data/{}.png".format(test_label), data_dict) #data = np.load('./tests/data/file_name.npy', allow_pickle=True).item()
+    np.save("./data/{}".format(test_label), data_dict) #data = np.load('./tests/data/file_name.npy', allow_pickle=True).item()
 
 def extend_data(epoch_length):
     global running_neuron_counts, running_synapse_counts
@@ -474,9 +474,9 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.4
+    sensitivity_width = 0.6
     activation_threshold = 0.0
-    error_threshold = 0.5
+    error_threshold = 0.0
     maximum_synapses_per_neuron = 8
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
@@ -513,13 +513,13 @@ remove_class = 2
 check_repeat = True
 expecting = True
 expect_type = 'oa'
-surprise_threshold = 0.1
+surprise_threshold = 0.05
 
 noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'err_surprise{} - {}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+test_label = 'w_surprise{} - {}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
              'at{} - et{} - {}adr{} - {}noise'.format(surprise_threshold, retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
@@ -742,7 +742,7 @@ for key in data_dict:
             ave_test.append(total / len(data_dict[key]))
         ave_data[key] = ave_test
 data_dict['ave_data'] = ave_data
-np.save("./data/{}.png".format(test_label), data_dict)
+np.save("./data/{}".format(test_label), data_dict)
 
 # import matplotlib.pyplot as plt
 plt.plot(ave_data['fold_testing_accuracy'])

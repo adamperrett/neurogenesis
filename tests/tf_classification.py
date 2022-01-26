@@ -15,7 +15,7 @@ from tensorflow.python.keras.callbacks import LambdaCallback
 import numpy as np
 
 # load dataset
-test = 'wine'
+test = 'breast'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -69,10 +69,10 @@ def baseline_model(n_neurons, lr):
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     return model
 
-num_neurons = 32
+num_neurons = 600
 learning_rate = 0.03
-batch_size = 24
-epochs = 50
+batch_size = 64
+epochs = 10
 # noise_tests = np.linspace(0, 2., 21)
 # k_stdev = K.variable(value=0.0)
 
@@ -137,6 +137,7 @@ data_dict['testing_data'] = testing_data
 data_dict['ave_test'] = ave_test
 data_dict['training_data'] = training_data
 
+print('Averaged:')
 ave_train = {}
 for k in training_data[0]:
     total = np.zeros(epochs)
