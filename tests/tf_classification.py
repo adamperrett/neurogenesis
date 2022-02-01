@@ -10,12 +10,12 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
+from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold, ShuffleSplit
 from tensorflow.python.keras.callbacks import LambdaCallback
 import numpy as np
 
 # load dataset
-test = 'breast'
+test = 'mpg'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -42,6 +42,14 @@ elif test == 'wine':
     Y = np.array(train_labels + test_labels)
     # X = pandas.DataFrame(train_feat + test_feat)
     # Y = pandas.DataFrame(train_labels + test_labels)
+elif test == 'mpg':
+    from datasets.mpg_regression import norm_features, norm_mpg, min_mpg, max_mpg
+    num_inputs = len(norm_features[0])
+    num_outputs = 1
+    retest_rate = 1
+    retest_size = int(0.1 * len(norm_mpg))
+    X = np.array(norm_features)
+    Y = np.array(norm_mpg)
 else:
     dataframe = pandas.read_csv("../datasets/iris.data", header=None)
     dataset = dataframe.values
@@ -55,6 +63,8 @@ encoder.fit(Y)
 encoded_Y = encoder.transform(Y)
 # convert integers to dummy variables (i.e. one hot encoded)
 dummy_y = np_utils.to_categorical(encoded_Y)
+if test == 'mpg':
+    dummy_y = Y
 
 # define baseline model
 def baseline_model(n_neurons, lr):
@@ -63,16 +73,24 @@ def baseline_model(n_neurons, lr):
     # model.add(GaussianNoise(stddev=k_stdev))
     model.add(Dense(n_neurons, input_dim=num_inputs, activation='relu'))
     # model.add(Dense(n_neurons, input_dim=num_inputs, activation='relu'))
-    model.add(Dense(num_outputs, activation='softmax'))
+    if test == 'mpg':
+        # model.add(Dense(num_outputs, activation='sigmoid'))
+        model.add(Dense(num_outputs, activation='linear'))
+    else:
+        model.add(Dense(num_outputs, activation='softmax'))
     # Compile model
     optimizer = tf.keras.optimizers.Adam(lr=lr)
-    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    if test == 'mpg':
+        loss = 'mean_squared_error'
+    else:
+        loss = 'categorical_crossentropy'
+    model.compile(loss=loss, optimizer=optimizer, metrics=['accuracy'])
     return model
 
-num_neurons = 600
-learning_rate = 0.03
+num_neurons = 350
+learning_rate = 0.008
 batch_size = 64
-epochs = 10
+epochs = 20
 # noise_tests = np.linspace(0, 2., 21)
 # k_stdev = K.variable(value=0.0)
 
@@ -83,37 +101,28 @@ training_data = [{} for i in range(splits)]
 
 test_label = 'bp {} n{} lr{} b{}'.format(test, num_neurons, learning_rate, batch_size)
 
-sss = StratifiedKFold(n_splits=splits, random_state=2727, shuffle=True)
+if test == 'mpg':
+    sss = ShuffleSplit(n_splits=splits, test_size=0.1, random_state=2727)
+else:
+    sss = StratifiedKFold(n_splits=splits, random_state=2727, shuffle=True)
 for repeat, (train_index, test_index) in enumerate(sss.split(X, Y)):
     net = baseline_model(num_neurons, learning_rate)
-    retest_callback = LambdaCallback(
-        on_batch_end=lambda batch, logs:
-        # print('\n', net.predict(X[test_index]), 'arged --¬ \n',
-        #       [np.argmax(a) for a in net.predict(X[test_index])], 'then \n', Y[test_index]))
-        testing_data[repeat].append(
-            np.average([np.argmax(a) == b for a, b in zip(net.predict(X[test_index]), Y[test_index])])))
-        # print('\ntest accuracy:',
-        #       np.average([np.argmax(a) == b for a, b in zip(net.predict(X[test_index]), Y[test_index])])))
+    if test == 'mpg':
+        retest_callback = LambdaCallback(
+            on_batch_end=lambda batch, logs:
+            testing_data[repeat].append(
+                np.average([np.square(a - b) for a, b in zip(net.predict(X[test_index]), Y[test_index])])))
+    else:
+        retest_callback = LambdaCallback(
+            on_batch_end=lambda batch, logs:
+            testing_data[repeat].append(
+                np.average([np.argmax(a) == b for a, b in zip(net.predict(X[test_index]), Y[test_index])])))
+
     print("training model for repeat", repeat, test_label)
-    # scce = tf.keras.losses.sparse_categorical_crossentropy(dummy_y[test_index], net.predict(X))
     history = net.fit(X[train_index], dummy_y[train_index],
                       batch_size=batch_size, validation_data=(X[test_index], dummy_y[test_index]),
                       callbacks=retest_callback,
                       epochs=epochs, verbose=True)
-
-    # noise_results = []
-    # for noise_std in noise_tests:
-    #     noise_x = []
-    #     for data in X[test_index]:
-    #         noise_x.append(data + np.random.normal(0, noise_std, len(data)))
-    #     noise_x = np.array(noise_x)
-    #     noise_results.append(
-    #         [noise_std,
-    #          np.average([np.argmax(a) == b for a, b in
-    #                      zip(net.predict(noise_x), Y[test_index])])])
-    # all_noise_results.append(noise_results)
-    # print(noise_results)
-
 
     print(test_label)
     for k in history.history.keys():
@@ -147,6 +156,7 @@ for k in training_data[0]:
     ave_train[k] = total / len(training_data)
     print(k, ave_train[k])
 
+print(test_label)
 np.save("./data/{}".format(test_label), data_dict)
 
 

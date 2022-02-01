@@ -220,9 +220,10 @@ class Network():
         if neuron_label == '':
             neuron_label = 'n{}'.format(self.hidden_neuron_count)
             self.hidden_neuron_count += 1
-        for inp in connections:
-            self.output_expectation[label][0][inp] += connections[inp]
-            self.output_expectation[label][1][inp] += (1 - connections[inp])
+        if self.expecting:
+            for inp in connections:
+                self.output_expectation[label][0][inp] += connections[inp]
+                self.output_expectation[label][1][inp] += (1 - connections[inp])
         self.neurons[neuron_label] = Neuron(neuron_label, connections, self.neuron_selectivity,
                                             f_width=self.f_width,
                                             width_noise=self.width_noise,

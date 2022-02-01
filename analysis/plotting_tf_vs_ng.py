@@ -24,12 +24,14 @@ def match_lengths(d1, d2):
     return new_1, new_2
 
 relative_directory = '../tests/data/'
-tf_test_rate = 8
-tf_file = 'bp breast n600 lr0.03 b{}.npy'.format(tf_test_rate)
+tf_test_rate = 64
+n_neurons = 350
+tf_file = 'bp mpg n{} lr0.008 b{}.npy'.format(n_neurons, tf_test_rate)
 tf_colour = [0, 0, 0]
-ng_file = 'w_surprise0.05 - 10ms8 sm0.0 RL0.9999  - breast fixed_h0.0 - ' \
-          'sw0.5n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise.npy'
-ng_test_rate = 10
+ng_file = 'regression1ms8 square0.0 RL0.9999  - mpg fixed_h0.0 - sw0.4n9 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise 9.npy'
+# ng_file = 'w_surprise0.05 - 10ms8 sm0.0 RL0.9999  - breast fixed_h0.0 - ' \
+#           'sw0.6n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise.npy'
+ng_test_rate = 1
 ng_colour = [0, 0, 1]
 
 tf_data = np.load(relative_directory+tf_file, allow_pickle=True).item()
@@ -43,9 +45,13 @@ fig, ax = plt.subplots(1, 1)
 plt.setp(ax, ylim=[0, 1])
 ax.plot([i for i in range(len(tf_testing))], tf_testing, label='ANN', color=tf_colour)
 ax.plot([i for i in range(len(ng_testing))], ng_testing, label='EDSAN', color=ng_colour)
-ax.legend(loc='lower right')
+if 'mpg' in tf_file:
+    ax.legend(loc='upper right')
+    ax.set_ylabel('Mean squared error', fontsize=14)
+else:
+    ax.legend(loc='lower right')
+    ax.set_ylabel('Classification accuracy', fontsize=14)
 ax.set_xlabel('Training examples', fontsize=14)
-ax.set_ylabel('Classification accuracy', fontsize=14)
 plt.show()
 
 print('done')
