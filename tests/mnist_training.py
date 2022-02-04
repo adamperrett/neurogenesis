@@ -279,7 +279,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     data_dict['epoch error'] = epoch_error
     data_dict['noise_results'] = noise_results
     data_dict['net'] = CLASSnet
-    np.save("./data/{}.png".format(test_label), data_dict) #data = np.load('./tests/data/file_name.npy', allow_pickle=True).item()
+    np.save("./data/{}".format(test_label), data_dict) #data = np.load('./tests/data/file_name.npy', allow_pickle=True).item()
 
 def extend_data(epoch_length):
     global running_neuron_counts, running_synapse_counts

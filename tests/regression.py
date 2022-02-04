@@ -23,6 +23,9 @@ if test == 'mpg':
     num_outputs = 2
     retest_rate = 1
     retest_size = int(0.1 * len(norm_mpg))
+    min_val = min_mpg
+    max_val = max_mpg
+    val_range = max_val - min_val
 
 def test_net(net, data, values, indexes=None, test_net_label='', all_errors=None,
              fold_string='', max_fold=None, noise_stdev=0.):
@@ -58,10 +61,10 @@ def test_net(net, data, values, indexes=None, test_net_label='', all_errors=None
             print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
                   CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
             print("Synapse count: ", CLASSnet.synapse_count)
-            print(test_label)
+            print(test_label, repeat)
             for ep, err in enumerate(epoch_error):
                 print(ep, err)
-            print(test_label)
+            print(test_label, repeat)
             synapse_counts.append(CLASSnet.synapse_count)
             neuron_counts.append(neuron_count)
 
@@ -212,21 +215,28 @@ def extend_data(epoch_length):
     running_neuron_counts = np.array(running_neuron_counts)
     running_synapse_counts = np.array(running_synapse_counts)
 
+def re_scale(val, norm=True):
+    if norm:
+        return (val - min_val) / val_range
+    else:
+        return (val * val_range) + min_val
+
 def calculate_error(correct_value, activations, test_label, num_outputs=2):
     output_activations = np.zeros(num_outputs)
     for output in range(num_outputs):
         output_activations[output] = activations['out{}'.format(output)]
     if output_activations[0] == 0 and output_activations[1] == 0:
         output_value = -10
-        error = 1.
+        error = np.square((max_val - min_val))
     else:
         output_value = output_activations[0] / (sum(output_activations))
+        output_value = re_scale(output_value, norm=False)
         if error_type == 'linear':
             error = correct_value - output_value
             error = np.abs(error)
         else:
             error = np.square(correct_value - output_value)
-    converted_correct_value = np.array([correct_value, 1. - correct_value]) * error
+    converted_correct_value = np.array([re_scale(correct_value), 1 - re_scale(correct_value)]) * error
 
     # print("output")
     if 'esting' not in test_label:
@@ -262,7 +272,7 @@ else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 8
+    maximum_synapses_per_neuron = 20
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -284,7 +294,7 @@ max_out_synapses = 50000
 always_inputs = False
 replaying = False
 error_type = 'square'
-epochs = 2
+epochs = 20
 repeats = 10
 width_noise = 9#5
 noise_level = 0.#5
@@ -295,12 +305,13 @@ np.random.seed(27)
 confusion_decay = 0.8
 always_save = True
 remove_class = 2
+check_repeat = True
 
 noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'regression{}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+test_label = 'regression_no_norm long {}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
              'at{} - et{} - {}adr{} - {}noise'.format(retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
@@ -359,7 +370,8 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                        activity_init=activity_init,
                        replaying=replaying,
                        hidden_threshold=hidden_threshold,
-                       conv_size=conv_size)
+                       conv_size=conv_size,
+                       check_repeat=check_repeat)
     all_incorrect_classes = []
     epoch_error = []
     noise_results = []

@@ -42,6 +42,16 @@ elif test == 'wine':
     Y = np.array(train_labels + test_labels)
     # X = pandas.DataFrame(train_feat + test_feat)
     # Y = pandas.DataFrame(train_labels + test_labels)
+elif test == 'mnist':
+    from datasets.mnist_csv import *
+    num_inputs = 28 * 28
+    num_outputs = 10
+    train_labels = mnist_training_labels
+    train_feat = mnist_training_data
+    test_labels = mnist_testing_labels
+    test_feat = mnist_testing_data
+    X = np.array(train_feat + test_feat)
+    Y = np.array(train_labels + test_labels)
 elif test == 'mpg':
     from datasets.mpg_regression import norm_features, norm_mpg, min_mpg, max_mpg
     num_inputs = len(norm_features[0])
@@ -74,8 +84,9 @@ def baseline_model(n_neurons, lr):
     model.add(Dense(n_neurons, input_dim=num_inputs, activation='relu'))
     # model.add(Dense(n_neurons, input_dim=num_inputs, activation='relu'))
     if test == 'mpg':
+        model.add(Dense(num_outputs))
         # model.add(Dense(num_outputs, activation='sigmoid'))
-        model.add(Dense(num_outputs, activation='linear'))
+        # model.add(Dense(num_outputs, activation='linear'))
     else:
         model.add(Dense(num_outputs, activation='softmax'))
     # Compile model
@@ -87,19 +98,24 @@ def baseline_model(n_neurons, lr):
     model.compile(loss=loss, optimizer=optimizer, metrics=['accuracy'])
     return model
 
-num_neurons = 350
-learning_rate = 0.008
-batch_size = 64
+num_neurons = 1024
+learning_rate = 0.0001
+batch_size = 32
 epochs = 20
 # noise_tests = np.linspace(0, 2., 21)
 # k_stdev = K.variable(value=0.0)
 
 splits = 10
+if test == 'mnist':
+    splits = 1
+    epochs = 1
 testing_data = [[] for i in range(splits)]
 training_data = [{} for i in range(splits)]
 # all_noise_results = []
+if test == 'mnist':
+    splits += 1
 
-test_label = 'bp {} n{} lr{} b{}'.format(test, num_neurons, learning_rate, batch_size)
+test_label = 'bp none {} n{} lr{} b{}'.format(test, num_neurons, learning_rate, batch_size)
 
 if test == 'mpg':
     sss = ShuffleSplit(n_splits=splits, test_size=0.1, random_state=2727)
@@ -112,6 +128,12 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, Y)):
             on_batch_end=lambda batch, logs:
             testing_data[repeat].append(
                 np.average([np.square(a - b) for a, b in zip(net.predict(X[test_index]), Y[test_index])])))
+    elif test == 'mnist':
+        train_index = [i for i in range(60000)]
+        test_index = [i+60000 for i in range(10000)]
+        retest_callback = LambdaCallback(
+            on_batch_end=lambda batch, logs:
+            testing_data[repeat].append([batch, logs]))
     else:
         retest_callback = LambdaCallback(
             on_batch_end=lambda batch, logs:
@@ -129,16 +151,36 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, Y)):
         training_data[repeat][k] = history.history[k]
         if 'acc' in k:
             print(k, history.history[k])
+
+    if test == 'mnist':
+        break
     # scce2 = tf.keras.losses.sparse_categorical_crossentropy(dummy_y[test_index], net.predict(X))
 
 data_dict = {}
 
 ave_test = []
-for j in range(len(testing_data[0])):
-    total = 0.
-    for i in range(len(testing_data)):
-        total += testing_data[i][j]
-    ave_test.append(total / len(testing_data))
+if test != 'mnist':
+    for j in range(len(testing_data[0])):
+        total = 0.
+        for i in range(len(testing_data)):
+            total += testing_data[i][j]
+        ave_test.append(total / len(testing_data))
+else:
+    correct_or_not = []
+    for i in range(len(testing_data[0])):
+        batch = testing_data[0][i][0]
+        accuracy = testing_data[0][i][1]['accuracy']
+        n_correct = int(np.round(batch * batch_size * accuracy))
+        if len(ave_test):
+            batch_correct = n_correct - sum(correct_or_not)
+            correct_or_not.append(batch_correct)
+            batch_accuracy = batch_correct / batch_size
+            ave_test.append(batch_accuracy)
+        else:
+            correct_or_not.append(n_correct)
+            ave_test.append(accuracy)
+    data_dict['correct_or_not'] = correct_or_not
+
 print(ave_test[:20])
 print(ave_test[-20:])
 

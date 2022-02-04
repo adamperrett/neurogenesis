@@ -58,7 +58,7 @@ for car in mpg_features:
 
 norm_mpg = []
 for car in mpg_values:
-    norm_mpg.append((car - min_mpg) / (max_mpg - min_mpg))
+    norm_mpg.append(car)#(car - min_mpg) / (max_mpg - min_mpg))
 
 print('done')
 
