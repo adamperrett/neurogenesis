@@ -4,7 +4,7 @@ from copy import deepcopy
 from models.neurogenesis import Network
 import random
 import matplotlib
-saving_plots = True
+saving_plots = False
 if saving_plots:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -17,15 +17,16 @@ import skimage.measure as ds
 test = 'simple'
 if test == 'simple':
     # A ball will be in the visual field and must be saccaded too
-    visual_field_size = 10
+    visual_field_size = 100
     box_size = 2
-    fovea_size = 2
-    fovea_scales = 4
+    fovea_size = 7
+    fovea_scales = 6
     num_inputs = fovea_size * fovea_size * fovea_scales
     num_inputs += 2  # for current location
-    output_dim = 4
+    output_dim = 2
+    speed = 5
     lateral_reinforcement = 1
-    num_outputs = output_dim ** 2
+    num_outputs = (output_dim ** 2) #+ 2
 
 def test_attention(net, trials, time_limit):
     if test == 'simple':
@@ -34,107 +35,35 @@ def test_attention(net, trials, time_limit):
             box_y = np.random.uniform(0+(box_size/2), visual_field_size-(box_size/2))
             fovea_x = np.random.uniform(0, visual_field_size)
             fovea_y = np.random.uniform(0, visual_field_size)
+            old_distance = distance(fovea_x, fovea_y, box_x, box_y)
+            all_fovea_x = [fovea_x]
+            all_fovea_y = [fovea_y]
             for t in range(time_limit):
                 sight = simple_attention(fovea_x, fovea_y, box_x, box_y)
-                activations = net.convert_inputs_to_activations(np.hstack(sight))
+                flat_sight = np.hstack([np.hstack(s) for s in sight])
+                activations = net.convert_inputs_to_activations(flat_sight)
                 activations = net.response(activations)
+                fovea_x, fovea_y, chosen_output, outputs = update_movement(activations, fovea_x, fovea_y)
+                all_fovea_x.append(fovea_x + (np.random.random() * 2) - 1)
+                all_fovea_y.append(fovea_y + (np.random.random() * 2) - 1)
+                dist_error, new_distance = distance_error(fovea_x, fovea_y, box_x, box_y, old_distance)
+                error = output_error(dist_error, chosen_output)
+                neuron_label = net.error_driven_neuro_genesis(
+                    activations, -error)
+                print("\nTrial:", trial, "- t:", t)
+                print("fovea:", fovea_x, fovea_y)
+                print("box:", box_x, box_y)
+                print("separation x:", fovea_x - box_x, "- y:", fovea_y - box_y)
+                print(outputs)
+                print("chosen direction:", chosen_output)
+                print("distance - old:", old_distance, "- new:", new_distance)
+                print(np.reshape(error, [output_dim, output_dim]))
+                old_distance = new_distance
+            plt.figure()
+            plt.plot(all_fovea_x, all_fovea_y, alpha=0.3)
+            plt.scatter(box_x, box_y, marker='*', s=800, c=[1, 0, 0])
+            plt.show()
 
-
-def test_net(net, data, values, indexes=None, test_net_label='', all_errors=None,
-             fold_string='', max_fold=None, noise_stdev=0.):
-    global previous_full_accuracy, fold_testing_accuracy, best_testing_accuracy
-    if not isinstance(indexes, np.ndarray):
-        indexes = [i for i in range(len(values))]
-    activations = {}
-    train_count = 0
-    regression_error = 0
-    # all_errors = []
-    synapse_counts = []
-    neuron_counts = []
-    all_activations = []
-    for test in indexes:
-        train_count += 1
-        features = data[test]
-        value = values[test]
-
-        noise = np.random.normal(scale=noise_stdev, size=np.array(features).shape)
-        activations = net.convert_inputs_to_activations(np.array(features) + noise)
-        activations = net.response(activations)
-        error, error_value = calculate_error(value, activations, test_net_label, num_outputs)
-        regression_error += error_value
-        neuron_count = CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count
-
-        if 'esting' not in test_net_label:
-            all_errors.append(error_value)
-            # if only_lr:
-            # CLASSnet.pass_errors_to_outputs(error, learning_rate)
-            print(test_net_label, "\nEpoch ", epoch, "/", epochs)
-            print(fold_string)
-            print('test ', train_count, '/', len(indexes))
-            print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
-                  CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
-            print("Synapse count: ", CLASSnet.synapse_count)
-            print(test_label, repeat)
-            for ep, err in enumerate(epoch_error):
-                print(ep, err)
-            print(test_label, repeat)
-            synapse_counts.append(CLASSnet.synapse_count)
-            neuron_counts.append(neuron_count)
-
-            neuron_label = net.error_driven_neuro_genesis(
-                activations, -error,
-                weight_multiplier=1.,
-                label=value)
-
-        if 'esting' not in test_net_label and train_count % retest_rate == retest_rate - 1:
-            print("retesting")
-            if len(test_index) > 1000:
-                test_index_sample = np.random.choice(test_index, retest_size)
-            else:
-                test_index_sample = test_index
-            testing_accuracy, training_classifications, \
-            _, _ = test_net(CLASSnet, X, y,
-                                               indexes=test_index_sample,
-                                               test_net_label='Testing',
-                                               all_errors=all_errors,
-                                               # fold_test_accuracy=fold_testing_accuracy,
-                                               fold_string=fold_string,
-                                               max_fold=maximum_fold_accuracy)
-            fold_testing_accuracy.append(round(testing_accuracy, 4))
-            best_testing_accuracy.append(round(testing_accuracy, 4))
-            print("finished")
-            # if train_count % 10 == 0:
-                # CLASSnet.convert_net_and_clean()
-                # determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
-            # determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
-        # neuron_counts.append(CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
-        if 'esting' not in test_net_label:
-            # print(label, features)
-            # correctness = net.record_correctness(label)
-            print("Performance over all current tests")
-            print(regression_error)
-            print("Performance over last tests")
-            for window in average_windows:
-                print(np.average(all_errors[-window:]), ":", window)
-            if fold_testing_accuracy:
-                print("Fold testing accuracy", fold_testing_accuracy)
-                print("Maximum fold = ", maximum_fold_accuracy)
-                print("Performance over last", len(fold_testing_accuracy), "folds")
-                for window in fold_average_windows:
-                    print(np.average(fold_testing_accuracy[-window:]), ":", window)
-            print("\n")
-        else:
-            if train_count % 1000 == 0:
-                print(train_count, "/", len(indexes))
-    regression_error /= train_count
-    if 'esting' not in test_net_label:
-        # del neuron_counts[-1]
-        # neuron_counts.append(CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
-        # del synapse_counts[-1]
-        # synapse_counts.append(CLASSnet.synapse_count)
-        print('Epoch', epoch, '/', epochs, '\nRegression accuracy: ',
-              regression_error)
-    return regression_error, all_errors, synapse_counts, neuron_counts
 
 def box_pixel_locations(x, y, dim):
     box_locations = []
@@ -170,7 +99,38 @@ def simple_attention(f_x, f_y, b_x, b_y):
     return sight
 
 def update_movement(activations, current_x, current_y):
-    return "new location"
+    outputs = np.zeros(num_outputs)
+    for out in range(num_outputs):
+        outputs[out] = activations['out{}'.format(out)]
+    if np.random.random() < 0.5:
+        outputs = np.random.random(output_dim * output_dim)
+    outputs = outputs.reshape([output_dim, output_dim])
+    direction = list(np.unravel_index(outputs.argmax(), outputs.shape))
+    chosen_output = direction[1] + (direction[0] * output_dim)
+    direction[0] -= (output_dim - 1) / 2
+    direction[1] -= (output_dim - 1) / 2
+    new_x = current_x + (direction[0] * speed)
+    new_x = min(max(0, new_x), visual_field_size)
+    new_y = current_y + (direction[1] * speed)
+    new_y = min(max(0, new_y), visual_field_size)
+    return new_x, new_y, chosen_output, outputs
+
+def distance(fovea_x, fovea_y, box_x, box_y):
+    f_x = int(round(fovea_x))
+    f_y = int(round(fovea_y))
+    b_x = int(round(box_x))
+    b_y = int(round(box_y))
+    return np.sqrt(np.square(f_x - b_x) + np.square(f_y - b_y))
+
+def distance_error(fovea_x, fovea_y, box_x, box_y, old_distance):
+    new_distance = distance(fovea_x, fovea_y, box_x, box_y)
+    error = old_distance - new_distance
+    return error, new_distance
+
+def output_error(error, chosen_output):
+    out_err = np.zeros(num_outputs)
+    out_err[chosen_output] = error
+    return out_err
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -407,7 +367,7 @@ ATTNDnet = Network(num_outputs, num_inputs,
                    conv_size=conv_size,
                    check_repeat=check_repeat)
 
-test_attention(ATTNDnet, 10, 1)
+test_attention(ATTNDnet, 10, 100)
 
 for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
 # for repeat, (train_index, test_index) in enumerate(combined_index):
