@@ -1,5 +1,61 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats
+
+def gaussian_kernel(distance):
+    return scipy.stats.norm(0, 1).pdf(distance)
+
+def triangle_kernel(distance):
+    return max(0, 1 - (np.abs(distance) / 2.5)) * 0.4
+
+def kernel_density_estimation(samples):
+    resolution = 100
+    input_range = 10
+    kernel_locations = np.random.random(samples) * input_range
+    x = 0
+    y = 1
+    total_output = [[], []]
+    total_triangle = [[], []]
+    kernel_outputs = [[[], []] for i in range(samples)]
+    triangle_outputs = [[[], []] for i in range(samples)]
+    for loc in np.linspace(-5, input_range+5, resolution):
+        total_output[x].append(loc)
+        total_triangle[x].append(loc)
+        g_total = 0
+        t_total = 0
+        for i in range(samples):
+            distance = kernel_locations[i] - loc
+            k_value = gaussian_kernel(distance)
+            t_value = triangle_kernel(distance)
+            if k_value > 0.001:
+                kernel_outputs[i][x].append(loc)
+                kernel_outputs[i][y].append(k_value)
+            if t_value != 0:
+                triangle_outputs[i][x].append(loc)
+                triangle_outputs[i][y].append(t_value)
+            g_total += k_value
+            t_total += t_value
+        total_output[y].append(g_total)
+        total_triangle[y].append(t_total)
+    plt.figure()
+    for i in range(samples):
+        plt.plot(kernel_outputs[i][x], kernel_outputs[i][y], 'r--')
+        plt.plot(triangle_outputs[i][x], triangle_outputs[i][y], 'g--')
+    plt.plot(total_output[x], total_output[y], 'b')
+    plt.plot(total_triangle[x], total_triangle[y], 'r')
+    for i in range(samples):
+        plt.plot([kernel_locations[i], kernel_locations[i]],
+                 [0, 0.1], 'k')
+    plt.axis('off')
+    plt.show()
+
+num_samples = 9
+kernel_density_estimation(num_samples)
+kernel_density_estimation(num_samples)
+kernel_density_estimation(num_samples)
+kernel_density_estimation(num_samples)
+kernel_density_estimation(num_samples)
+print("Kernel esitmation done")
 
 '''
 Show the activation of EDSAN neuron

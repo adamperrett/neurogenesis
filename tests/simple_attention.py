@@ -17,18 +17,20 @@ import skimage.measure as ds
 test = 'simple'
 if test == 'simple':
     # A ball will be in the visual field and must be saccaded too
-    visual_field_size = 100
-    box_size = 2
-    fovea_size = 7
-    fovea_scales = 6
+    visual_field_size = 20
+    box_size = 3
+    fovea_size = 3
+    fovea_scales = 5
     num_inputs = fovea_size * fovea_size * fovea_scales
     num_inputs += 2  # for current location
-    output_dim = 2
-    speed = 5
+    output_dim = 3
+    speed = 1
+    max_delta_distance = (((output_dim - 1) / 2) * speed * np.sqrt(2)) + 1
+    min_delta_distance = -max_delta_distance
     lateral_reinforcement = 1
-    num_outputs = (output_dim ** 2) #+ 2
+    num_outputs = (output_dim ** 2) + 2
 
-def test_attention(net, trials, time_limit):
+def test_attention(net, trials, time_limit, testing=False):
     if test == 'simple':
         for trial in range(trials):
             box_x = np.random.uniform(0+(box_size/2), visual_field_size-(box_size/2))
@@ -38,30 +40,42 @@ def test_attention(net, trials, time_limit):
             old_distance = distance(fovea_x, fovea_y, box_x, box_y)
             all_fovea_x = [fovea_x]
             all_fovea_y = [fovea_y]
+            all_directions = []
             for t in range(time_limit):
+                print("\nTrial:", trial, "- t:", t)
                 sight = simple_attention(fovea_x, fovea_y, box_x, box_y)
                 flat_sight = np.hstack([np.hstack(s) for s in sight])
                 activations = net.convert_inputs_to_activations(flat_sight)
                 activations = net.response(activations)
                 fovea_x, fovea_y, chosen_output, outputs = update_movement(activations, fovea_x, fovea_y)
-                all_fovea_x.append(fovea_x + (np.random.random() * 2) - 1)
-                all_fovea_y.append(fovea_y + (np.random.random() * 2) - 1)
+                all_directions.append(chosen_output)
+                noise_range = 0.25
+                all_fovea_x.append(fovea_x + (np.random.random() * noise_range * 2) - noise_range)
+                all_fovea_y.append(fovea_y + (np.random.random() * noise_range * 2) - noise_range)
                 dist_error, new_distance = distance_error(fovea_x, fovea_y, box_x, box_y, old_distance)
-                error = output_error(dist_error, chosen_output)
-                neuron_label = net.error_driven_neuro_genesis(
-                    activations, -error)
-                print("\nTrial:", trial, "- t:", t)
+                output_prediction_error, prediction_error, predicted_output = \
+                    calculate_prediction_error(dist_error, activations)
+                error = output_error(dist_error, chosen_output, predicted_output)
                 print("fovea:", fovea_x, fovea_y)
                 print("box:", box_x, box_y)
                 print("separation x:", fovea_x - box_x, "- y:", fovea_y - box_y)
                 print(outputs)
+                print("all directions:", all_directions)
                 print("chosen direction:", chosen_output)
                 print("distance - old:", old_distance, "- new:", new_distance)
                 print(np.reshape(error, [output_dim, output_dim]))
+                if not testing:
+                    neuron_label = net.error_driven_neuro_genesis(
+                        activations, -np.hstack([error * new_distance, output_prediction_error]))
                 old_distance = new_distance
             plt.figure()
             plt.plot(all_fovea_x, all_fovea_y, alpha=0.3)
+            plt.scatter(all_fovea_x[0], all_fovea_y[0], marker='o', s=800, c=[0, 1, 1])
+            plt.scatter(all_fovea_x[-1], all_fovea_y[-1], marker='o', s=800, c=[0, 0, 1])
             plt.scatter(box_x, box_y, marker='*', s=800, c=[1, 0, 0])
+            plt.xlim([-1.5, visual_field_size+1.5])
+            plt.ylim([-1.5, visual_field_size+1.5])
+            plt.gca().invert_yaxis()
             plt.show()
 
 
@@ -85,7 +99,10 @@ def foveat_visual_field(visual_field, f_x, f_y, fovea_dim, scales):
             for s_y, [x, y] in enumerate(col):
                 if x >= 0 and x < len(visual_field[0]) and y >= 0 and y < len(visual_field[0]):
                     scale_view[s_x][s_y] = visual_field[x][y]
-        sight.append(ds.block_reduce(scale_view, (scale+1, scale+1), np.average))
+        if pooling == 'max':
+            sight.append(ds.block_reduce(scale_view, (scale+1, scale+1), np.max))
+        else:
+            sight.append(ds.block_reduce(scale_view, (scale+1, scale+1), np.average))
     return sight
 
 def simple_attention(f_x, f_y, b_x, b_y):
@@ -99,13 +116,20 @@ def simple_attention(f_x, f_y, b_x, b_y):
     return sight
 
 def update_movement(activations, current_x, current_y):
-    outputs = np.zeros(num_outputs)
-    for out in range(num_outputs):
+    outputs = np.zeros(num_outputs-2)
+    delta_dist = np.zeros(2)
+    for out in range(num_outputs-2):
         outputs[out] = activations['out{}'.format(out)]
-    if np.random.random() < 0.5:
-        outputs = np.random.random(output_dim * output_dim)
+    # if np.random.random() < 0.5:
+    #     outputs = np.random.random(output_dim * output_dim)
     outputs = outputs.reshape([output_dim, output_dim])
-    direction = list(np.unravel_index(outputs.argmax(), outputs.shape))
+    max_output = outputs.max()
+    max_directions = []
+    for i in range(output_dim):
+        for j in range(output_dim):
+            if outputs[i][j] == max_output:
+                max_directions.append([i, j])
+    direction = max_directions[int(np.random.randint(len(max_directions)))]
     chosen_output = direction[1] + (direction[0] * output_dim)
     direction[0] -= (output_dim - 1) / 2
     direction[1] -= (output_dim - 1) / 2
@@ -127,9 +151,9 @@ def distance_error(fovea_x, fovea_y, box_x, box_y, old_distance):
     error = old_distance - new_distance
     return error, new_distance
 
-def output_error(error, chosen_output):
-    out_err = np.zeros(num_outputs)
-    out_err[chosen_output] = error
+def output_error(error, chosen_output, predicted_output):
+    out_err = np.zeros(num_outputs-2)
+    out_err[chosen_output] = min(0, error-0.1)
     return out_err
 
 def moving_average(a, n=3):
@@ -225,20 +249,20 @@ def extend_data(epoch_length):
     running_synapse_counts = np.array(running_synapse_counts)
 
 def re_scale(val, norm=True):
-    min_val = 0
-    val_range = 1
+    min_val = min_delta_distance
+    val_range = max_delta_distance - min_delta_distance
     if norm:
         return (val - min_val) / val_range
     else:
         return (val * val_range) + min_val
 
-def calculate_error(correct_value, activations, test_label, num_outputs=2):
-    output_activations = np.zeros(num_outputs)
-    for output in range(num_outputs):
-        output_activations[output] = activations['out{}'.format(output)]
+def calculate_prediction_error(correct_value, activations):
+    output_activations = np.zeros(2)
+    for output in range(num_outputs-2, num_outputs):
+        output_activations[output-(num_outputs-2)] = activations['out{}'.format(output)]
     if output_activations[0] == 0 and output_activations[1] == 0:
-        output_value = -10
-        error = 1 # np.square((max_val - min_val))
+        output_value = -0.1
+        error = np.square((max_delta_distance - min_delta_distance))
     else:
         output_value = output_activations[0] / (sum(output_activations))
         output_value = re_scale(output_value, norm=False)
@@ -247,9 +271,12 @@ def calculate_error(correct_value, activations, test_label, num_outputs=2):
             error = np.abs(error)
         else:
             error = np.square(correct_value - output_value)
-    converted_correct_value = np.array([re_scale(correct_value), 1 - re_scale(correct_value)]) * error
+    converted_correct_value = np.array(
+        [re_scale(correct_value), 1 - re_scale(correct_value)]) * error
 
-    # print("output")
+    if min(converted_correct_value) < 0:
+        print("This shouldn't happen")
+
     if 'esting' not in test_label:
         print("Error for test ", test_label, " is ", error)
         print(error, " = ", correct_value, " - ", output_value)
@@ -260,7 +287,7 @@ def calculate_error(correct_value, activations, test_label, num_outputs=2):
     #                                                    output_activations[output],
     #                                                    softmax[output],
     #                                                    error[output]))
-    return converted_correct_value, error
+    return converted_correct_value, error, output_value
 
 read_args = False
 if read_args:
@@ -280,10 +307,10 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.4
+    sensitivity_width = 0.2
     activation_threshold = 0.0
     error_threshold = 0.0
-    maximum_synapses_per_neuron = 20
+    maximum_synapses_per_neuron = 1000
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -294,49 +321,29 @@ else:
     number_of_seeds = 0
 
 maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
-old_weight_modifier = 1.01
-maturity = 100.
-hidden_threshold = 0.95
-delete_neuron_type = 'RL'
-reward_decay = 0.9999
-conv_size = 9
-max_out_synapses = 50000
-# activity_init = 1.0
+
 always_inputs = False
 replaying = False
 error_type = 'square'
+pooling = 'max'
 epochs = 20
 repeats = 10
-width_noise = 9#5
-noise_level = 0.#5
-out_weight_scale = 0.0#0075
-learning_rate = 1.0
-visualise_rate = 1
 np.random.seed(27)
-confusion_decay = 0.8
 always_save = True
-remove_class = 2
 check_repeat = True
 
-noise_tests = np.linspace(0, 2., 21)
-
-# number_of_seeds = min(number_of_seeds, len(train_labels))
-# seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'attention {} ms{} {} sw{} et{}'.format(
+test_label = 'attention {} ms{} {} sw{} et{} pool{}'.format(
     test,
     maximum_synapses_per_neuron,
     error_type,
     sensitivity_width,
-    error_threshold
+    error_threshold,
+    pooling
 )
 
 average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
 fold_average_windows = [3, 10, 30, 60, 100, 1000]
 
-# sss = StratifiedShuffleSplit(n_splits=repeats, test_size=0.1, random_state=27)
-# sss = StratifiedKFold(n_splits=repeats, random_state=2727, shuffle=True)
-sss = ShuffleSplit(n_splits=repeats, test_size=0.1, random_state=2727)
-# sss = LeaveOneOut()
 data_dict = {}
 data_dict['epoch_error'] = []
 data_dict['fold_testing_accuracy'] = []
@@ -351,23 +358,17 @@ data_dict['net'] = []
 ATTNDnet = Network(num_outputs, num_inputs,
                    error_threshold=error_threshold,
                    f_width=sensitivity_width,
-                   # width_noise=width_noise,
                    activation_threshold=activation_threshold,
                    maximum_total_synapses=maximum_total_synapses,
                    max_hidden_synapses=maximum_synapses_per_neuron,
                    activity_decay_rate=activity_decay_rate,
                    always_inputs=always_inputs,
-                   old_weight_modifier=old_weight_modifier,
-                   reward_decay=reward_decay,
-                   delete_neuron_type=delete_neuron_type,
                    fixed_hidden_ratio=fixed_hidden_ratio,
                    activity_init=activity_init,
                    replaying=replaying,
-                   hidden_threshold=hidden_threshold,
-                   conv_size=conv_size,
                    check_repeat=check_repeat)
 
-test_attention(ATTNDnet, 10, 100)
+test_attention(ATTNDnet, 100, 100)
 
 for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
 # for repeat, (train_index, test_index) in enumerate(combined_index):

@@ -125,7 +125,7 @@ class Network():
                  fixed_hidden_ratio=0.1,
                  activity_init=1.0,
                  replaying=True,
-                 hidden_threshold=0.9,
+                 hidden_threshold=0.95,
                  conv_size=4,
                  expecting=False,
                  surprise_threshold=0.4,
