@@ -696,6 +696,19 @@ class Network():
         self.expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
         self.inv_expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
 
+    def class_expectation(self, output):
+        expectation = self.output_expectation[output][0]
+        inv_expectation = self.output_expectation[output][1]
+        overall_expectation = [0 for i in range(self.number_of_inputs)]
+        for i in range(self.number_of_inputs):
+            inp = 'in{}'.format(i)
+            if expectation[inp] == 0 and inv_expectation[inp] == 0:
+                overall_expectation[i] = 0
+            else:
+                overall_expectation[i] = 1 - (inv_expectation[inp] /
+                                              (inv_expectation[inp] + expectation[inp]))
+        return np.reshape(overall_expectation, [28, 28])
+
     def collect_expectation(self, activations, error, activity_dependant=True, error_driven=True):
         expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}
         inv_expectation = {'in{}'.format(i): 0 for i in range(self.number_of_inputs)}

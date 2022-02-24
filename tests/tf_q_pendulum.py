@@ -14,13 +14,16 @@ from collections import deque
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
+import matplotlib.pyplot as plt
 
 lr = 0.001
-gamma = 0.99
-hidden_size = 64
-batch_size = 32
+gamma = 0.95
+hidden_size = 24
+batch_size = 1
+extra_layers = 1
 
-test_label = 'bp q learning lr-{} gamma-{} hidden_size-{} batch_size-{}'.format(lr, gamma, hidden_size, batch_size)
+test_label = 'bp q learning lr-{} gamma-{} hidden_size-{}x{} batch_size-{}'.format(
+    lr, gamma, hidden_size, extra_layers, batch_size)
 
 
 class Agent():
@@ -40,7 +43,8 @@ class Agent():
         # Neural Net for Deep-Q learning Model
         model = Sequential()
         model.add(Dense(hidden_size, input_dim=self.state_size, activation='relu'))
-        # model.add(Dense(24, activation='relu'))
+        for l in range(extra_layers):
+            model.add(Dense(hidden_size, activation='relu'))
         model.add(Dense(self.action_size, activation='linear'))
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
 
@@ -136,7 +140,21 @@ if __name__ == "__main__":
         learning_history.append(bl)
         solve_history.append(sl)
         print("Solves so far:", solve_history, "\nThe average solve length is", np.average(solve_history))
+        extended_data = []
+        for lh in learning_history:
+            extended_data.append(lh)
+            while len(extended_data[-1]) < 2000:
+                extended_data[-1].append(500.)
+        plt.figure()
+        for ed in extended_data:
+            plt.plot([i for i in range(len(ed))], ed, 'r')
+        average_balance = [np.average([extended_data[i][ts] for i in range(len(extended_data))]) for ts in range(2000)]
+        plt.plot([i for i in range(len(average_balance))], average_balance, 'b')
+        plt.plot([0, 2000], [475, 475], 'g')
+        plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
+        plt.close()
 
     np.save("./data/{}".format(test_label), [learning_history, solve_history])
+
     print("done")
 

@@ -160,7 +160,9 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy,
     # axs[0][1].set_ylim([0, 1])
     axs[0][1].set_title("test classification")
     axs[1][0].plot([i for i in range(len(neuron_counts))], neuron_counts)
-    axs[1][0].set_title("Neuron count")
+    axs[1][0].set_title("Neuron and synapse count")
+    ax_s = axs[1][0].twinx()
+    ax_s.plot([i for i in range(len(synapse_counts))], synapse_counts)
     if len(epoch_error):
         if len(epoch_error) <= 10:
             data = np.hstack([np.array(epoch_error)[:, 0].reshape([len(epoch_error), 1]),

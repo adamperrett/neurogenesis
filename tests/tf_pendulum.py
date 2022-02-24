@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+import matplotlib.pyplot as plt
 
 repeats = 100
 solve_lengths = []
@@ -141,6 +142,19 @@ for trial in range(repeats):
         solve_lengths.append(max_attemps_until_fail*2)
     print("Solves so far:", solve_lengths, "\nThe average solve length is", np.average(solve_lengths))
     learning_history.append(balance_lengths)
+    extended_data = []
+    for lh in learning_history:
+        extended_data.append(lh)
+        while len(extended_data[-1]) < 2000:
+            extended_data[-1].append(500.)
+    plt.figure()
+    for ed in extended_data:
+        plt.plot([i for i in range(len(ed))], ed, 'r')
+    average_balance = [np.average([extended_data[i][ts] for i in range(len(extended_data))]) for ts in range(2000)]
+    plt.plot([i for i in range(len(average_balance))], average_balance, 'b')
+    plt.plot([0, 2000], [475, 475], 'g')
+    plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
+    plt.close()
 
 # print("The average time to solve is", np.average(solve_lengths))
 np.save("./data/{}".format(test_label), [learning_history, solve_lengths])

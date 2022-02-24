@@ -49,12 +49,62 @@ def kernel_density_estimation(samples):
     plt.axis('off')
     plt.show()
 
+def error_density_estimation(samples):
+    resolution = 100
+    input_range = 10
+    kernel_locations = np.random.random(samples) * input_range
+    triangle_errors = np.random.random(samples) * 2 - 1
+    x = 0
+    y = 1
+    total_output = [[], []]
+    total_triangle = [[], []]
+    kernel_outputs = [[[], []] for i in range(samples)]
+    triangle_outputs = [[[], []] for i in range(samples)]
+    for loc in np.linspace(-5, input_range+5, resolution):
+        total_output[x].append(loc)
+        total_triangle[x].append(loc)
+        g_total = 0
+        t_total = 0
+        for i in range(samples):
+            distance = kernel_locations[i] - loc
+            k_value = gaussian_kernel(distance)
+            t_value = triangle_kernel(distance) * triangle_errors[i]
+            if k_value > 0.001:
+                kernel_outputs[i][x].append(loc)
+                kernel_outputs[i][y].append(k_value)
+            if t_value != 0:
+                triangle_outputs[i][x].append(loc)
+                triangle_outputs[i][y].append(t_value)
+            g_total += k_value
+            t_total += t_value
+        total_output[y].append(g_total)
+        total_triangle[y].append(t_total)
+    fig, ax = plt.subplots(1, 2)
+    for i in range(samples):
+        ax[0].plot(kernel_outputs[i][x], kernel_outputs[i][y], 'r--')
+        ax[1].plot(triangle_outputs[i][x], triangle_outputs[i][y], 'g--')
+    ax[0].plot(total_output[x], total_output[y], 'b')
+    ax[1].plot(total_triangle[x], total_triangle[y], 'r')
+    for i in range(samples):
+        ax[0].plot([kernel_locations[i], kernel_locations[i]],
+                 [0, 0.1], 'k')
+        ax[1].plot([kernel_locations[i], kernel_locations[i]],
+                 [0, 0.1], 'k')
+    ax[0].axis('off')
+    ax[1].axis('off')
+    plt.show()
+
 num_samples = 9
-kernel_density_estimation(num_samples)
-kernel_density_estimation(num_samples)
-kernel_density_estimation(num_samples)
-kernel_density_estimation(num_samples)
-kernel_density_estimation(num_samples)
+# kernel_density_estimation(num_samples)
+# kernel_density_estimation(num_samples)
+# kernel_density_estimation(num_samples)
+# kernel_density_estimation(num_samples)
+# kernel_density_estimation(num_samples)
+error_density_estimation(num_samples)
+error_density_estimation(num_samples)
+error_density_estimation(num_samples)
+error_density_estimation(num_samples)
+error_density_estimation(num_samples)
 print("Kernel esitmation done")
 
 '''

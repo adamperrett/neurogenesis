@@ -224,7 +224,9 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     axs[0][1].set_ylim([0, 1])
     axs[0][1].set_title("test classification")
     axs[1][0].plot([i for i in range(len(neuron_counts))], neuron_counts)
-    axs[1][0].set_title("Neuron count")
+    axs[1][0].set_title("Neuron and synapse count")
+    ax_s = axs[1][0].twinx()
+    ax_s.plot([i for i in range(len(synapse_counts))], synapse_counts)
     if len(epoch_error):
         if len(epoch_error) <= 10:
             data = np.hstack([np.array(epoch_error)[:, 0].reshape([len(epoch_error), 1]),
@@ -382,12 +384,12 @@ always_inputs = False
 replaying = False
 expecting = True
 expect_type = 'err'
-surprise_threshold = float(sys.argv[4])
+surprise_threshold = 0.4#float(sys.argv[4])
 norm_expectation = False
 error_type = 'sm'
 epochs = 7
 repeats = 1
-visualise_rate = 10
+visualise_rate = 1
 np.random.seed(27)
 confusion_decay = 0.8
 
@@ -541,6 +543,12 @@ for repeat in range(repeats):
             print("visualising features")
             if current_fold % visualise_rate == 0 and 'mnist' in test:
                 for i in range(10):
+                    print("expectation visualising class", i)
+                    vis = CLASSnet.class_expectation(i)
+                    print("plotting class", i)
+                    plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+                    print("saving class", i)
+                    plt.savefig("./plots/{}exp {}.png".format(i, test_label), bbox_inches='tight', dpi=20)
                     print("positive visualising class", i)
                     vis = CLASSnet.visualise_neuron('out{}'.format(i), only_pos=True)
                     print("plotting class", i)
