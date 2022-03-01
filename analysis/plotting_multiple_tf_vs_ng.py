@@ -1,5 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.pylab as pl
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -47,29 +50,34 @@ relative_directory = '../tests/data/'
 tf_test_rate = [1, 64]
 n_neurons = [8192]
 configs = [
-    [1, 0.00003, 1024],
-    [1, 0.0001, 1024],
+    # [1, 0.00003, 1024],
+    # [1, 0.0001, 1024],
     # [1, 0.0003, 1024],
     # [1, 0.001, 1024],
     # [1, 0.003, 1024],
     # [1, 0.01, 1024],
     # [1, 0.03, 1024]
-    [32, 0.0001, 1024],
-    [32, 0.0003, 1024],
-    [32, 0.001, 1024],
-    [32, 0.003, 1024],
+    # [32, 0.0001, 1024],
+    # [32, 0.0003, 1024],
+    # [32, 0.001, 1024],
+    # [32, 0.003, 1024],
     # [32, 0.01, 1024],
     # [32, 0.03, 1024],
     # [32, 0.1, 1024]
+    [0.99, 64, 0.003],
+    [0.99, 128, 0.003],
 ]
 tf_files = []
 tf_labels = []
 stretch_size = []
 tf_colour = []
-max_brightness = 0.6
+max_brightness = 0.99
+colours = pl.cm.cool(np.linspace(0, 1, len(configs)))
 for rate, lr, n in configs:
     tf_files.append('bp none mpg n{} lr{} b{}.npy'.format(n, lr, rate))
-    tf_labels.append('lr {} - n {} - b {}'.format(lr, n, rate))
+    tf_files.append('bp actor critic invpen gamma{} - hidden{} - lr{}.npy'.format(rate, n, lr))
+    # tf_labels.append('lr {} - n {} - b {}'.format(lr, n, rate))
+    tf_labels.append('n{}'.format(n))
     stretch_size.append(rate)
     tf_colour.append([max_brightness * len(tf_colour) / (len(configs) - 1)
                       for i in range(3)])
@@ -104,12 +112,30 @@ else:
     # tf_testing, ng_testing = match_lengths(tf_testing, ng_testing)
 
 print('plotting')
+# if 'mpg' in tf_file:
+#     x_label = 'Mean squared error'
+#     y_label = 'Training examples'
+# elif 'mnist' in ng_file:
+#     x_label = 'Training accuracy'
+#     y_label = 'Training examples'
+# else:
+#     x_label = 'Classification accuracy'
+#     y_label = 'Training examples'
+# seaborn_data = {'x': [], 'y': [], 'cat': [], }
+# for label, tf_t, tf_c in zip(tf_labels, tf_testing, tf_colour):
+#     ax.plot([i for i in range(len(tf_t))], tf_t, label='ANN '+label, color=tf_c)
+# sns.lineplot(x=x_label, y=y_label,
+#              hue="region", style="event",
+#              data=fmri)
+
 fig, ax = plt.subplots(1, 1)
+min_length = np.min([len(ng_testing), np.min([len(tf_t) for tf_t in tf_testing])])
 # plt.setp(ax, ylim=[0, 1])
-for label, tf_t, tf_c in zip(tf_labels, tf_testing, tf_colour):
-    ax.plot([i for i in range(len(tf_t))], tf_t, label='ANN '+label, color=tf_c)
-ax.plot([i for i in range(len(ng_testing))], ng_testing, label='EDSAN', color=ng_colour)
+for label, tf_t, tf_c in zip(tf_labels, tf_testing, colours):
+    ax.plot([i for i in range(len(tf_t[:min_length]))], tf_t[:min_length], label='ANN '+label, color=tf_c)
+ax.plot([i for i in range(len(ng_testing[:min_length]))], ng_testing[:min_length], label='SEED', color=ng_colour)
 if 'mpg' in tf_file:
+    # ax.set_ylim([-200, 1550])
     ax.legend(loc='upper right')
     ax.set_ylabel('Mean squared error', fontsize=14)
     ax.set_xlabel('Training examples', fontsize=14)

@@ -53,7 +53,7 @@ def error_density_estimation(samples):
     resolution = 100
     input_range = 10
     kernel_locations = np.random.random(samples) * input_range
-    triangle_errors = np.random.random(samples) * 2 - 1
+    triangle_errors = np.ones(samples)#np.random.normal(size=samples)
     x = 0
     y = 1
     total_output = [[], []]
@@ -90,6 +90,12 @@ def error_density_estimation(samples):
                  [0, 0.1], 'k')
         ax[1].plot([kernel_locations[i], kernel_locations[i]],
                  [0, 0.1], 'k')
+    ax[0].set_ylim(min(np.min([np.min(triangle_outputs[i][y]) for i in range(len(triangle_outputs))]),
+                       np.min(total_triangle[y])),
+                   np.max(total_output[y]) + 0.1)
+    ax[1].set_ylim(min(np.min([np.min(triangle_outputs[i][y]) for i in range(len(triangle_outputs))]),
+                       np.min(total_triangle[y])),
+                   np.max(total_output[y]) + 0.1)
     ax[0].axis('off')
     ax[1].axis('off')
     plt.show()

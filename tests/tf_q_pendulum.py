@@ -14,13 +14,15 @@ from collections import deque
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 lr = 0.001
 gamma = 0.95
 hidden_size = 24
-batch_size = 1
-extra_layers = 1
+batch_size = 4
+extra_layers = 0
 
 test_label = 'bp q learning lr-{} gamma-{} hidden_size-{}x{} batch_size-{}'.format(
     lr, gamma, hidden_size, extra_layers, batch_size)
@@ -113,6 +115,7 @@ class CartPole:
             balance_lengths.append(balance_count)
             average_reward = np.average(balance_lengths[-100:])
             if index_episode % 10 == 0:
+                print(test_label)
                 template = "average reward: {:.2f} at episode {} of trial {}"
                 print(template.format(average_reward, index_episode, repeat))
             if len(balance_lengths) > 100 and average_reward > 475:
@@ -151,6 +154,9 @@ if __name__ == "__main__":
         average_balance = [np.average([extended_data[i][ts] for i in range(len(extended_data))]) for ts in range(2000)]
         plt.plot([i for i in range(len(average_balance))], average_balance, 'b')
         plt.plot([0, 2000], [475, 475], 'g')
+        figure = plt.gcf()
+        figure.set_size_inches(16, 9)
+        plt.tight_layout(rect=[0, 0.3, 1, 0.95])
         plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
         plt.close()
 

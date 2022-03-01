@@ -4,6 +4,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 repeats = 100
@@ -22,7 +24,7 @@ eps = np.finfo(np.float32).eps.item()  # Smallest number such that 1.0 + eps != 
 num_inputs = 4
 num_actions = 2
 num_hidden = 64
-learning_rate = 0.003
+learning_rate = 0.001
 
 test_label = "bp actor critic invpen gamma{} - hidden{} - lr{}".format(gamma, num_hidden, learning_rate)
 
@@ -153,6 +155,9 @@ for trial in range(repeats):
     average_balance = [np.average([extended_data[i][ts] for i in range(len(extended_data))]) for ts in range(2000)]
     plt.plot([i for i in range(len(average_balance))], average_balance, 'b')
     plt.plot([0, 2000], [475, 475], 'g')
+    figure = plt.gcf()
+    figure.set_size_inches(16, 9)
+    plt.tight_layout(rect=[0, 0.3, 1, 0.95])
     plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
     plt.close()
 

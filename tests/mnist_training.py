@@ -346,7 +346,7 @@ if read_args:
     sensitivity_width = float(sys.argv[1])
     activation_threshold = float(sys.argv[2])
     error_threshold = float(sys.argv[3])
-    # maximum_total_synapses = int(sys.argv[4])
+    maximum_total_synapses = 10000000000000 #int(sys.argv[4])
     maximum_synapses_per_neuron = int(sys.argv[5])
     input_spread = int(sys.argv[6])
     activity_init = 1.
@@ -384,7 +384,7 @@ always_inputs = False
 replaying = False
 expecting = True
 expect_type = 'err'
-surprise_threshold = 0.4#float(sys.argv[4])
+surprise_threshold = float(sys.argv[4])
 norm_expectation = False
 error_type = 'sm'
 epochs = 7
@@ -397,7 +397,7 @@ noise_tests = np.linspace(0, .3, 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-base_label = 'thresholded-{}-{}-th{} retest{} {} ms{}  - {} fixed_h{} - sw{} - ' \
+base_label = 'sm_thresholded-{}-{}-th{} retest{} {} ms{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(expecting, expect_type, surprise_threshold,
                                             retest_rate, error_type,
                                             # delete_neuron_type, reward_decay,

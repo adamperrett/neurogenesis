@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_theme(style="darkgrid")
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -43,14 +45,17 @@ def match_lengths(d1, d2):
     return new_1, new_2
 
 relative_directory = '../tests/data/'
-tf_test_rate = 1
-n_neurons = 8192
-tf_file = 'bp mnist n{} lr0.0001 b{}.npy'.format(n_neurons, tf_test_rate)
+tf_test_rate = 64
+n_neurons = 200
+tf_file = 'bp wine n{} lr0.03 b{}.npy'.format(n_neurons, tf_test_rate)
 tf_colour = [0, 0, 0]
+# ng_file = 'thresholded-True-oa-th0.4 retest1000 sm ms150  - ' \
+#           'mnist fixed_h0.0 - sw0.4 - at0.0 - et0.1 - 1.0adr0.99.png.npy'
+ng_file = 'err_surprise0.1 - 1ms8 sm0.0 RL0.9999  - ' \
+          'wine fixed_h0.0 - sw0.4n0.0 - at0.0 - et0.05 - 1.0adr1.0 - 0.0noise.png.npy'
+tf_file = 'bp mnist n1024 lr0.001 b64.npy'
 ng_file = 'thresholded-True-oa-th0.4 retest1000 sm ms150  - ' \
           'mnist fixed_h0.0 - sw0.4 - at0.0 - et0.1 - 1.0adr0.99.png.npy'
-# ng_file = 'w_surprise0.05 - 10ms8 sm0.0 RL0.9999  - breast fixed_h0.0 - ' \
-#           'sw0.6n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise.npy'
 ng_test_rate = 1
 ng_colour = [0, 0, 1]
 print('Loading data')
@@ -74,7 +79,7 @@ print('plotting')
 fig, ax = plt.subplots(1, 1)
 plt.setp(ax, ylim=[0, 1])
 ax.plot([i for i in range(len(tf_testing))], tf_testing, label='ANN', color=tf_colour)
-ax.plot([i for i in range(len(ng_testing))], ng_testing, label='EDSAN', color=ng_colour)
+ax.plot([i for i in range(len(ng_testing))], ng_testing, label='SEED', color=ng_colour)
 if 'mpg' in tf_file:
     ax.legend(loc='upper right')
     ax.set_ylabel('Mean squared error', fontsize=14)

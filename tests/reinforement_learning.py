@@ -343,13 +343,13 @@ else:
     error_threshold = 0.0
     maximum_synapses_per_neuron = 4
     fixed_hidden_ratio = 0.0
-    maximum_total_synapses = 5000*4
+    maximum_total_synapses = 5000*100
     input_spread = 0
     activity_decay_rate = 1.
     activity_init = 1.
     number_of_seeds = 0
 
-maximum_net_size = int(maximum_total_synapses / maximum_synapses_per_neuron)
+maximum_net_size = 50#int(maximum_total_synapses / maximum_synapses_per_neuron)
 old_weight_modifier = 1.01
 maturity = 100.
 delete_neuron_type = 'RL'
@@ -371,7 +371,7 @@ visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'procedural5n pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'paper pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(pole_length, number_of_episodes,
                                             window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,
@@ -407,7 +407,7 @@ for repeat in range(repeat_test):
                        activity_init=activity_init,
                        replaying=replaying)
 
-    times = test_net(CLASSnet, 500, number_of_episodes,
+    times = test_net(CLASSnet, 2000, number_of_episodes,
                      test_net_label=test_label,
                      memory_length=window_size,
                      repeat=repeat,
@@ -415,52 +415,52 @@ for repeat in range(repeat_test):
     all_times.append(times)
     np.save("./data/{}".format(test_label), all_times)
 
-    for consolidation in range(number_of_consolidations+1):
+    # for consolidation in range(number_of_consolidations+1):
         # all_times = np.array(all_times)
-        max_time = []
-        min_time = []
-        ave_time = []
-        std_err = []
-        for i in range(len(all_times[0])):
-            test_scores = []
-            for j in range(len(all_times)):
-                test_scores.append(all_times[j][i])
-            max_time.append(max(test_scores))
-            min_time.append(min(test_scores))
-            ave_time.append(np.average(test_scores))
-            std_err.append(np.std(test_scores))
-        plt.figure()
+    max_time = []
+    min_time = []
+    ave_time = []
+    std_err = []
+    for i in range(len(all_times[0])):
+        test_scores = []
         for j in range(len(all_times)):
-            plt.scatter([i for i in range(len(all_times[j]))], all_times[j], s=4)
-        # plt.title(test_label)
-        plt.ylim([-10, 510])
-        plt.plot([i for i in range(len(max_time))], max_time, 'r')
-        plt.plot([i for i in range(len(min_time))], min_time, 'r')
-        plt.plot([i for i in range(len(ave_time))], ave_time, 'b')
-        plt.plot([i for i in range(len(std_err))], (np.array(std_err)*(1/len(all_times))) + np.array(ave_time), 'g')
-        plt.plot([i for i in range(len(std_err))], (-1*np.array(std_err)*(1/len(all_times))) + np.array(ave_time), 'g')
-        plt.plot([0, len(ave_time)], [475, 475], 'g')
-        for j in range(len(all_times)):
-            ave_err100 = moving_average(all_times[j], 100)
-            plt.plot([i + 50 for i in range(len(ave_err100))], ave_err100, 'r')
-        figure = plt.gcf()
-        figure.set_size_inches(16, 9)
-        plt.tight_layout(rect=[0, 0.3, 1, 0.95])
-        plt.suptitle(test_label, fontsize=16)
-        plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
-        # plt.show()
-        plt.close()
+            test_scores.append(all_times[j][i])
+        max_time.append(max(test_scores))
+        min_time.append(min(test_scores))
+        ave_time.append(np.average(test_scores))
+        std_err.append(np.std(test_scores))
+    plt.figure()
+    for j in range(len(all_times)):
+        plt.scatter([i for i in range(len(all_times[j]))], all_times[j], s=4)
+    # plt.title(test_label)
+    plt.ylim([-10, 510])
+    plt.plot([i for i in range(len(max_time))], max_time, 'r')
+    plt.plot([i for i in range(len(min_time))], min_time, 'r')
+    plt.plot([i for i in range(len(ave_time))], ave_time, 'b')
+    plt.plot([i for i in range(len(std_err))], (np.array(std_err)*(1/len(all_times))) + np.array(ave_time), 'g')
+    plt.plot([i for i in range(len(std_err))], (-1*np.array(std_err)*(1/len(all_times))) + np.array(ave_time), 'g')
+    plt.plot([0, len(ave_time)], [475, 475], 'g')
+    for j in range(len(all_times)):
+        ave_err100 = moving_average(all_times[j], 100)
+        plt.plot([i + 50 for i in range(len(ave_err100))], ave_err100, 'r')
+    figure = plt.gcf()
+    figure.set_size_inches(16, 9)
+    plt.tight_layout(rect=[0, 0.3, 1, 0.95])
+    plt.suptitle(test_label, fontsize=16)
+    plt.savefig("./plots/{}.png".format(test_label), bbox_inches='tight', dpi=200)
+    # plt.show()
+    plt.close()
 
-        if consolidation == number_of_consolidations:
-            break
+        # if consolidation == number_of_consolidations:
+        #     break
 
-        CLASSnet.convert_net_and_clean()
-        times = test_net(CLASSnet, 500, number_of_episodes,
-                         test_net_label=test_label,
-                         memory_length=window_size,
-                         repeat=repeat,
-                         pole_length=pole_length)
-        all_times[-1] = np.hstack([all_times[-1], times])
+        # CLASSnet.convert_net_and_clean()
+        # times = test_net(CLASSnet, 500, number_of_episodes,
+        #                  test_net_label=test_label,
+        #                  memory_length=window_size,
+        #                  repeat=repeat,
+        #                  pole_length=pole_length)
+        # all_times[-1] = np.hstack([all_times[-1], times])
 print("done")
 
 

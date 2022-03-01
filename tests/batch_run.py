@@ -2,9 +2,9 @@ import os
 import subprocess
 import time
 
-sensitivity_width = [0.4]#[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+sensitivity_width = [0.4, 0.6]#[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 activation_threshold = [0.0]
-error_threshold = [0.1, 0.2, 0.3]
+error_threshold = [0.1, 0.3]
 maximum_total_synapses = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]  # now surprise threshold
 maximum_synapses = [150]
 input_spread = [0]

@@ -116,6 +116,7 @@ class Network():
                  activation_threshold=0.01,
                  maximum_total_synapses=20,
                  max_hidden_synapses=100,
+                 maximum_net_size=10,
                  activity_decay_rate=0.9,
                  always_inputs=True,
                  old_weight_modifier=1.,
@@ -139,6 +140,7 @@ class Network():
         self.repeated_neuron_count = 0
         self.maximum_total_synapses = maximum_total_synapses
         self.max_hidden_synapses = max_hidden_synapses
+        self.maximum_net_size = maximum_net_size
         self.synapse_count = 0
         self.synapse_rewards = []
         self.neuron_rewards = {}
@@ -242,7 +244,8 @@ class Network():
                 self.synapse_count += 1
                 self.neuron_connectedness[neuron_label] = 1
         self.synapse_count += self.neurons[neuron_label].synapse_count
-        if self.synapse_count > self.maximum_total_synapses:
+        # if self.synapse_count > self.maximum_total_synapses:
+        if self.hidden_neuron_count - self.deleted_neuron_count > self.maximum_net_size:
             # self.delete_synapses(self.synapse_count - self.maximum_total_synapses)
             self.delete_neuron()
         visualisation = self.visualise_neuron(neuron_label)
