@@ -389,7 +389,7 @@ norm_expectation = False
 error_type = 'sm'
 epochs = 7
 repeats = 1
-visualise_rate = 1
+visualise_rate = 10
 np.random.seed(27)
 confusion_decay = 0.8
 
@@ -453,7 +453,8 @@ for repeat in range(repeats):
                        hidden_threshold=hidden_threshold,
                        conv_size=conv_size,
                        surprise_threshold=surprise_threshold,
-                       expecting=expecting)
+                       expecting=expecting,
+                       maximum_net_size=maximum_net_size)
     all_incorrect_classes = []
     epoch_error = []
     noise_results = []

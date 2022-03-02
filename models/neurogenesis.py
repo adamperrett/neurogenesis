@@ -116,7 +116,7 @@ class Network():
                  activation_threshold=0.01,
                  maximum_total_synapses=20,
                  max_hidden_synapses=100,
-                 maximum_net_size=10,
+                 maximum_net_size=10000,
                  activity_decay_rate=0.9,
                  always_inputs=True,
                  old_weight_modifier=1.,
