@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-sns.set_theme(style="darkgrid")
+sns.set_theme(style="whitegrid")
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -45,19 +45,19 @@ def match_lengths(d1, d2):
     return new_1, new_2
 
 relative_directory = '../tests/data/'
-tf_test_rate = 64
+tf_test_rate = 8
 n_neurons = 200
 tf_file = 'bp wine n{} lr0.03 b{}.npy'.format(n_neurons, tf_test_rate)
-tf_colour = [0, 0, 0]
+tf_colour = [0, 0, 1]
 # ng_file = 'thresholded-True-oa-th0.4 retest1000 sm ms150  - ' \
 #           'mnist fixed_h0.0 - sw0.4 - at0.0 - et0.1 - 1.0adr0.99.png.npy'
 ng_file = 'err_surprise0.1 - 1ms8 sm0.0 RL0.9999  - ' \
           'wine fixed_h0.0 - sw0.4n0.0 - at0.0 - et0.05 - 1.0adr1.0 - 0.0noise.png.npy'
-tf_file = 'bp mnist n1024 lr0.001 b64.npy'
-ng_file = 'thresholded-True-oa-th0.4 retest1000 sm ms150  - ' \
-          'mnist fixed_h0.0 - sw0.4 - at0.0 - et0.1 - 1.0adr0.99.png.npy'
+# tf_file = 'bp mnist n1024 lr0.001 b64.npy'
+# ng_file = 'thresholded-True-oa-th0.4 retest1000 sm ms150  - ' \
+#           'mnist fixed_h0.0 - sw0.4 - at0.0 - et0.1 - 1.0adr0.99.png.npy'
 ng_test_rate = 1
-ng_colour = [0, 0, 1]
+ng_colour = [0, 0, 0]
 print('Loading data')
 tf_data = np.load(relative_directory+tf_file, allow_pickle=True).item()
 ng_data = np.load(relative_directory+ng_file, allow_pickle=True).item()

@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
 import seaborn as sns
-sns.set_theme(style="darkgrid")
+sns.set_theme(style="whitegrid")
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -51,7 +51,7 @@ tf_test_rate = [1, 64]
 n_neurons = [8192]
 configs = [
     # [1, 0.00003, 1024],
-    # [1, 0.0001, 1024],
+    [1, 0.0001, 1024],
     # [1, 0.0003, 1024],
     # [1, 0.001, 1024],
     # [1, 0.003, 1024],
@@ -59,25 +59,26 @@ configs = [
     # [1, 0.03, 1024]
     # [32, 0.0001, 1024],
     # [32, 0.0003, 1024],
-    # [32, 0.001, 1024],
+    [32, 0.001, 1024],
     # [32, 0.003, 1024],
     # [32, 0.01, 1024],
     # [32, 0.03, 1024],
     # [32, 0.1, 1024]
-    [0.99, 64, 0.003],
-    [0.99, 128, 0.003],
+    # [0.99, 64, 0.003],
+    # [0.99, 128, 0.003],
 ]
 tf_files = []
 tf_labels = []
 stretch_size = []
 tf_colour = []
 max_brightness = 0.99
-colours = pl.cm.cool(np.linspace(0, 1, len(configs)))
+colours = pl.cm.coolwarm(np.linspace(0, 1, len(configs)))
 for rate, lr, n in configs:
     tf_files.append('bp none mpg n{} lr{} b{}.npy'.format(n, lr, rate))
-    tf_files.append('bp actor critic invpen gamma{} - hidden{} - lr{}.npy'.format(rate, n, lr))
+    # tf_files.append('bp actor critic invpen gamma{} - hidden{} - lr{}.npy'.format(rate, n, lr))
     # tf_labels.append('lr {} - n {} - b {}'.format(lr, n, rate))
-    tf_labels.append('n{}'.format(n))
+    tf_labels.append('lr {} - b {}'.format(lr, rate))
+    # tf_labels.append('n{}'.format(n))
     stretch_size.append(rate)
     tf_colour.append([max_brightness * len(tf_colour) / (len(configs) - 1)
                       for i in range(3)])
@@ -86,7 +87,7 @@ for rate, lr, n in configs:
 ng_file = 'regression_no_norm long 1ms20 square0.0 RL0.9999  - ' \
           'mpg fixed_h0.0 - sw0.4n9 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise.npy'
 ng_test_rate = 1
-ng_colour = [0, 0, 1]
+ng_colour = [0, 0, 0]
 print('Loading data')
 tf_data = []
 for tf_file in tf_files:

@@ -23,8 +23,8 @@ eps = np.finfo(np.float32).eps.item()  # Smallest number such that 1.0 + eps != 
 
 num_inputs = 4
 num_actions = 2
-num_hidden = 64
-learning_rate = 0.001
+num_hidden = 128
+learning_rate = 0.007
 
 test_label = "bp actor critic invpen gamma{} - hidden{} - lr{}".format(gamma, num_hidden, learning_rate)
 

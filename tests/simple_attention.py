@@ -18,7 +18,7 @@ test = 'simple'
 if test == 'simple':
     # A ball will be in the visual field and must be saccaded too
     visual_field_size = 20
-    box_size = 3
+    box_size = 9
     fovea_size = 3
     fovea_scales = 5
     num_inputs = fovea_size * fovea_size * fovea_scales
@@ -32,6 +32,7 @@ if test == 'simple':
 
 def test_attention(net, trials, time_limit, testing=False):
     if test == 'simple':
+        final_distances = []
         for trial in range(trials):
             box_x = np.random.uniform(0+(box_size/2), visual_field_size-(box_size/2))
             box_y = np.random.uniform(0+(box_size/2), visual_field_size-(box_size/2))
@@ -41,8 +42,11 @@ def test_attention(net, trials, time_limit, testing=False):
             all_fovea_x = [fovea_x]
             all_fovea_y = [fovea_y]
             all_directions = []
+            all_distances = []
+            future_neurogenesis = []
             for t in range(time_limit):
                 print("\nTrial:", trial, "- t:", t)
+                all_distances.append(round(old_distance, 1))
                 sight = simple_attention(fovea_x, fovea_y, box_x, box_y)
                 flat_sight = np.hstack([np.hstack(s) for s in sight])
                 activations = net.convert_inputs_to_activations(flat_sight)
@@ -61,22 +65,28 @@ def test_attention(net, trials, time_limit, testing=False):
                 print("separation x:", fovea_x - box_x, "- y:", fovea_y - box_y)
                 print(outputs)
                 print("all directions:", all_directions)
+                print("all distances:", all_distances)
                 print("chosen direction:", chosen_output)
                 print("distance - old:", old_distance, "- new:", new_distance)
+                print("final distances - ", final_distances)
                 print(np.reshape(error, [output_dim, output_dim]))
                 if not testing:
-                    neuron_label = net.error_driven_neuro_genesis(
-                        activations, -np.hstack([error * new_distance, output_prediction_error]))
+                    future_neurogenesis.append([activations,
+                                                -np.hstack([error * (old_distance - new_distance),
+                                                            output_prediction_error])])
                 old_distance = new_distance
-            plt.figure()
-            plt.plot(all_fovea_x, all_fovea_y, alpha=0.3)
-            plt.scatter(all_fovea_x[0], all_fovea_y[0], marker='o', s=800, c=[0, 1, 1])
-            plt.scatter(all_fovea_x[-1], all_fovea_y[-1], marker='o', s=800, c=[0, 0, 1])
-            plt.scatter(box_x, box_y, marker='*', s=800, c=[1, 0, 0])
-            plt.xlim([-1.5, visual_field_size+1.5])
-            plt.ylim([-1.5, visual_field_size+1.5])
-            plt.gca().invert_yaxis()
-            plt.show()
+            final_distances.append(all_distances[-1])
+            for past_act, past_err in future_neurogenesis:
+                neuron_label = net.error_driven_neuro_genesis(past_act, past_err)
+            # plt.figure()
+            # plt.plot(all_fovea_x, all_fovea_y, alpha=0.3)
+            # plt.scatter(all_fovea_x[0], all_fovea_y[0], marker='o', s=800, c=[0, 1, 1])
+            # plt.scatter(all_fovea_x[-1], all_fovea_y[-1], marker='o', s=800, c=[0, 0, 1])
+            # plt.scatter(box_x, box_y, marker='*', s=800, c=[1, 0, 0])
+            # plt.xlim([-1.5, visual_field_size+1.5])
+            # plt.ylim([-1.5, visual_field_size+1.5])
+            # plt.gca().invert_yaxis()
+            # plt.show()
 
 
 def box_pixel_locations(x, y, dim):
@@ -115,19 +125,23 @@ def simple_attention(f_x, f_y, b_x, b_y):
     sight = foveat_visual_field(visual_field, f_x, f_y, fovea_size, fovea_scales)
     return sight
 
-def update_movement(activations, current_x, current_y):
+def update_movement(activations, current_x, current_y, choose='prob'):
     outputs = np.zeros(num_outputs-2)
     delta_dist = np.zeros(2)
     for out in range(num_outputs-2):
         outputs[out] = activations['out{}'.format(out)]
     # if np.random.random() < 0.5:
     #     outputs = np.random.random(output_dim * output_dim)
+    if choose == 'prob':
+        sm_outputs = sm(outputs)
+        choice = random.choices(outputs, sm_outputs)
+    else:
+        choice = outputs.max()
     outputs = outputs.reshape([output_dim, output_dim])
-    max_output = outputs.max()
     max_directions = []
     for i in range(output_dim):
         for j in range(output_dim):
-            if outputs[i][j] == max_output:
+            if outputs[i][j] == choice:
                 max_directions.append([i, j])
     direction = max_directions[int(np.random.randint(len(max_directions)))]
     chosen_output = direction[1] + (direction[0] * output_dim)
@@ -368,7 +382,7 @@ ATTNDnet = Network(num_outputs, num_inputs,
                    replaying=replaying,
                    check_repeat=check_repeat)
 
-test_attention(ATTNDnet, 100, 100)
+test_attention(ATTNDnet, 1000, 100)
 
 for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
 # for repeat, (train_index, test_index) in enumerate(combined_index):

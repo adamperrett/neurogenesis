@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'breast'
+test = 'wine'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -67,8 +67,8 @@ elif test == "simple":
     examples = 200
     test_set_size = 0.1
     # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
-    num_outputs = 2
-    # num_outputs = len(centres)
+    # num_outputs = 2
+    num_outputs = len(centres)
     simple_data, simple_labels = create_bimodal_distribution(centres, spread, examples, max_classes=num_outputs)
     train_labels = simple_labels[:int(examples*len(centres)*(1. - test_set_size))]
     train_feat = simple_data[:int(examples*len(centres)*(1. - test_set_size))]
@@ -476,10 +476,10 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.6
+    sensitivity_width = 0.4
     activation_threshold = 0.0
-    error_threshold = 0.0
-    maximum_synapses_per_neuron = 8
+    error_threshold = 0.2
+    maximum_synapses_per_neuron = 13
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -501,7 +501,7 @@ max_out_synapses = 50000
 always_inputs = False
 replaying = False
 error_type = 'sm'
-epochs = 10
+epochs = 3
 repeats = 10
 width_noise = 0.#5
 noise_level = 0.#5
@@ -512,17 +512,18 @@ np.random.seed(27)
 confusion_decay = 0.8
 always_save = True
 remove_class = 2
-check_repeat = True
-expecting = True
+check_repeat = False
+expecting = False
 expect_type = 'oa'
-surprise_threshold = 0.05
+surprise_threshold = 0.1
 
 noise_tests = np.linspace(0, 2., 21)
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'w_surprise{} - {}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
-             'at{} - et{} - {}adr{} - {}noise'.format(surprise_threshold, retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
+test_label = 'paper_var no_exp - {}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
+             'at{} - et{} - {}adr{} - {}noise'.format(#surprise_threshold,
+                                                      retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
                                             delete_neuron_type, reward_decay,
                                                      # maximum_net_size, maximum_synapses_per_neuron,
                                                    test,
