@@ -106,11 +106,11 @@ num_samples = 9
 # kernel_density_estimation(num_samples)
 # kernel_density_estimation(num_samples)
 # kernel_density_estimation(num_samples)
-error_density_estimation(num_samples)
-error_density_estimation(num_samples)
-error_density_estimation(num_samples)
-error_density_estimation(num_samples)
-error_density_estimation(num_samples)
+# error_density_estimation(num_samples)
+# error_density_estimation(num_samples)
+# error_density_estimation(num_samples)
+# error_density_estimation(num_samples)
+# error_density_estimation(num_samples)
 print("Kernel esitmation done")
 
 '''
@@ -235,7 +235,7 @@ for i, x in enumerate(np.linspace(x_range[0], x_range[1], resolution)):
 fig, ax = plt.subplots(1, 2)
 plt.setp(ax, xlim=x_range, ylim=y_range)
 ax[0].set_title('ReLU neuron activation')
-ax[1].set_title('EDSAN neuron activation')
+ax[1].set_title('SEED neuron activation')
 for i in range(2):
     ax[i].set_xlabel('x1', fontsize=14)
     ax[i].set_ylabel('x2', fontsize=14)

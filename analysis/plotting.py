@@ -5,7 +5,7 @@ import os
 import seaborn as sns
 sns.set_theme(style="darkgrid")
 
-top_dir = './data/'
+top_dir = '../tests/data/'
 
 # collect = 'best_testing_accuracy'
 collect = 'fold_testing_accuracy'

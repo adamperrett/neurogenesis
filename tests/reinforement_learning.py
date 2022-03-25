@@ -230,8 +230,8 @@ def generate_error(reward, action, activations, memory_length, test_duration):
 
     act = sm([activations['out0'], activations['out1']])
     # act = [activations['out0'], activations['out1']]
-    error[0] += act[0]
-    error[1] += act[1]
+    # error[0] += act[0]
+    # error[1] += act[1]
     # error[0] += activations['out0']
     # error[1] += activations['out1']
     return error
@@ -369,7 +369,7 @@ replaying = False
 error_type = 'mem'
 error_decay_rate = 0.
 window_size = 10
-number_of_episodes = 2000
+number_of_episodes = 1500
 number_of_consolidations = 5
 repeat_test = 100
 epochs = 20
@@ -377,7 +377,7 @@ visualise_rate = 5
 np.random.seed(27)
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'paper pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
+test_label = 'paper no_act pl{} long{} w{} {}{} {}{} net{}x{}  - {} fixed_h{} - sw{} - ' \
              'at{} - et{} - {}adr{}'.format(pole_length, number_of_episodes,
                                             window_size, error_type, error_decay_rate,
                                             delete_neuron_type, reward_decay,

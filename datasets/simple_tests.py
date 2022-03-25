@@ -13,13 +13,18 @@ def create_centroid_classes(class_centres, spread, examples):
             labels.append(out)
     return data, labels
 
-def create_bimodal_distribution(class_centres, spread, examples, max_classes=2):
+def create_bimodal_distribution(class_centres, spread, examples, max_classes=2, shuffle=False):
     data = []
     labels = []
-    for out, centre in enumerate(class_centres):
-        for i in range(examples):
+    for i in range(examples):
+        for out, centre in enumerate(class_centres):
             data.append(np.random.normal(centre, spread))
             labels.append(out % max_classes)
+    if shuffle:
+        new_order = [i for i in range(examples*len(class_centres))]
+        np.random.shuffle(new_order)
+        data = np.array(data)[new_order]
+        labels = np.array(labels)[new_order]
     return data, labels
 
 class YinYangDataset():
