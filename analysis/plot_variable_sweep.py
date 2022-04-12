@@ -33,6 +33,8 @@ collect_multiple = [
 examine = 'pen'
 
 bonus_file_name = 'bp actor critic invpen gamma0.99 - hidden128 - lr0.003'
+# bonus_file_name = 'paper no_act pl0.5 long1500 w10 mem0.0 RL0.9999 net100000x4  - ' \
+#                   'pen fixed_h0.0 - sw0.6 - at0.0 - et0.0 - 1.0adr1.0'
 
 print(examine, '\n', collect_multiple)
 
@@ -180,6 +182,8 @@ if bonus_file_name:
                     all_data_names.append(top_dir + file)
         for data_name in all_data_names:
             if examine == 'pen':
+                # all_data[collect].append((np.load(data_name, allow_pickle=True)))
+                # selected_data = all_data[collect][-1]
                 all_data[collect].append((np.load(data_name, allow_pickle=True)))
                 selected_data = all_data[collect][-1][0]
                 extended_data = []

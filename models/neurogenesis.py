@@ -291,6 +291,12 @@ class Network():
         if 'in' in delete_neuron or 'out' in delete_neuron:
             print("not sure what deleting does here")
         self.synapse_count -= self.neurons[delete_neuron].synapse_count
+        if self.expecting:
+            label = self.neurons[delete_neuron].output
+            connections = self.neurons[delete_neuron].connections
+            for inp in connections:
+                self.output_expectation[label][0][inp] -= connections[inp]
+                self.output_expectation[label][1][inp] -= (1 - connections[inp])
         if delete_neuron in self.correctness[self.neurons[delete_neuron].output]:
             del self.correctness[self.neurons[delete_neuron].output][delete_neuron]
         del self.neurons[delete_neuron]
