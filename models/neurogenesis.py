@@ -224,6 +224,7 @@ class Network():
             self.hidden_neuron_count += 1
         if self.expecting:
             for inp in connections:
+                # make this error weighted?
                 self.output_expectation[label][0][inp] += connections[inp]
                 self.output_expectation[label][1][inp] += (1 - connections[inp])
         self.neurons[neuron_label] = Neuron(neuron_label, connections, self.neuron_selectivity,
@@ -489,6 +490,7 @@ class Network():
     def response(self, activations, replay=False):
         # for i in range(self.layers):
         response = activations
+        # make this numpy
         for neuron in self.neurons:
             response[neuron] = self.neurons[neuron].response(activations)
             # line below can be compressed?
