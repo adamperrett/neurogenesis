@@ -243,7 +243,7 @@ if plot_final:
     if examine == 'surprise':
         ax1.set_xlabel('Surprise threshold ($s_{th}$)', fontsize=14)
     if examine == 'error':
-        ax1.set_xlabel('Error threshold ($e_{th}$)', fontsize=14)
+        ax1.set_xlabel('Error threshold ($E_{th}$)', fontsize=14)
     if examine == 'spread':
         ax1.set_xlabel('Kernel spread ($s$)', fontsize=14)
     for idx, (collect, _) in enumerate(collect_multiple):
