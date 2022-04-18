@@ -69,10 +69,10 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         features = np.array(data[test])
         label = labels[test]
         if not net.neuron_count:
-            error = np.ones(num_outputs)
-            error *= -0
+            error = np.zeros(num_outputs)
             error[label] = 1
-            connections = net.select_connections(features, error)
+            net.output_activation = error
+            connections = net.select_connections(features)
             net.first_neuron(connections, error, label)
             synapse_counts.append(CLASSnet.synapse_count)
             neuron_counts.append(CLASSnet.neuron_count)
@@ -316,7 +316,7 @@ max_out_synapses = 50000
 # activity_init = 1.0
 always_inputs = False
 replaying = False
-expecting = False#'err'
+expecting = 'err'
 expect_type = 'oa'
 norm_expectation = False
 error_type = 'sm'
@@ -330,11 +330,11 @@ output_thresholding = True
 
 noise_tests = np.linspace(0, .3, 21)
 
-base_label = 'matrix-outh{}-{}-{}-th{} retest{} {} mn{}  - {} - sw{} - et{}'.format(
+base_label = 'matrix-outh{}-{}-{}-th{} retest{} {} mn{}x{} - {} - sw{} - et{}'.format(
     output_thresholding,
     expecting, expect_type, surprise_threshold,
     retest_rate, error_type,
-    maximum_net_size,
+    maximum_net_size, maximum_synapses_per_neuron,
     test,
     sensitivity_width,
     error_threshold
@@ -367,7 +367,7 @@ for repeat in range(repeats):
     CLASSnet = Network(num_outputs, num_inputs,
                        error_threshold=error_threshold,
                        f_width=sensitivity_width,
-                       maximum_total_synapses=maximum_total_synapses,
+                       maximum_synapses_per_neuron=maximum_synapses_per_neuron,
                        input_dimensions=input_dimensions,
                        reward_decay=reward_decay,
                        delete_neuron_type=delete_neuron_type,
@@ -467,6 +467,7 @@ for repeat in range(repeats):
                     plt.axis('off')
                     print("saving class", i)
                     plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                print("Done visualising")
             if current_fold % 10 == 0 and current_fold:
                 print("it reached 10 folds")
 

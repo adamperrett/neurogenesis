@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import softmax as sm
 from copy import deepcopy
-from models.neurogenesis import Network
+from models.matrix_neurogenesis import Network
 from datasets.simple_tests import *
 from models.convert_network import *
 import random
@@ -129,106 +129,45 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         train_count += 1
         features = data[test]
         label = labels[test]
-        activations = net.convert_inputs_to_activations(np.array(features))
-        activations = net.response(activations)
-        if save_activations:
-            all_activations.append([deepcopy(activations), features, label])
-        error, choice, softmax = calculate_error(label, activations, test_net_label, num_outputs)
-        neuron_count = CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count
-        if 'esting' not in test_net_label:
-            # if only_lr:
-            # CLASSnet.pass_errors_to_outputs(error, learning_rate)
-            print(test_net_label, "\nEpoch ", epoch, "/", epochs)
-            print(fold_string)
-            print('test ', train_count, '/', len(indexes))
-            print("Neuron count: ", CLASSnet.hidden_neuron_count, " - ", CLASSnet.deleted_neuron_count, " = ",
-                  CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
-            print("Synapse count: ", CLASSnet.synapse_count)
-            print(test_label, repeat)
-            for ep, err in enumerate(epoch_error):
-                print(ep, err)
-            print(test_label, repeat)
-        confusion_matrix[choice][label] += 1
-        synapse_counts.append(CLASSnet.synapse_count)
-        neuron_counts.append(neuron_count)
-        error_values.append(np.max(np.abs(error)))
-
-        if 'esting' not in test_net_label and np.max(np.abs(error)) > error_threshold:
-            if expect_type == 'act':
-                expectation = CLASSnet.collect_expectation(activations, softmax)
-            elif expect_type == 'err':
-                expectation = CLASSnet.collect_expectation(activations, softmax,
-                                                           activity_dependant=False)
-            else:
-                expectation = CLASSnet.collect_expectation(activations, softmax,
-                                                           activity_dependant=False,
-                                                           error_driven=False)
-        else:
-            expectation = np.zeros(num_inputs)
+        if not net.neuron_count:
+            error = np.zeros(num_outputs)
+            error[label] = 1
+            net.output_activation = error
+            connections = net.select_connections(features)
+            net.first_neuron(connections, error, label)
+            synapse_counts.append(CLASSnet.synapse_count)
+            neuron_counts.append(CLASSnet.neuron_count)
+            continue
+        output = net.response(features)
+        error, choice, softmax = calculate_error(label, output, test_net_label)
 
         if label == choice:
             correct_classifications += 1
             if 'esting' not in test_net_label:
-                # correctness = net.record_correctness(label)
                 # net.reinforce_neurons(1.)
                 classifications.append(1)
-                # best_testing_accuracy.append(best_testing_accuracy[-1])
-                # net.age_output_synapses(reward=True)
+                net.error_driven_neuro_genesis(features, error, label)
                 print("CORRECT CLASS WAS CHOSEN")
-                # if np.random.random() < learning_rate:
-                if always_save:
-                    neuron_label = net.error_driven_neuro_genesis(
-                        activations, error, expectation=expectation,
-                        weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale),
-                        label=label)#, label)
-            # if error[choice] < -0.5:
-            #     net.error_driven_neuro_genesis(activations, error, label)
         else:
             if 'esting' not in test_net_label:
                 print("INCORRECT CLASS WAS CHOSEN")
                 # net.reinforce_neurons(-1.)
                 classifications.append(0)
-                # if not only_lr:
-                neuron_label = net.error_driven_neuro_genesis(
-                    activations, error, expectation=expectation,
-                    weight_multiplier=1. / np.power(float(len(classifications)), out_weight_scale),
-                    label=label)#, label)
-                # new_accuracy, _, _, _, _ = test_net(net, X, y,
-                #                                     indexes=train_index,
-                #                                     test_net_label='new neuron testing',
-                #                                     classifications=classifications,
-                #                                     # fold_test_accuracy=fold_testing_accuracy,
-                #                                     fold_string=fold_string,
-                #                                     max_fold=max_fold)
-                # if new_accuracy < previous_full_accuracy:
-                #     delete_list.append('n{}'.format(CLASSnet.hidden_neuron_count - 1))
-                #     best_testing_accuracy.append(best_testing_accuracy[-1])
-                # else:
-                #     delete_list = []
-                #     previous_full_accuracy = new_accuracy
-                #     testing_accuracy, training_classifications, \
-                #     testing_confusion, _, _ = test_net(CLASSnet, X, y,
-                #                                        indexes=test_index,
-                #                                        test_net_label='Testing',
-                #                                        classifications=classifications,
-                #                                        # fold_test_accuracy=fold_testing_accuracy,
-                #                                        fold_string=fold_string,
-                #                                        max_fold=maximum_fold_accuracy)
-                #     best_testing_accuracy.append(round(testing_accuracy, 3))
-                # print("total visualising neuron", CLASSnet.hidden_neuron_count)
-                # vis = CLASSnet.visualise_neuron(neuron_label, only_pos=False)
-                # print("plotting neuron", CLASSnet.hidden_neuron_count)
-                # plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
-                # plt.savefig("./plots/{}neuron cl{} {}.png".format(CLASSnet.hidden_neuron_count,
-                #                                                   label, test_label),
-                #             bbox_inches='tight', dpi=20)
-                # if net.hidden_neuron_count > max_out_synapses:
-                #     net.remove_worst_output()
-            # incorrect_classes.append('({}) {}: {}'.format(train_count, label, choice))
+                net.error_driven_neuro_genesis(features, error, label)
+
         if 'esting' not in test_net_label:
-            # print(label, features)
-            correctness = net.record_correctness(label)
-        # classifications.append([choice, label])
+            print(test_net_label, "\nEpoch ", epoch, "/", epochs)
+            print(fold_string)
+            print('test ', train_count, '/', len(indexes))
+            print("Neuron count: ", CLASSnet.neuron_count, " - del", CLASSnet.deleted_neuron_count)
+            print("Synapse count: ", CLASSnet.synapse_count)
+            print("Repeated neuron count: ", CLASSnet.repeated_neuron_count)
+            print(test_label)
+            for ep in epoch_error:
+                print(ep)
+            confusion_matrix[choice][label] += 1
+            synapse_counts.append(CLASSnet.synapse_count)
+            neuron_counts.append(CLASSnet.neuron_count)
         if 'esting' not in test_net_label and train_count % retest_rate == retest_rate - 1:
             print("retesting")
             if len(test_index) > 1000:
@@ -269,15 +208,6 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         else:
             if train_count % 1000 == 0:
                 print(train_count, "/", len(indexes))
-    # print(incorrect_classes)
-    # all_incorrect_classes.append(incorrect_classes)
-    # for ep in all_incorrect_classes:
-    #     print(len(ep), "-", ep)
-    for bad_neuron in delete_list:
-        CLASSnet.delete_neuron(bad_neuron)
-    del neuron_counts[-1]
-    neuron_counts.append(CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
-    del synapse_counts[-1]
     synapse_counts.append(CLASSnet.synapse_count)
     correct_classifications /= train_count
     if 'esting' not in test_net_label:
@@ -422,14 +352,10 @@ def normalise_outputs(out_activations):
         norm_out.append((out - min_out) / out_range)
     return np.array(norm_out)
 
-def calculate_error(correct_class, activations, test_label, num_outputs=2):
-    output_activations = np.zeros(num_outputs)
+def calculate_error(correct_class, output_activations, test_label):
     error = np.zeros(num_outputs)
-    one_hot_encoding = np.ones(num_outputs)
-    one_hot_encoding *= -0
+    one_hot_encoding = np.zeros(num_outputs)
     one_hot_encoding[correct_class] = 1
-    for output in range(num_outputs):
-        output_activations[output] = activations['out{}'.format(output)]
     if error_type == 'sm':
         softmax = sm(output_activations)
     elif error_type == 'norm':
@@ -441,17 +367,10 @@ def calculate_error(correct_class, activations, test_label, num_outputs=2):
     else:
         choice = num_outputs
     if error_type == 'zero':
-        # softmax = sm(output_activations)
-        # for output in range(num_outputs):
-        #     if output != correct_class:
-        #         softmax[output] = 0.
         softmax = np.zeros(num_outputs)
     for output in range(num_outputs):
-        error[output] += softmax[output] - one_hot_encoding[output]
-        # error[output] = - one_hot_encoding[output]
+        error[output] += one_hot_encoding[output] - softmax[output]
 
-    # print("Error for test ", test_label, " is ", error)
-    # print("output")
     if 'esting' not in test_label:
         for output in range(num_outputs):
             print("{} - {}:{} - sm:{} - err:{}".format(one_hot_encoding[output],
@@ -479,7 +398,7 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 2.0
+    sensitivity_width = 0.4
     activation_threshold = 0.0
     error_threshold = 0.2
     maximum_synapses_per_neuron = 1
@@ -516,28 +435,22 @@ confusion_decay = 0.8
 always_save = True
 remove_class = 2
 check_repeat = False
-expecting = True
-expect_type = 'oa'
+expecting = 'err'
 surprise_threshold = 0.1
 
-noise_tests = np.linspace(0, 2., 21)
+output_thresholding = True
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'paper_var exp{} - {}ms{} {}{} {}{}  - {} fixed_h{} - sw{}n{} - ' \
-             'at{} - et{} - {}adr{} - {}noise'.format(surprise_threshold,
-                                                      retest_rate, maximum_synapses_per_neuron, error_type, out_weight_scale,
-                                            delete_neuron_type, reward_decay,
-                                                     # maximum_net_size, maximum_synapses_per_neuron,
-                                                   test,
-                                                   fixed_hidden_ratio,
-                                                    # fixed_hidden_amount,
-                                                   sensitivity_width, width_noise,
-                                                   activation_threshold,
-                                                   error_threshold,
-                                                   activity_init, activity_decay_rate,
-                                                      noise_level
-                                                   )
+test_label = 'matrix {} - sth{} outh{} retest{} exp-{} mns{}x{} er-{} sw{}eth{}'.format(
+    test,
+    surprise_threshold, output_thresholding,
+    retest_rate, expecting,
+    maximum_net_size, maximum_synapses_per_neuron,
+    error_type,
+    sensitivity_width,
+    error_threshold
+)
 
 average_windows = [30, 100, 300, 1000, 3000, 10000, 100000]
 fold_average_windows = [3, 10, 30, 60, 100, 1000]
@@ -582,25 +495,15 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
     CLASSnet = Network(num_outputs, num_inputs,
                        error_threshold=error_threshold,
                        f_width=sensitivity_width,
-                       width_noise=width_noise,
-                       activation_threshold=activation_threshold,
-                       maximum_total_synapses=maximum_total_synapses,
-                       max_hidden_synapses=maximum_synapses_per_neuron,
-                       activity_decay_rate=activity_decay_rate,
-                       always_inputs=always_inputs,
-                       old_weight_modifier=old_weight_modifier,
+                       maximum_synapses_per_neuron=maximum_synapses_per_neuron,
                        input_dimensions=input_dimensions,
                        reward_decay=reward_decay,
                        delete_neuron_type=delete_neuron_type,
-                       fixed_hidden_ratio=fixed_hidden_ratio,
-                       activity_init=activity_init,
-                       replaying=replaying,
-                       hidden_threshold=hidden_threshold,
-                       conv_size=conv_size,
                        surprise_threshold=surprise_threshold,
                        expecting=expecting,
-                       check_repeat=check_repeat)
-
+                       maximum_net_size=maximum_net_size,
+                       output_thresholding=output_thresholding)
+    all_incorrect_classes = []
     epoch_error = []
     # noise_results = []
     previous_accuracy = 0
@@ -709,7 +612,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                 # round(final_procedural_accuracy, 4),
                                 round(fold_testing_accuracy[-1]),
                                 round(full_testing_accuracy, 4),
-                                CLASSnet.hidden_neuron_count, CLASSnet.synapse_count])
+                                CLASSnet.neuron_counting(), CLASSnet.synapse_counting()])
             running_test_confusion *= confusion_decay
             running_test_confusion += full_test_confusion
         else:
@@ -718,7 +621,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
                                 # round(final_procedural_accuracy, 4),
                                 round(fold_testing_accuracy[-1], 4),
                                 round(testing_accuracy, 4),
-                                CLASSnet.hidden_neuron_count, CLASSnet.synapse_count]
+                                CLASSnet.neuron_counting(), CLASSnet.synapse_counting()]
                                )
             running_test_confusion *= confusion_decay
             running_test_confusion += testing_confusion

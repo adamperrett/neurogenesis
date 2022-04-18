@@ -1,11 +1,12 @@
 import numpy as np
 import random
+from scipy.special import softmax as sm
 
 class Network():
     def __init__(self, number_of_classes, number_of_inputs,
                  error_threshold=0.1,
                  f_width=0.3,
-                 maximum_total_synapses=20,
+                 maximum_synapses_per_neuron=1,
                  maximum_net_size=10000,
                  input_dimensions=None,
                  reward_decay=1.,
@@ -17,7 +18,7 @@ class Network():
 
         self.error_threshold = error_threshold
         self.f_width = f_width
-        self.maximum_total_synapses = maximum_total_synapses
+        self.maximum_synapses_per_neuron = maximum_synapses_per_neuron
         self.maximum_net_size = maximum_net_size
         self.input_dimensions = input_dimensions
         self.reward_decay = reward_decay
@@ -49,7 +50,7 @@ class Network():
     def first_neuron(self, inputs, output_weights, output):
         self.input_v = np.array(inputs).reshape([1, self.number_of_inputs])
         if self.output_thresholding:
-            output_weights = (output_weights > self.error_threshold) * output_weights
+            output_weights = (np.abs(output_weights) > self.error_threshold) * output_weights
         self.output_weights = np.array(output_weights).reshape([1, self.number_of_classes])
         self.neuron_count = 1
         if self.expecting:
@@ -71,39 +72,40 @@ class Network():
                 return
         self.input_v = np.vstack([self.input_v, connections])
         if self.output_thresholding:
-            output_weights = (output_weights > self.error_threshold) * output_weights
+            output_weights = (np.abs(output_weights) > self.error_threshold) * output_weights
         self.output_weights = np.vstack([self.output_weights, output_weights])
 
-        if self.expecting:
-            # add weighting to the expectation
-            self.expectation[output] = np.nansum(np.vstack([self.expectation[output], connections]), axis=0)
-            self.inv_expectation[output] = np.nansum(np.vstack([self.inv_expectation[output], 1 - connections]), axis=0)
+        # if self.expecting:
+            # add weighting to the expectation and negative parts?
+        self.expectation[output] = np.nansum(np.vstack([self.expectation[output], connections]), axis=0)
+        self.inv_expectation[output] = np.nansum(np.vstack([self.inv_expectation[output], 1 - connections]), axis=0)
 
-    def select_connections(self, inputs, error):
+    def select_connections(self, inputs):
         if self.expecting:
-            expectation = self.collect_expectation(error)
+            expectation = self.collect_expectation()
             connections = [i if s else np.nan for i, s in zip(inputs,
                                                               np.abs(expectation - inputs) > self.surprise_threshold)]
             return np.array(connections)
 
         # random selection
-        if self.number_of_inputs < self.maximum_total_synapses:
+        if self.number_of_inputs < self.maximum_synapses_per_neuron:
             return inputs
 
-        selection = [True if i < self.maximum_total_synapses else False for i in range(self.number_of_inputs)]
-        connections = [i if s else np.nan for i, s in zip(inputs, np.random.shuffle(selection))]
+        selection = [True if i < self.maximum_synapses_per_neuron else False for i in range(self.number_of_inputs)]
+        np.random.shuffle(selection)
+        connections = [i if s else np.nan for i, s in zip(inputs, selection)]
         return np.array(connections)
 
     def error_driven_neuro_genesis(self, inputs, error, output):
         if np.max(np.abs(error)) > self.error_threshold:
-            connections = self.select_connections(inputs, error)
-            self.add_neuron(connections, (error > self.error_threshold) * error, output)
+            connections = self.select_connections(inputs)
+            self.add_neuron(connections, error, output)
             self.neuron_counting()
             self.synapse_counting()
 
-    def collect_expectation(self, error):
+    def collect_expectation(self):
         if self.expecting == 'err':
-            modulation = error
+            modulation = sm(self.output_activation)
         elif self.expecting == 'act':
             modulation = self.output_activation
         else:
@@ -111,7 +113,9 @@ class Network():
         expectation = np.nansum(np.multiply(self.expectation.T, modulation), axis=1)
         inv_expectation = np.nansum(np.multiply(self.inv_expectation.T, modulation), axis=1)
         total = expectation + inv_expectation
-        mask = (total == 0)
+        mask_exp = (expectation == 0)
+        mask_inv = (inv_expectation == 0)
+        mask = mask_exp * mask_inv
         total += mask * 0.00000001
         total_expectation = expectation / total
         return total_expectation + (mask * 5)
@@ -126,7 +130,12 @@ class Network():
             expectation = np.nansum(neuron_exp.T * weights, axis=1)
             return expectation
         else:
-            return self.expectation[output] / (self.expectation[output] + self.inv_expectation[output])
+            total = self.expectation[output] + self.inv_expectation[output]
+            mask_exp = (self.expectation[output] == 0)
+            mask_inv = (self.inv_expectation[output] == 0)
+            mask = mask_exp * mask_inv
+            total += mask * 0.00000001
+            return self.expectation[output] / total
 
     def neuron_counting(self):
         self.neuron_count = len(self.input_v)
