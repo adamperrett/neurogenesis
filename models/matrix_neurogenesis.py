@@ -30,8 +30,8 @@ class Network():
 
         self.number_of_inputs = number_of_inputs
         self.number_of_classes = number_of_classes
-        self.input_v = []
-        self.output_weights = []
+        self.input_v = np.empty((0, number_of_inputs))
+        self.output_weights = np.empty((0, number_of_classes))
         self.synapse_count = 0
         self.neuron_count = 0
         self.deleted_neuron_count = 0
@@ -46,17 +46,6 @@ class Network():
 
         self.expectation = np.vstack([np.zeros(self.number_of_inputs) for i in range(self.number_of_classes)])
         self.inv_expectation = np.vstack([np.zeros(self.number_of_inputs) for i in range(self.number_of_classes)])
-
-    def first_neuron(self, inputs, output_weights, output):
-        self.input_v = np.array(inputs).reshape([1, self.number_of_inputs])
-        if self.output_thresholding:
-            output_weights = (np.abs(output_weights) > self.error_threshold) * output_weights
-        self.output_weights = np.array(output_weights).reshape([1, self.number_of_classes])
-        self.neuron_count = 1
-        if self.expecting:
-            # add weighting to the expectation
-            self.expectation[output] = np.nansum(np.vstack([self.expectation[output], inputs]), axis=0)
-            self.inv_expectation[output] = np.nansum(np.vstack([self.inv_expectation[output], 1 - inputs]), axis=0)
 
     def response(self, inputs):
         input_synapses = np.maximum(0, self.f_width - np.abs(np.subtract(self.input_v, inputs)))
@@ -136,6 +125,9 @@ class Network():
             mask = mask_exp * mask_inv
             total += mask * 0.00000001
             return self.expectation[output] / total
+
+    def reset_network(self):
+        print("Reset don't work yet")
 
     def neuron_counting(self):
         self.neuron_count = len(self.input_v)

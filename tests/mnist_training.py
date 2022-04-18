@@ -68,16 +68,6 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         train_count += 1
         features = np.array(data[test])
         label = labels[test]
-        if not net.neuron_count:
-            error = np.zeros(num_outputs)
-            error[label] = 1
-            net.output_activation = error
-            connections = net.select_connections(features)
-            net.first_neuron(connections, error, label)
-            synapse_counts.append(CLASSnet.synapse_count)
-            neuron_counts.append(CLASSnet.neuron_count)
-            repeated_count.append(CLASSnet.repeated_neuron_count)
-            continue
         output = net.response(features)
         error, choice, softmax = calculate_error(label, output, num_outputs)
 
@@ -326,7 +316,7 @@ visualise_rate = 5
 np.random.seed(27)
 confusion_decay = 0.8
 
-output_thresholding = True
+output_thresholding = False
 
 noise_tests = np.linspace(0, .3, 21)
 

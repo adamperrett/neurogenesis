@@ -129,15 +129,6 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         train_count += 1
         features = data[test]
         label = labels[test]
-        if not net.neuron_count:
-            error = np.zeros(num_outputs)
-            error[label] = 1
-            net.output_activation = error
-            connections = net.select_connections(features)
-            net.first_neuron(connections, error, label)
-            synapse_counts.append(CLASSnet.synapse_count)
-            neuron_counts.append(CLASSnet.neuron_count)
-            continue
         output = net.response(features)
         error, choice, softmax = calculate_error(label, output, test_net_label)
 
@@ -185,11 +176,6 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             fold_testing_accuracy.append(round(testing_accuracy, 3))
             best_testing_accuracy.append(round(testing_accuracy, 3))
             print("finished")
-            # if train_count % 10 == 0:
-                # CLASSnet.convert_net_and_clean()
-                # determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
-            # determine_2D_decision_boundary(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
-        # neuron_counts.append(CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count)
         if 'esting' not in test_net_label:
             # print(label, features)
             # correctness = net.record_correctness(label)
@@ -208,14 +194,8 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         else:
             if train_count % 1000 == 0:
                 print(train_count, "/", len(indexes))
-    synapse_counts.append(CLASSnet.synapse_count)
     correct_classifications /= train_count
     if 'esting' not in test_net_label:
-        if len(train_feat[0]) == 2 and 'neuron' not in test_net_label:
-            # determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
-            # memory_to_procedural(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
-            determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
-            # memory_to_procedural(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
               correct_classifications)
     if save_activations:
@@ -224,6 +204,52 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
     else:
         return correct_classifications, classifications, confusion_matrix, \
                synapse_counts, neuron_counts, error_values
+
+def convert_net_and_reset(centroid_type):
+    collected_centroids = []
+    for i in range(num_outputs):
+        if centroid_type == 'exp':
+            collected_centroids.append(CLASSnet.visualise_classes(i, weighted=False))
+        elif centroid_type == 'pos':
+            collected_centroids.append(CLASSnet.visualise_classes(i, only_pos=True))
+        elif centroid_type == 'neg':
+            collected_centroids.append(CLASSnet.visualise_classes(i, only_pos=False))
+        else:
+            print("Empty")
+
+    hidden_connections = np.empty((0, CLASSnet.number_of_inputs + 1))
+    output_connections = np.empty((0, CLASSnet.number_of_classes))
+    for out_a, c_a in enumerate(collected_centroids):
+        for out_b, c_b in enumerate(collected_centroids):
+            if out_a <= out_b:
+                dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
+                                     (c_b - c_a))
+                bias = -dot_product
+                hidden_connections = np.vstack([hidden_connections,
+                                                np.hstack([c_b - c_a, bias]) / distance.euclidean(c_a, c_b)])
+                output_weights = np.zeros(CLASSnet.number_of_classes)
+                output_weights[out_a] = -1
+                output_weights[out_b] = 1
+                output_connections = np.vstack([output_connections,
+                                                output_weights])
+
+    planeNet = Network(num_outputs, num_inputs+len(hidden_connections)+len(output_connections),
+                       error_threshold=error_threshold,
+                       f_width=sensitivity_width,
+                       maximum_synapses_per_neuron=maximum_synapses_per_neuron,
+                       input_dimensions=input_dimensions,
+                       reward_decay=reward_decay,
+                       delete_neuron_type=delete_neuron_type,
+                       surprise_threshold=surprise_threshold,
+                       expecting=expecting,
+                       maximum_net_size=maximum_net_size,
+                       output_thresholding=output_thresholding)
+    return hidden_connections, output_connections, planeNet
+
+def preprocess_inputs(inputs, hyper_net):
+    for hidden, output in hyper_net:
+        inputs = np.matmul(np.matmul(inputs, hidden), output)
+    return inputs
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -520,28 +546,15 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
     running_error_values = np.array([])
     only_lr = True
     for epoch in range(epochs):
-        if epoch > 0:
-            remove_class = (remove_class + 1) % num_outputs
         if epoch % 4 == 3:
             only_lr = not only_lr
         if epoch % 10 == 0 and epoch:
-        # if (epoch == 10 or epoch == 30) and epoch:
             for ep, error in enumerate(epoch_error):
                 print(ep, error)
             print("it reached 10")
         max_folds = int(len(train_labels) / retest_rate)
         training_count = 0
         while training_count < len(train_index):
-            # if len(epoch_error) > 0:
-                # if epoch_error[-1][0] == 1.0:
-                #     extend_data(len(train_index))
-                #     break
-            # if len(epoch_error) > 2:
-            #     if epoch_error[-1][-1] == epoch_error[-2][-1]:
-            #         extend_data(len(train_index))
-            #         break
-            # training_indexes = [i for i in range(training_count, min(training_count + retest_rate, len(train_labels)))]
-            # training_indexes = random.sample([i for i in range(len(train_labels))], retest_rate)
             training_count += len(train_index)
             current_fold = training_count / len(train_index)
             fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
