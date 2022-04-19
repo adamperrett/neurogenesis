@@ -73,11 +73,11 @@ class Network():
         if self.expecting:
             expectation = self.collect_expectation()
             connections = [i if s else np.nan for i, s in zip(inputs,
-                                                              np.abs(expectation - inputs) > self.surprise_threshold)]
+                                                              np.abs(expectation - inputs) >= self.surprise_threshold)]
             return np.array(connections)
 
         # random selection
-        if self.number_of_inputs < self.maximum_synapses_per_neuron:
+        if self.number_of_inputs <= self.maximum_synapses_per_neuron:
             return inputs
 
         selection = [True if i < self.maximum_synapses_per_neuron else False for i in range(self.number_of_inputs)]

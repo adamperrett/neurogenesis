@@ -156,12 +156,13 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     ax_s.plot([i for i in range(len(synapse_counts))], synapse_counts)
     if len(epoch_error):
         if len(epoch_error) <= 10:
-            data = np.hstack([np.array(epoch_error)[:, 0].reshape([len(epoch_error), 1]),
-                    np.array(epoch_error)[:, 1].reshape([len(epoch_error), 1]),
-                    np.array(epoch_error)[:, 2].reshape([len(epoch_error), 1])])#,
-                    # np.array(epoch_error)[:, 3].reshape([len(epoch_error), 1])])
+            data = np.hstack([
+                np.array(epoch_error)[:, 0].reshape([len(epoch_error), 1]),
+                np.array(epoch_error)[:, 1].reshape([len(epoch_error), 1]),
+                np.array(epoch_error)[:, 2].reshape([len(epoch_error), 1]),
+                np.array(epoch_error)[:, 3].reshape([len(epoch_error), 1])])
             axs[1][1].table(cellText=data, colLabels=['training accuracy',# 'procedural training',
-                                                      'testing accuracy', 'neuron count'],#'procedural accuracy'],
+                                                      'testing accuracy', 'neuron count', 'synapse count'],#'procedural accuracy'],
                             rowLabels=['{}'.format(i) for i in range(len(epoch_error))],
                             loc="center")
             axs[1][1].axis('off')
@@ -266,7 +267,7 @@ read_args = False
 if read_args:
     import sys
     sensitivity_width = float(sys.argv[1])
-    activation_threshold = float(sys.argv[2])
+    output_thresholding = float(sys.argv[2])
     error_threshold = float(sys.argv[3])
     maximum_total_synapses = 10000000000000 #int(sys.argv[4])
     surprise_threshold = float(sys.argv[4])
@@ -282,9 +283,9 @@ if read_args:
         print(sys.argv[i+1])
 else:
     sensitivity_width = 0.4
-    surprise_threshold = 0.4
-    activation_threshold = 0.0
+    output_thresholding = False
     error_threshold = 0.2
+    surprise_threshold = 0.4
     maximum_synapses_per_neuron = 128
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.
@@ -310,13 +311,11 @@ expecting = 'err'
 expect_type = 'oa'
 norm_expectation = False
 error_type = 'sm'
-epochs = 7
+epochs = 3
 repeats = 1
-visualise_rate = 5
+visualise_rate = 20
 np.random.seed(27)
 confusion_decay = 0.8
-
-output_thresholding = False
 
 noise_tests = np.linspace(0, .3, 21)
 
@@ -480,7 +479,7 @@ for repeat in range(repeats):
             #                                      fold_string=fold_string,
             #                                      max_fold=maximum_fold_accuracy)
             epoch_error.append([np.mean(training_classifications[-len(train_labels):]), full_testing_accuracy,
-                                running_neuron_counts[-1]])
+                                running_neuron_counts[-1], running_synapse_counts[-1]])
                                 # CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
         else:
             epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,

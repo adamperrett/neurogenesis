@@ -3,9 +3,9 @@ import subprocess
 import time
 
 sensitivity_width = [0.4, 0.6]#[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-activation_threshold = [0.0]
-error_threshold = [0.1, 0.3]
-maximum_total_synapses = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]  # now surprise threshold
+output_thresholding = [0, 1]
+error_threshold = [0.1]
+surprise_threshold = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
 maximum_synapses = [150]
 input_spread = [0]
 activity_decay_rate = [0.99]
@@ -15,15 +15,15 @@ fixed_hidden_amount = [0]
 processes = []
 logs = []
 for sw in sensitivity_width:
-    for at in activation_threshold:
+    for at in output_thresholding:
         for er in error_threshold:
-            for mn in maximum_total_synapses:
+            for mn in surprise_threshold:
                 for ms in maximum_synapses:
                     for ins in input_spread:
                         for adr in activity_decay_rate:
                             for ns in number_of_seeds:
                                 for fha in fixed_hidden_amount:
-                                    screen_name = "sw{}_at{}_er{}_mn{}_ms{}_ins{}_adr{}_ns{}_fha{}".format(
+                                    screen_name = "sw{}_ot{}_er{}_st{}_ms{}_ins{}_adr{}_ns{}_fha{}".format(
                                         sw, at, er, mn, ms, ins, adr, ns, fha)
                                     open_screen = "screen -dmS " + screen_name + " bash -c "
                                     move_and_source = "neurogenesis_source && "
