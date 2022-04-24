@@ -6,7 +6,7 @@ from datasets.simple_tests import *
 from models.convert_network import *
 import random
 import matplotlib
-saving_plots = True
+saving_plots = False
 if saving_plots:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'wine'
+test = 'yinyang'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -63,7 +63,7 @@ elif test == "simple":
                [-1, 0]]
     x_range = [-2, 2]
     y_range = [-2, 2]
-    spread = 0.3
+    spread = 0.0
     examples = 200
     test_set_size = 0.1
     # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
@@ -202,10 +202,10 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
 
     correct_classifications /= train_count
     if 'esting' not in test_net_label:
-        if len(train_feat[0]) == 2 and 'neuron' not in test_net_label:
+        # if len(train_feat[0]) == 2 and 'neuron' not in test_net_label:
             # determine_2D_decision_boundary(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
             # memory_to_procedural(CLASSnet, [-2, 2], [-2, 2], 100, X, y)
-            determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
+            # determine_2D_decision_boundary(CLASSnet, x_range, y_range, 100, X, y)
             # memory_to_procedural(CLASSnet, [-1, 2], [-1, 2], 100, X, y)
         print('Epoch', epoch, '/', epochs, '\nClassification accuracy: ',
               correct_classifications)
@@ -391,8 +391,8 @@ if read_args:
 else:
     sensitivity_width = 0.4
     activation_threshold = 0.0
-    error_threshold = 0.2
-    maximum_synapses_per_neuron = 1
+    error_threshold = 0.0
+    maximum_synapses_per_neuron = 128
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -426,7 +426,7 @@ confusion_decay = 0.8
 always_save = True
 remove_class = 2
 check_repeat = False
-expecting = 'err'
+expecting = False#'act'
 surprise_threshold = 0.1
 
 output_thresholding = True

@@ -130,24 +130,32 @@ print('plotting')
 #              data=fmri)
 
 fig, ax = plt.subplots(1, 1)
+legend_size = 28
+fontsize = 28
+tick_size = fontsize
 min_length = np.min([len(ng_testing), np.min([len(tf_t) for tf_t in tf_testing])])
 # plt.setp(ax, ylim=[0, 1])
 for label, tf_t, tf_c in zip(tf_labels, tf_testing, colours):
-    ax.plot([i for i in range(len(tf_t[:min_length]))], tf_t[:min_length], label='ANN '+label, color=tf_c)
-ax.plot([i for i in range(len(ng_testing[:min_length]))], ng_testing[:min_length], label='SEED', color=ng_colour)
+    ax.plot([i for i in range(len(tf_t[:min_length]))], tf_t[:min_length], label='GD '+label, color=tf_c)
+ax.plot([i for i in range(len(ng_testing[:min_length]))], ng_testing[:min_length], label='EDN', color=ng_colour)
 if 'mpg' in tf_file:
     # ax.set_ylim([-200, 1550])
-    ax.legend(loc='upper right')
-    ax.set_ylabel('Mean squared error', fontsize=14)
-    ax.set_xlabel('Training examples', fontsize=14)
+    ax.legend(loc='upper right', prop={'size': legend_size})
+    ax.set_ylabel('Mean squared error', fontsize=fontsize)
+    ax.set_xlabel('Training examples', fontsize=fontsize)
 elif 'mnist' in ng_file:
-    ax.legend(loc='lower right')
-    ax.set_ylabel('Training accuracy', fontsize=14)
-    ax.set_xlabel('Training examples', fontsize=14)
+    ax.legend(loc='lower right', prop={'size': legend_size})
+    ax.set_ylabel('Training accuracy', fontsize=fontsize)
+    ax.set_xlabel('Training examples', fontsize=fontsize)
 else:
-    ax.legend(loc='lower right')
-    ax.set_ylabel('Classification accuracy', fontsize=14)
-    ax.set_xlabel('Training examples', fontsize=14)
+    ax.legend(loc='lower right', prop={'size': legend_size})
+    ax.set_ylabel('Classification accuracy', fontsize=fontsize)
+    ax.set_xlabel('Training examples', fontsize=fontsize)
+plt.xticks(fontsize=tick_size)
+plt.yticks(fontsize=tick_size)
+plt.subplots_adjust(left=0.076, bottom=0.098,
+                                              right=0.995, top=0.995,
+                                              wspace=0.015, hspace=0)
 plt.show()
 
 print('done')

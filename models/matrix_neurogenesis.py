@@ -14,7 +14,8 @@ class Network():
                  expecting=False,
                  surprise_threshold=0.4,
                  check_repeat=False,
-                 output_thresholding=False):
+                 output_thresholding=False,
+                 weighted_expectation=False):
 
         self.error_threshold = error_threshold
         self.f_width = f_width
@@ -27,6 +28,7 @@ class Network():
         self.surprise_threshold = surprise_threshold
         self.check_repeat = check_repeat
         self.output_thresholding = output_thresholding
+        self.weighted_expectation = weighted_expectation
 
         self.number_of_inputs = number_of_inputs
         self.number_of_classes = number_of_classes
@@ -88,19 +90,62 @@ class Network():
     def error_driven_neuro_genesis(self, inputs, error, output):
         if np.max(np.abs(error)) > self.error_threshold:
             connections = self.select_connections(inputs)
-            self.add_neuron(connections, error, output)
-            self.neuron_counting()
-            self.synapse_counting()
+            if np.count_nonzero(~np.isnan(connections)):
+                self.add_neuron(connections, error, output)
+                self.neuron_counting()
+                self.synapse_counting()
 
     def collect_expectation(self):
-        if self.expecting == 'err':
+        if self.expecting == 'pos':  # expect with this
+            if self.weighted_expectation:
+                print("multiply by weighting or something")
+            # expectations = np.vstack([
+            #     self.visualise_classes(i, only_pos=True) for i in range(self.number_of_classes)])
+            # expectation = np.nansum(np.multiply(expectations.T, self.output_activation), axis=1)
+            # inv_expectation = np.nansum(np.multiply(
+            #     np.nanmax(expectations) - expectations.T, self.output_activation), axis=1)
+            if len(self.input_v):
+                weights = (self.output_weights > 0) * self.output_weights
+                expectation = np.matmul(self.input_v.T, weights)
+                inv_expectation = np.matmul(1 - self.input_v.T, weights)
+                modulation = self.output_activation
+                expectation = np.nansum(np.multiply(expectation, modulation), axis=1)
+                inv_expectation = np.nansum(np.multiply(inv_expectation, modulation), axis=1)
+            else:
+                return np.zeros(self.number_of_inputs)
+        elif self.expecting == 'neg':  # neurons with this
+            if self.weighted_expectation:
+                print("multiply by weighting or something")
+            # expectations = np.vstack([
+            #     self.visualise_classes(i, only_pos=False) for i in range(self.number_of_classes)])
+            # expectation = np.nansum(np.multiply(expectations.T, self.output_activation), axis=1)
+            # inv_expectation = np.nansum(np.multiply(
+            #     np.nanmax(expectations) - expectations.T, self.output_activation), axis=1)
+            if len(self.input_v):
+                expectation = np.matmul(self.input_v.T, self.output_weights)
+                inv_expectation = np.matmul(1 - self.input_v.T, self.output_weights)
+                modulation = self.output_activation
+                expectation = np.nansum(np.multiply(expectation, modulation), axis=1)
+                inv_expectation = np.nansum(np.multiply(inv_expectation, modulation), axis=1)
+            else:
+                return np.zeros(self.number_of_inputs)
+        elif self.expecting == 'neu':
+            expectation = np.nansum(np.multiply(self.input_v.T, self.neuron_activation), axis=1)
+            inv_expectation = np.nansum(np.multiply(1 - self.input_v.T, self.neuron_activation), axis=1)
+        elif self.expecting == 'err':
             modulation = sm(self.output_activation)
+            expectation = np.nansum(np.multiply(self.expectation.T, modulation), axis=1)
+            inv_expectation = np.nansum(np.multiply(self.inv_expectation.T, modulation), axis=1)
         elif self.expecting == 'act':
             modulation = self.output_activation
+            expectation = np.nansum(np.multiply(self.expectation.T, modulation), axis=1)
+            inv_expectation = np.nansum(np.multiply(self.inv_expectation.T, modulation), axis=1)
+        elif self.expecting == 'th0':
+            modulation = (self.output_activation > 0.) * self.output_activation
+            expectation = np.nansum(np.multiply(self.expectation.T, modulation), axis=1)
+            inv_expectation = np.nansum(np.multiply(self.inv_expectation.T, modulation), axis=1)
         else:
             modulation = 1
-        expectation = np.nansum(np.multiply(self.expectation.T, modulation), axis=1)
-        inv_expectation = np.nansum(np.multiply(self.inv_expectation.T, modulation), axis=1)
         total = expectation + inv_expectation
         mask_exp = (expectation == 0)
         mask_inv = (inv_expectation == 0)
@@ -115,8 +160,8 @@ class Network():
                 weights = (self.output_weights[:, output] > 0) * self.output_weights[:, output]
             else:
                 weights = self.output_weights[:, output]
-            neuron_exp = self.input_v / (self.input_v + (1 - self.input_v))
-            expectation = np.nansum(neuron_exp.T * weights, axis=1)
+            # neuron_exp = self.input_v / (self.input_v + (1 - self.input_v))
+            expectation = np.nansum(self.input_v.T * weights, axis=1)
             return expectation
         else:
             total = self.expectation[output] + self.inv_expectation[output]

@@ -15,7 +15,7 @@ from tensorflow.python.keras.callbacks import LambdaCallback
 import numpy as np
 
 # load dataset
-test = 'mpg'
+test = 'mnist'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -99,8 +99,8 @@ def baseline_model(n_neurons, lr):
     return model
 
 num_neurons = 1024
-learning_rate = 0.0001
-batch_size = 32
+learning_rate = 0.001
+batch_size = 64
 epochs = 20
 # noise_tests = np.linspace(0, 2., 21)
 # k_stdev = K.variable(value=0.0)
@@ -108,14 +108,14 @@ epochs = 20
 splits = 10
 if test == 'mnist':
     splits = 1
-    epochs = 1
+    epochs = 3
 testing_data = [[] for i in range(splits)]
 training_data = [{} for i in range(splits)]
 # all_noise_results = []
 if test == 'mnist':
     splits += 1
 
-test_label = 'bp none {} n{} lr{} b{}'.format(test, num_neurons, learning_rate, batch_size)
+test_label = 'bp testing {} n{} lr{} b{}'.format(test, num_neurons, learning_rate, batch_size)
 
 if test == 'mpg':
     sss = ShuffleSplit(n_splits=splits, test_size=0.1, random_state=2727)
@@ -131,9 +131,13 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, Y)):
     elif test == 'mnist':
         train_index = [i for i in range(60000)]
         test_index = [i+60000 for i in range(10000)]
+        # retest_callback = LambdaCallback(
+        #     on_batch_end=lambda batch, logs:
+        #     testing_data[repeat].append([batch, logs]))
         retest_callback = LambdaCallback(
             on_batch_end=lambda batch, logs:
-            testing_data[repeat].append([batch, logs]))
+            testing_data[repeat].append(
+                np.average([np.argmax(a) == b for a, b in zip(net.predict(X[test_index]), Y[test_index])])))
     else:
         retest_callback = LambdaCallback(
             on_batch_end=lambda batch, logs:
@@ -159,7 +163,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, Y)):
 data_dict = {}
 
 ave_test = []
-if test != 'mnist':
+if test != 'not mnist':
     for j in range(len(testing_data[0])):
         total = 0.
         for i in range(len(testing_data)):

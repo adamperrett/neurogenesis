@@ -6,6 +6,7 @@ import random
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.colors as colours
 import seaborn as sn
 import pandas as pd
 
@@ -36,8 +37,10 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 1000
-    retest_size = 1#00
+    retest_rate = 64
+    second_rate = 1000
+    rate_cutoff = 5000
+    retest_size = 10000
 elif test == 'pima':
     from datasets.pima_indians import *
     num_outputs = 2
@@ -272,8 +275,9 @@ if read_args:
     maximum_total_synapses = 10000000000000 #int(sys.argv[4])
     surprise_threshold = float(sys.argv[4])
     maximum_synapses_per_neuron = int(sys.argv[5])
-    input_spread = int(sys.argv[6])
-    activity_init = 1.
+    expecting = str(sys.argv[6])
+    if expecting == '0':
+        expecting = 0
     activity_decay_rate = float(sys.argv[7])
     number_of_seeds = int(sys.argv[8])
     fixed_hidden_amount = float(sys.argv[9])
@@ -284,16 +288,15 @@ if read_args:
 else:
     sensitivity_width = 0.4
     output_thresholding = False
-    error_threshold = 0.2
-    surprise_threshold = 0.4
+    error_threshold = 0.1
+    surprise_threshold = 0.2
     maximum_synapses_per_neuron = 128
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*3000000
-    input_spread = 0
+    expecting = 'act'
     activity_decay_rate = 1.#0.999999
-    activity_init = 1.
     number_of_seeds = 0
 
 maximum_net_size = 100000 #int(maximum_total_synapses / maximum_synapses_per_neuron)
@@ -307,22 +310,21 @@ max_out_synapses = 50000
 # activity_init = 1.0
 always_inputs = False
 replaying = False
-expecting = 'err'
-expect_type = 'oa'
 norm_expectation = False
 error_type = 'sm'
 epochs = 3
 repeats = 1
-visualise_rate = 20
+visualise_points = np.array([5000, 20000, 40000, 59000])
 np.random.seed(27)
 confusion_decay = 0.8
 
 noise_tests = np.linspace(0, .3, 21)
 
-base_label = 'matrix-outh{}-{}-{}-th{} retest{} {} mn{}x{} - {} - sw{} - et{}'.format(
+base_label = 'rate2-outh{}-{}-sth{} retest{}g{}a{} {} mn{}x{} - {} - sw{} - et{}'.format(
     output_thresholding,
-    expecting, expect_type, surprise_threshold,
-    retest_rate, error_type,
+    expecting, surprise_threshold,
+    retest_rate, second_rate, rate_cutoff,
+    error_type,
     maximum_net_size, maximum_synapses_per_neuron,
     test,
     sensitivity_width,
@@ -388,6 +390,8 @@ for repeat in range(repeats):
         max_folds = int(len(train_labels) / retest_rate)
         training_count = 0
         while training_count < len(train_labels):
+            if training_count > rate_cutoff:
+                retest_rate = second_rate
             if len(epoch_error) > 0:
                 if epoch_error[-1][0] == 1.0:
                     extend_data(len(train_labels))
@@ -395,7 +399,7 @@ for repeat in range(repeats):
             training_indexes = [i for i in range(training_count, min(training_count + retest_rate, len(train_labels)))]
             training_count += retest_rate
             current_fold = training_count / retest_rate
-            fold_string = 'fold {} / {}'.format(int(current_fold), max_folds)
+            fold_string = 'train {} / {}'.format(int(training_count), len(train_labels))
             training_accuracy, training_classifications, \
             training_confusion, synapse_counts, neuron_counts, \
             repeated_counts = test_net(CLASSnet, train_feat, train_labels,
@@ -429,7 +433,8 @@ for repeat in range(repeats):
                                 running_synapse_counts, running_neuron_counts,
                                 running_repeated_counts, test_label, save_flag=True)
             print("visualising features")
-            if current_fold % visualise_rate == 0 and 'mnist' in test:
+            if training_count > visualise_points[visualise_points.argmin()] and 'mnist' in test:
+                visualise_points[visualise_points.argmin()] = len(train_labels) + retest_rate
                 for i in range(10):
                     print("expectation visualising class", i)
                     # vis = CLASSnet.collect_expectation(i)
@@ -438,24 +443,34 @@ for repeat in range(repeats):
                     vis = vis.reshape([28, 28])
                     plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
                     plt.axis('off')
+                    plt.colorbar()
                     print("saving class", i)
                     plt.savefig("./plots/{}exp {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                    plt.close()
                     print("positive visualising class", i)
                     vis = CLASSnet.visualise_classes(i, only_pos=True)
                     print("plotting class", i)
                     vis = vis.reshape([28, 28])
-                    plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+                    plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto', vmin=0)
                     plt.axis('off')
+                    plt.colorbar()
                     print("saving class", i)
                     plt.savefig("./plots/{}pos {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                    plt.close()
                     print("negative visualising class", i)
                     vis = CLASSnet.visualise_classes(i, only_pos=False)
                     print("plotting class", i)
                     vis = vis.reshape([28, 28])
-                    plt.imshow(vis, cmap='hot', interpolation='nearest', aspect='auto')
+                    cmap = colours.LinearSegmentedColormap.from_list("", ["blue", "black", "red", "yellow", "white"])
+                    # bounds = [-1, 0, 0.5, 1]
+                    # norm = colours.BoundaryNorm(bounds, cmap.N)
+                    plt.imshow(vis, cmap=cmap, interpolation='nearest', aspect='auto')#, norm=norm)
                     plt.axis('off')
+                    plt.colorbar()
+                    plt.clim(-vis.max() / 4, vis.max())
                     print("saving class", i)
                     plt.savefig("./plots/{}both {}.png".format(i, test_label), bbox_inches='tight', dpi=200)
+                    plt.close()
                 print("Done visualising")
             if current_fold % 10 == 0 and current_fold:
                 print("it reached 10 folds")
