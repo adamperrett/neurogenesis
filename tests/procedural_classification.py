@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'wine'
+test = 'simple'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -319,41 +319,6 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     if save_flag:
         plt.savefig("./plots/{} {}.png".format(test_label, repeat), bbox_inches='tight', dpi=200, format='png')
     plt.close()
-
-    # fig, axs = plt.subplots(2, 1)
-    # train_df = pd.DataFrame(training_confusion, range(num_outputs+1), range(num_outputs+1))
-    # axs[0] = sn.heatmap(train_df, annot=True, annot_kws={'size': 8}, ax=axs[0])
-    # axs[0].set_title("Training confusion")
-    # test_df = pd.DataFrame(training_confusion, range(num_outputs+1), range(num_outputs+1))
-    # axs[1] = sn.heatmap(test_df, annot=True, annot_kws={'size': 8}, ax=axs[1])
-    # axs[1].set_title("Testing confusion")
-    # figure = plt.gcf()
-    # figure.set_size_inches(16, 9)
-    # plt.tight_layout(rect=[0, 0.3, 1, 0.95])
-    # plt.suptitle(test_label, fontsize=16)
-    # if save_flag:
-    #     plt.savefig("./plots/confusion {}.png".format(test_label), bbox_inches='tight', dpi=200)
-    # plt.close()
-    # _, _, _, _, _, all_activations = test_net(CLASSnet, X, y,
-    #                                           indexes=train_index,
-    #                                           test_net_label='activation testing',
-    #                                           classifications=training_classifications,
-    #                                           # fold_test_accuracy=fold_testing_accuracy,
-    #                                           fold_string=fold_string,
-    #                                           max_fold=maximum_fold_accuracy,
-    #                                           save_activations=True)
-    # data_dict = {}
-    # data_dict['training classifications'] = correct_or_not
-    # data_dict['fold_test_accuracy'] = fold_test_accuracy
-    # data_dict['best_testing_accuracy'] = best_testing_accuracy
-    # data_dict['training_confusion'] = training_confusion
-    # data_dict['testing_confusion'] = testing_confusion
-    # data_dict['synapse_counts'] = synapse_counts
-    # data_dict['neuron_counts'] = neuron_counts
-    # data_dict['epoch error'] = epoch_error
-    # # data_dict['noise_results'] = noise_results
-    # # data_dict['all_activations'] = all_activations
-    # data_dict['net'] = CLASSnet
     np.save("./data/{}".format(test_label), data_dict) #data = np.load('./tests/data/file_name.npy', allow_pickle=True).item()
 
 def extend_data(epoch_length):

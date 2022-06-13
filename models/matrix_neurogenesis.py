@@ -14,8 +14,7 @@ class Network():
                  expecting=False,
                  surprise_threshold=0.4,
                  check_repeat=False,
-                 output_thresholding=False,
-                 weighted_expectation=False):
+                 output_thresholding=False):
 
         self.error_threshold = error_threshold
         self.f_width = f_width
@@ -28,7 +27,6 @@ class Network():
         self.surprise_threshold = surprise_threshold
         self.check_repeat = check_repeat
         self.output_thresholding = output_thresholding
-        self.weighted_expectation = weighted_expectation
 
         self.number_of_inputs = number_of_inputs
         self.number_of_classes = number_of_classes
@@ -97,13 +95,6 @@ class Network():
 
     def collect_expectation(self):
         if self.expecting == 'pos':  # expect with this
-            if self.weighted_expectation:
-                print("multiply by weighting or something")
-            # expectations = np.vstack([
-            #     self.visualise_classes(i, only_pos=True) for i in range(self.number_of_classes)])
-            # expectation = np.nansum(np.multiply(expectations.T, self.output_activation), axis=1)
-            # inv_expectation = np.nansum(np.multiply(
-            #     np.nanmax(expectations) - expectations.T, self.output_activation), axis=1)
             if len(self.input_v):
                 weights = (self.output_weights > 0) * self.output_weights
                 expectation = np.matmul(self.input_v.T, weights)
@@ -114,13 +105,6 @@ class Network():
             else:
                 return np.zeros(self.number_of_inputs)
         elif self.expecting == 'neg':  # neurons with this
-            if self.weighted_expectation:
-                print("multiply by weighting or something")
-            # expectations = np.vstack([
-            #     self.visualise_classes(i, only_pos=False) for i in range(self.number_of_classes)])
-            # expectation = np.nansum(np.multiply(expectations.T, self.output_activation), axis=1)
-            # inv_expectation = np.nansum(np.multiply(
-            #     np.nanmax(expectations) - expectations.T, self.output_activation), axis=1)
             if len(self.input_v):
                 expectation = np.matmul(self.input_v.T, self.output_weights)
                 inv_expectation = np.matmul(1 - self.input_v.T, self.output_weights)

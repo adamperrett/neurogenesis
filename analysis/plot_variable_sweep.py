@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
+import matplotlib
 import numpy as np
 import os
 import seaborn as sns
@@ -22,24 +23,25 @@ top_dir = '../tests/data/'
 collect_multiple = [
     # ['running_neuron_counts', 0],
     # ['running_synapse_counts', 0],
-    ['training_classifications', 1],
+    # ['training_classifications', 1],
     # ['running_error_values', 1],
-    # ['fold_testing_accuracy', 0],
+    ['fold_testing_accuracy', 0],
 ]
-# examine = 'random'
+examine = 'random'
 # examine = 'surprise'
 # examine = 'error'
 # examine = 'spread'
-examine = 'pen'
+# examine = 'pen'
 
-bonus_file_name = 'bp actor critic invpen gamma0.99 - hidden128 - lr0.003'
+bonus_file_name = False
+# bonus_file_name = 'bp actor critic invpen gamma0.99 - hidden128 - lr0.003'
 # bonus_file_name = 'paper no_act pl0.5 long1500 w10 mem0.0 RL0.9999 net100000x4  - ' \
 #                   'pen fixed_h0.0 - sw0.6 - at0.0 - et0.0 - 1.0adr1.0'
 
 print(examine, '\n', collect_multiple)
 
 combine_plots = True
-plot_final = 0
+plot_final = 1
 reverse_variables = 1
 average_window = 100
 error_threshold = 0.2
@@ -78,6 +80,9 @@ if reverse_variables:
     variables.reverse()
 
 colours = pl.cm.coolwarm(np.linspace(0, 1, len(variables)))
+legend_size = 17
+fontsize = 28
+tick_size = fontsize
 
 all_data = {k: [] for k, _ in collect_multiple}
 all_average = {k: [] for k, _ in collect_multiple}
@@ -151,8 +156,8 @@ for idx, variable in enumerate(variables):
         all_stderr[collect].append(std_err)
 
         if not plot_final:
-            ax1.set_xlabel('Training examples', fontsize=14)
-            # plt.xlabel('Training examples', fontsize=14)
+            ax1.set_xlabel('Training examples', fontsize=fontsize)
+            # plt.xlabel('Training examples', fontsize=fontsize)
             x = [i for i in range(min_length)]
             std_err1 = np.array(average) + np.array(std_err)
             std_err2 = np.array(average) - np.array(std_err)
@@ -210,8 +215,8 @@ if bonus_file_name:
         all_stderr[collect].append(std_err)
 
         if not plot_final:
-            ax1.set_xlabel('Trials', fontsize=14)
-            # plt.xlabel('Training examples', fontsize=14)
+            ax1.set_xlabel('Trials', fontsize=fontsize)
+            # plt.xlabel('Training examples', fontsize=fontsize)
             x = [i for i in range(min_length)]
             std_err1 = np.array(average) + np.array(std_err)
             std_err2 = np.array(average) - np.array(std_err)
@@ -239,13 +244,13 @@ if plot_final:
     params = {'mathtext.default': 'regular'}
     plt.rcParams.update(params)
     if examine == 'random':
-        ax1.set_xlabel('Random input sample size', fontsize=14)
+        ax1.set_xlabel('Random input sample size', fontsize=fontsize)
     if examine == 'surprise':
-        ax1.set_xlabel('Surprise threshold ($s_{th}$)', fontsize=14)
+        ax1.set_xlabel('Surprise threshold ($s_{th}$)', fontsize=fontsize)
     if examine == 'error':
-        ax1.set_xlabel('Error threshold ($E_{th}$)', fontsize=14)
+        ax1.set_xlabel('Error threshold ($E_{th}$)', fontsize=fontsize)
     if examine == 'spread':
-        ax1.set_xlabel('Kernel spread ($s$)', fontsize=14)
+        ax1.set_xlabel('Kernel spread ($s$)', fontsize=fontsize)
     for idx, (collect, _) in enumerate(collect_multiple):
         all_final_ave = [all_average[collect][i][-1] for i in range(len(all_average[collect]))]
         all_final_std = [all_stderr[collect][i][-1] for i in range(len(all_stderr[collect]))]
@@ -264,37 +269,47 @@ if plot_final:
                          ecolor=colours[idx], capsize=3, linestyle=' ')
             ax2.plot(variables, all_final_ave, color=colours[idx])
 else:
-    plt.legend(loc="lower right")
+    plt.legend(loc="lower right", prop={'size': legend_size})
 
 for idx, (collect, _) in enumerate(collect_multiple):
     if not idx:
         if 'test' in collect:
-            ax1.set_ylabel('Testing accuracy', fontsize=14, color=colours[idx])
+            ax1.set_ylabel('Testing accuracy', fontsize=fontsize, color=colours[idx])
         if 'neuron' in collect:
-            ax1.set_ylabel('Neuron count', fontsize=14, color=colours[idx])
+            ax1.set_ylabel('Neuron count', fontsize=fontsize, color=colours[idx])
         if 'synapse' in collect:
-            ax1.set_ylabel('Synapse count', fontsize=14, color=colours[idx])
+            ax1.set_ylabel('Synapse count', fontsize=fontsize, color=colours[idx])
         if 'error' in collect:
-            ax1.set_ylabel('Absolute error', fontsize=14, color=colours[idx])
+            ax1.set_ylabel('Absolute error', fontsize=fontsize, color=colours[idx])
             # ax1.plot([0, len(all_average[collect][-1])],
             #          [error_threshold, error_threshold], 'k--')
         if 'train' in collect:
-            # ax1.set_ylabel('Training accuracy', fontsize=14, color=colours[idx])
-            ax1.set_ylabel('Average balance length over last 100 trials', fontsize=14, color=colours[idx])
-
+            # ax1.set_ylabel('Training accuracy', fontsize=fontsize, color=colours[idx])
+            ax1.set_ylabel('Average balance length over last 100 trials', fontsize=fontsize, color=colours[idx])
+        ax1.tick_params(labelsize=tick_size)
+        ax1.tick_params(labelsize=tick_size)
+        plt.subplots_adjust(left=0.07, bottom=0.095,
+                            right=0.995, top=0.995,
+                            wspace=0.015, hspace=0)
     else:
         if 'test' in collect:
-            ax2.set_ylabel('Testing accuracy', fontsize=14, color=colours[idx])
+            ax2.set_ylabel('Testing accuracy', fontsize=fontsize, color=colours[idx])
         if 'neuron' in collect:
-            ax2.set_ylabel('Neuron count', fontsize=14, color=colours[idx])
+            ax2.set_ylabel('Neuron count', fontsize=fontsize, color=colours[idx])
         if 'synapse' in collect:
-            ax2.set_ylabel('Synapse count', fontsize=14, color=colours[idx])
+            ax2.set_ylabel('Synapse count', fontsize=fontsize, color=colours[idx])
         if 'error' in collect:
-            ax2.set_ylabel('Absolute error', fontsize=14, color=colours[idx])
+            ax2.set_ylabel('Absolute error', fontsize=fontsize, color=colours[idx])
             # ax2.plot([0, len(all_average[collect][-1])],
             #          [error_threshold, error_threshold], 'k--')
         if 'train' in collect:
-            ax2.set_ylabel('Training accuracy', fontsize=14, color=colours[idx])
+            ax2.set_ylabel('Training accuracy', fontsize=fontsize, color=colours[idx])
+        ax2.tick_params(labelsize=tick_size)
+        ax2.tick_params(labelsize=tick_size)
+        plt.subplots_adjust(left=0.065, bottom=0.102,
+                            right=0.92, top=0.98,
+                            wspace=0.015, hspace=0)
+
 plt.show()
 
 for d in all_data[collect]:

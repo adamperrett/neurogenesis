@@ -233,16 +233,28 @@ for i, x in enumerate(np.linspace(x_range[0], x_range[1], resolution)):
 
 
 fig, ax = plt.subplots(1, 2)
+fontsize = 28
+tick_size = 18
+legend_size = 24
+opacity_rescale = 0.1
+dot_size = 1200
+import matplotlib
+matplotlib.rc('xtick', labelsize=tick_size)
+matplotlib.rc('ytick', labelsize=tick_size)
 plt.setp(ax, xlim=x_range, ylim=y_range)
-ax[0].set_title('ReLU neuron activation')
-ax[1].set_title('SEED neuron activation')
+ax[0].set_title('ReLU neuron activation', fontsize=fontsize)
+ax[1].set_title('EDN neuron and synapse activation', fontsize=fontsize)
+params = {'mathtext.default': 'regular' }
+plt.rcParams.update(params)
 for i in range(2):
-    ax[i].set_xlabel('x1', fontsize=14)
-    ax[i].set_ylabel('x2', fontsize=14)
+    ax[i].set_xlabel('$x_0$', fontsize=fontsize)
+    ax[i].set_ylabel('$x_1$', fontsize=fontsize)
+    # plt.xticks(axis='both', which='major', fontsize=tick_size)
+    # plt.yticks(axis='both', which='major', fontsize=tick_size)
     if len(ng_s_boundary[i]):
         ax[1].scatter(np.array(ng_s_boundary[i])[:, 0],
                       np.array(ng_s_boundary[i])[:, 1],
-                      s=dot_size, color=ng_s_alphas[i], label='Synapse {} activation'.format(i))
+                      s=dot_size, color=ng_s_alphas[i], label='$Synapse_{}$ activation'.format(i))
 for i in range(num_classes):
     if len(tf_boundary[i]):
         ax[0].scatter(np.array(tf_boundary[i])[:, 0],
@@ -252,7 +264,7 @@ for i in range(num_classes):
         ax[1].scatter(np.array(ng_boundary[i])[:, 0],
                       np.array(ng_boundary[i])[:, 1],
                       s=dot_size, color=ng_alphas[i], label='Neuron activation')
-ax[1].legend(loc='upper right')
+ax[1].legend(loc='upper right', prop={'size': legend_size})
 if len(data_points[0]):
     ax[0].scatter(np.array(data_points[0])[:, 0],
                   np.array(data_points[0])[:, 1],
@@ -267,6 +279,10 @@ if len(data_points[1]):
     ax[1].scatter(np.array(data_points[1])[:, 0],
                   np.array(data_points[1])[:, 1],
                   s=400, color=c['point1'])
+plt.subplots_adjust(left=0.06, bottom=0.093,
+                                              right=0.98, top=0.96,
+                                              wspace=0.145, hspace=0.145)
+
 plt.show()
 
 print('done')

@@ -60,7 +60,7 @@ retest_size = len(test_feat)
 sensitivity_width = 0.5
 activation_threshold = 0.0
 error_threshold = 0.0
-maximum_synapses_per_neuron = 1
+maximum_synapses_per_neuron = 2
 # fixed_hidden_amount = 0
 fixed_hidden_ratio = 0.0
 # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -235,31 +235,31 @@ dim_colours = [red*dimness, green*dimness, blue*dimness]
 tf_grid = test_tf_full_grid(net)
 ng_grid = test_ng_full_grid(CLASSnet)
 fig, ax = plt.subplots(1, 2)
-ax[0].set_xlim(x_range)
-ax[0].set_ylim(y_range)
-ax[0].set_title("ReLU ANN")
-ax[0].axis('off')
 ax[1].set_xlim(x_range)
 ax[1].set_ylim(y_range)
-ax[1].set_title("SEED")
+ax[1].set_title("ReLU ANN")
 ax[1].axis('off')
+ax[0].set_xlim(x_range)
+ax[0].set_ylim(y_range)
+ax[0].set_title("EDN")
+ax[0].axis('off')
 
 for class_data, c in zip(tf_grid, dim_colours):
-    ax[0].scatter(class_data['x'], class_data['y'], c=c)
-for class_data, c in zip(ng_grid, dim_colours):
     ax[1].scatter(class_data['x'], class_data['y'], c=c)
+for class_data, c in zip(ng_grid, dim_colours):
+    ax[0].scatter(class_data['x'], class_data['y'], c=c)
 split_x_by_y = [{'x':[], 'y':[]} for i in range(num_outputs)]
 for x, y in zip(X, Y):
     split_x_by_y[y]['x'].append(x[0])
     split_x_by_y[y]['y'].append(x[1])
 for class_data, c in zip(split_x_by_y, colours):
-    ax[0].scatter(class_data['x'], class_data['y'], c=c)
     ax[1].scatter(class_data['x'], class_data['y'], c=c)
+    ax[0].scatter(class_data['x'], class_data['y'], c=c)
 plt.show()
 
 all_boundaries = []
 all_boundaries.append([tf_grid, ng_grid])
-show_points = [0, 3, 6, 10, 25, 100, 250]
+show_points = [0, 3, 6, 10, 25, 100]
 for idx, (feature, label) in enumerate(zip(X, Y)):
 
     train_tf_single(feature, label, net)
@@ -274,51 +274,65 @@ for idx, (feature, label) in enumerate(zip(X, Y)):
         all_boundaries.append([tf_grid, ng_grid])
 
         # fig, ax = plt.subplots(1, 2)
-        # ax[0].set_xlim(x_range)
-        # ax[0].set_ylim(y_range)
-        # ax[0].set_title("ReLU ANN")
-        # ax[0].axis('off')
         # ax[1].set_xlim(x_range)
         # ax[1].set_ylim(y_range)
-        # ax[1].set_title("SEED")
+        # ax[1].set_title("ReLU ANN")
         # ax[1].axis('off')
+        # ax[0].set_xlim(x_range)
+        # ax[0].set_ylim(y_range)
+        # ax[0].set_title("SEED")
+        # ax[0].axis('off')
         # for class_data, c in zip(tf_grid, dim_colours):
-        #     ax[0].scatter(class_data['x'], class_data['y'], c=c)
-        # for class_data, c in zip(ng_grid, dim_colours):
         #     ax[1].scatter(class_data['x'], class_data['y'], c=c)
+        # for class_data, c in zip(ng_grid, dim_colours):
+        #     ax[0].scatter(class_data['x'], class_data['y'], c=c)
         # split_x_by_y = [{'x': [], 'y': []} for i in range(num_outputs)]
         # for x, y in zip(X, Y):
         #     split_x_by_y[y]['x'].append(x[0])
         #     split_x_by_y[y]['y'].append(x[1])
         # for class_data, c in zip(split_x_by_y, colours):
-        #     ax[0].scatter(class_data['x'], class_data['y'], c=c)
         #     ax[1].scatter(class_data['x'], class_data['y'], c=c)
+        #     ax[0].scatter(class_data['x'], class_data['y'], c=c)
         # plt.show()
         print("catch")
         if idx+1 == show_points[-1]:
+            fontsize = 24
+            tick_size = 18
+            legend_size = 16
             fig, ax = plt.subplots(2, len(all_boundaries))
             for i, (tfg, ngg) in enumerate(all_boundaries):
-                ax[0][i].set_xlim(x_range)
-                ax[0][i].set_ylim(y_range)
-                ax[0][i].set_title("Iteration:{}".format(show_points[i]))
-                ax[0][i].axis('off')
                 ax[1][i].set_xlim(x_range)
                 ax[1][i].set_ylim(y_range)
-                ax[1][i].axis('off')
+                ax[0][i].set_title("Iteration:{}".format(show_points[i]), fontsize=fontsize)
+                ax[0][i].set_xlim(x_range)
+                ax[0][i].set_ylim(y_range)
+                if i > 0:
+                    ax[1][i].axis('off')
+                    ax[0][i].axis('off')
                 for class_data, c in zip(tfg, dim_colours):
-                    ax[0][i].scatter(class_data['x'], class_data['y'], c=c)
-                for class_data, c in zip(ngg, dim_colours):
                     ax[1][i].scatter(class_data['x'], class_data['y'], c=c)
+                for class_data, c in zip(ngg, dim_colours):
+                    ax[0][i].scatter(class_data['x'], class_data['y'], c=c)
                 split_x_by_y = [{'x': [], 'y': []} for i in range(num_outputs)]
                 for x, y in zip(X, Y):
                     split_x_by_y[y]['x'].append(x[0])
                     split_x_by_y[y]['y'].append(x[1])
                 for class_data, c in zip(split_x_by_y, colours):
-                    ax[0][i].scatter(class_data['x'], class_data['y'], c=c)
                     ax[1][i].scatter(class_data['x'], class_data['y'], c=c)
-            matplotlib.pyplot.subplots_adjust(left=0, bottom=0,
+                    ax[0][i].scatter(class_data['x'], class_data['y'], c=c)
+            import matplotlib
+
+            matplotlib.rc('xtick', labelsize=tick_size)
+            matplotlib.rc('ytick', labelsize=tick_size)
+            matplotlib.pyplot.subplots_adjust(left=0.026, bottom=0.045,
                                               right=1, top=0.95,
-                                              wspace=0.015, hspace=0)
+                                              wspace=0.007, hspace=0.112)
+            import matplotlib.patches as mpatches
+            blue_patch = mpatches.Patch(color='blue', label='Class 0')
+            green_patch = mpatches.Patch(color='green', label='Class 1')
+            red_patch = mpatches.Patch(color='red', label='Class 2')
+            ax[0][i].legend(handles=[blue_patch, green_patch, red_patch], prop={'size': legend_size}, loc='upper right')
+            # ax[0][i].legend(loc='upper right', prop={'size': legend_size})
             plt.show()
             print("done")
 

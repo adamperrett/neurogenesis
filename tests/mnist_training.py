@@ -37,8 +37,8 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 64
-    second_rate = 1000
+    retest_rate = 1000
+    second_rate = 2000
     rate_cutoff = 5000
     retest_size = 10000
 elif test == 'pima':
@@ -289,13 +289,13 @@ else:
     sensitivity_width = 0.4
     output_thresholding = False
     error_threshold = 0.1
-    surprise_threshold = 0.2
+    surprise_threshold = 0.4
     maximum_synapses_per_neuron = 128
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
     maximum_total_synapses = 100*3000000
-    expecting = 'act'
+    expecting = 'neu'
     activity_decay_rate = 1.#0.999999
     number_of_seeds = 0
 
@@ -320,7 +320,7 @@ confusion_decay = 0.8
 
 noise_tests = np.linspace(0, .3, 21)
 
-base_label = 'rate2-outh{}-{}-sth{} retest{}g{}a{} {} mn{}x{} - {} - sw{} - et{}'.format(
+base_label = 'expectation3-outh{}-{}-sth{} retest{}g{}a{} {} mn{}x{} - {} - sw{} - et{}'.format(
     output_thresholding,
     expecting, surprise_threshold,
     retest_rate, second_rate, rate_cutoff,
@@ -498,7 +498,7 @@ for repeat in range(repeats):
                                 # CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
         else:
             epoch_error.append([np.mean(training_classifications[-len(train_labels):]), testing_accuracy,
-                                CLASSnet.hidden_neuron_count - CLASSnet.deleted_neuron_count])
+                                running_neuron_counts[-1], running_synapse_counts[-1]])
             running_test_confusion *= confusion_decay
             running_test_confusion += testing_confusion
 
