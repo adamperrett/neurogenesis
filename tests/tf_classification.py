@@ -15,7 +15,7 @@ from tensorflow.python.keras.callbacks import LambdaCallback
 import numpy as np
 
 # load dataset
-test = 'mnist'
+test = 'noise'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -42,6 +42,16 @@ elif test == 'wine':
     Y = np.array(train_labels + test_labels)
     # X = pandas.DataFrame(train_feat + test_feat)
     # Y = pandas.DataFrame(train_labels + test_labels)
+elif test == 'pp_mnist':
+    from datasets.preprocessed_mnist import *
+    num_outputs = 10
+    train_labels = mnist_training_labels
+    train_feat = mnist_training_data
+    test_labels = mnist_testing_labels
+    test_feat = mnist_testing_data
+    num_inputs = len(train_feat[0])
+    X = np.array(train_feat.tolist() + test_feat.tolist())
+    Y = np.array(train_labels + test_labels)
 elif test == 'mnist':
     from datasets.mnist_csv import *
     num_inputs = 28 * 28
@@ -60,6 +70,19 @@ elif test == 'mpg':
     retest_size = int(0.1 * len(norm_mpg))
     X = np.array(norm_features)
     Y = np.array(norm_mpg)
+elif test == 'noise':
+    from datasets.high_noise_inputs import *
+    num_inputs = 100
+    num_outputs = 3
+    examples = 300
+    test += ' i{}o{}e{}'.format(num_inputs, num_outputs, examples)
+    train_feat, train_labels = generate_date(num_inputs=num_inputs,
+                                             num_outputs=num_outputs,
+                                             examples=examples)
+    X = np.array(train_feat)
+    Y = np.array(train_labels)
+    retest_rate = 1
+    retest_size = examples / 10
 else:
     dataframe = pandas.read_csv("../datasets/iris.data", header=None)
     dataset = dataframe.values
@@ -98,21 +121,21 @@ def baseline_model(n_neurons, lr):
     model.compile(loss=loss, optimizer=optimizer, metrics=['accuracy'])
     return model
 
-num_neurons = 1024
-learning_rate = 0.001
-batch_size = 64
+num_neurons = 128*1
+learning_rate = 0.3
+batch_size = 16
 epochs = 20
 # noise_tests = np.linspace(0, 2., 21)
 # k_stdev = K.variable(value=0.0)
 
 splits = 10
-if test == 'mnist':
+if 'mnist' in test:
     splits = 1
-    epochs = 3
+    epochs = 20
 testing_data = [[] for i in range(splits)]
 training_data = [{} for i in range(splits)]
 # all_noise_results = []
-if test == 'mnist':
+if 'mnist' in test:
     splits += 1
 
 test_label = 'bp testing {} n{} lr{} b{}'.format(test, num_neurons, learning_rate, batch_size)
@@ -128,7 +151,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, Y)):
             on_batch_end=lambda batch, logs:
             testing_data[repeat].append(
                 np.average([np.square(a - b) for a, b in zip(net.predict(X[test_index]), Y[test_index])])))
-    elif test == 'mnist':
+    elif 'mnist' in test:
         train_index = [i for i in range(60000)]
         test_index = [i+60000 for i in range(10000)]
         # retest_callback = LambdaCallback(
@@ -156,7 +179,7 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, Y)):
         if 'acc' in k:
             print(k, history.history[k])
 
-    if test == 'mnist':
+    if 'mnist' in test:
         break
     # scce2 = tf.keras.losses.sparse_categorical_crossentropy(dummy_y[test_index], net.predict(X))
 
@@ -207,3 +230,16 @@ np.save("./data/{}".format(test_label), data_dict)
 
 
 print('Done')
+
+'''
+import matplotlib.pyplot as plt
+plt.figure()
+plt.plot([i*batch_size for i in range(len(ave_test))], ave_test, 'r')
+edn = [0, 0.882, 0.921, 0.937, 0.942, 0.947, 0.951, 0.96, 0.965, 0.969, 0.97, 0.971, 0.974, 0.976, 0.974, 0.974, 0.974, 0.975, 0.976, 0.975, 0.975, 0.975, 0.976, 0.976, 0.976, 0.977]
+first = [i*1000 for i in range(6)]
+second = [6000 + (i*5000) for i in range(len(edn)-6)]
+all_iterations = first + second
+plt.plot(all_iterations, edn, 'b')
+plt.title(test_label)
+plt.show()
+'''

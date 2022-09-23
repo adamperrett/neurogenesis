@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'simple'
+test = 'mnist'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -41,8 +41,8 @@ elif test == 'mnist':
     train_feat = mnist_training_data
     test_labels = mnist_testing_labels
     test_feat = mnist_testing_data
-    retest_rate = 100
-    retest_size = 50
+    retest_rate = 10000
+    retest_size = 1000
 elif test == 'pima':
     from datasets.pima_indians import *
     num_outputs = 2
@@ -67,8 +67,8 @@ elif test == "simple":
     examples = 200
     test_set_size = 0.1
     # simple_data, simple_labels = create_centroid_classes(centres, spread, examples)
-    # num_outputs = 2
-    num_outputs = len(centres)
+    num_outputs = 2
+    # num_outputs = len(centres)
     simple_data, simple_labels = create_bimodal_distribution(centres, spread, examples, max_classes=num_outputs)
     train_labels = simple_labels[:int(examples*len(centres)*(1. - test_set_size))]
     train_feat = simple_data[:int(examples*len(centres)*(1. - test_set_size))]
@@ -82,7 +82,7 @@ elif test == 'yinyang':
     test_set_size = 0.1
     x_range = [-0.1, 1.1]
     y_range = [-0.1, 1.1]
-    yy = YinYangDataset(size=examples)
+    yy = YinYangDataset(size=examples, seed=np.random.randint(0, 1000))
     simple_data = yy._YinYangDataset__vals
     simple_labels = yy._YinYangDataset__cs
     train_labels = simple_labels[:int(examples*(1. - test_set_size))]
@@ -129,7 +129,9 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
         train_count += 1
         features = data[test]
         label = labels[test]
+        features, procedural_out = preprocess_inputs(features, hypernet)
         output = net.response(features)
+        output += procedural_out
         error, choice, softmax = calculate_error(label, output, test_net_label)
 
         if label == choice:
@@ -221,7 +223,7 @@ def convert_net_and_reset(centroid_type):
     output_connections = np.empty((0, CLASSnet.number_of_classes))
     for out_a, c_a in enumerate(collected_centroids):
         for out_b, c_b in enumerate(collected_centroids):
-            if out_a <= out_b:
+            if out_a < out_b:
                 dot_product = np.dot((np.array(c_a) + np.array(c_b)) / 2.,
                                      (c_b - c_a))
                 bias = -dot_product
@@ -232,8 +234,12 @@ def convert_net_and_reset(centroid_type):
                 output_weights[out_b] = 1
                 output_connections = np.vstack([output_connections,
                                                 output_weights])
-
-    planeNet = Network(num_outputs, num_inputs+len(hidden_connections)+len(output_connections),
+    hidden_count = len(hidden_connections)
+    output_count = num_outputs
+    for h, o in hypernet:
+        hidden_count += len(h)
+        output_count += num_outputs
+    planeNet = Network(num_outputs, num_inputs+hidden_count+output_count,
                        error_threshold=error_threshold,
                        f_width=sensitivity_width,
                        maximum_synapses_per_neuron=maximum_synapses_per_neuron,
@@ -244,12 +250,16 @@ def convert_net_and_reset(centroid_type):
                        expecting=expecting,
                        maximum_net_size=maximum_net_size,
                        output_thresholding=output_thresholding)
-    return hidden_connections, output_connections, planeNet
+    return [hidden_connections, output_connections], planeNet
 
 def preprocess_inputs(inputs, hyper_net):
+    o_act = np.zeros(num_outputs)
     for hidden, output in hyper_net:
-        inputs = np.matmul(np.matmul(inputs, hidden), output)
-    return inputs
+        h_sum = np.matmul(np.hstack([inputs, 1.]), hidden.T)
+        h_act = np.tanh(h_sum)
+        o_act = np.matmul(h_act, output)
+        inputs = np.hstack([inputs, h_act, o_act])
+    return inputs, o_act
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -290,7 +300,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     axs[1][0].plot([i for i in range(len(neuron_counts))], neuron_counts)
     axs[1][0].set_title("Neuron and synapse count")
     ax_s = axs[1][0].twinx()
-    ax_s.plot([i for i in range(len(synapse_counts))], synapse_counts)
+    ax_s.plot([i for i in range(len(synapse_counts))], synapse_counts, 'r')
     if len(epoch_error):
         if len(epoch_error) <= 10:
             data = np.hstack([np.array(epoch_error)[:, 0].reshape([len(epoch_error), 1]),
@@ -414,7 +424,7 @@ max_out_synapses = 50000
 always_inputs = False
 replaying = False
 error_type = 'sm'
-epochs = 3
+epochs = 10
 repeats = 10
 width_noise = 0.#5
 noise_level = 0.#5
@@ -427,6 +437,8 @@ always_save = True
 remove_class = 2
 check_repeat = False
 expecting = 'err'
+convert_type = 'exp'
+hypernet = []
 surprise_threshold = 0.1
 
 output_thresholding = True
@@ -464,8 +476,8 @@ else:
     train_index = [i for i in range(60000)]
     test_index = [i + 60000 for i in range(10000)]
     combined_index = [[np.array(train_index), np.array(test_index)]]
-    print("Not currently setup for MNIST")
-    Exception
+    # print("Not currently setup for MNIST")
+    # Exception
 
 data_dict = {}
 data_dict['epoch_error'] = []
@@ -479,8 +491,8 @@ data_dict['running_neuron_counts'] = []
 data_dict['running_error_values'] = []
 data_dict['net'] = []
 
-for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
-# for repeat, (train_index, test_index) in enumerate(combined_index):
+# for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
+for repeat, (train_index, test_index) in enumerate(combined_index):
     np.random.seed(int(100*learning_rate))
 
     CLASSnet = Network(num_outputs, num_inputs,
@@ -604,6 +616,10 @@ for repeat, (train_index, test_index) in enumerate(sss.split(X, y)):
             running_test_confusion *= confusion_decay
             running_test_confusion += testing_confusion
         epoch_error[-1] = np.array(epoch_error[-1])
+
+        new_layer, new_neurogenet = convert_net_and_reset(convert_type)
+        CLASSnet = new_neurogenet
+        hypernet.append(new_layer)
 
         plot_learning_curve(training_classifications, fold_testing_accuracy,
                             running_train_confusion, running_test_confusion,

@@ -6,7 +6,7 @@ from datasets.simple_tests import *
 from models.convert_network import *
 import random
 import matplotlib
-saving_plots = False
+saving_plots = True
 if saving_plots:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, LeaveOneOut, StratifiedKFold
 
 
-test = 'yinyang'
+test = 'noise'
 if test == 'breast':
     from breast_data import *
     num_outputs = 2
@@ -43,6 +43,22 @@ elif test == 'mnist':
     test_feat = mnist_testing_data
     retest_rate = 100
     retest_size = 50
+elif test == 'noise':
+    from datasets.high_noise_inputs import *
+    num_inputs = 100
+    num_outputs = 3
+    examples = 300
+    test += ' i{}o{}e{}'.format(num_inputs, num_outputs, examples)
+    noise_data, noise_labels = generate_date(num_inputs=num_inputs,
+                                             num_outputs=num_outputs,
+                                             examples=examples)
+    test_set_size = 0.1
+    train_labels = noise_labels[:int(examples*(1. - test_set_size))]
+    train_feat = noise_data[:int(examples*(1. - test_set_size))]
+    test_labels = noise_labels[int(examples*(1. - test_set_size)):]
+    test_feat = noise_data[int(examples*(1. - test_set_size)):]
+    retest_rate = 1
+    retest_size = len(test_feat)
 elif test == 'pima':
     from datasets.pima_indians import *
     num_outputs = 2
@@ -255,7 +271,7 @@ def plot_learning_curve(correct_or_not, fold_test_accuracy, training_confusion, 
     axs[1][0].plot([i for i in range(len(neuron_counts))], neuron_counts)
     axs[1][0].set_title("Neuron and synapse count")
     ax_s = axs[1][0].twinx()
-    ax_s.plot([i for i in range(len(synapse_counts))], synapse_counts)
+    ax_s.plot([i for i in range(len(synapse_counts))], synapse_counts, 'r')
     if len(epoch_error):
         if len(epoch_error) <= 10:
             data = np.hstack([np.array(epoch_error)[:, 0].reshape([len(epoch_error), 1]),
@@ -389,10 +405,10 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.4
+    sensitivity_width = 0.9
     activation_threshold = 0.0
-    error_threshold = 0.0
-    maximum_synapses_per_neuron = 128
+    error_threshold = 0.1
+    maximum_synapses_per_neuron = 10
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -426,18 +442,21 @@ confusion_decay = 0.8
 always_save = True
 remove_class = 2
 check_repeat = False
-expecting = False#'act'
+expecting = False#'neu'#'act'
 surprise_threshold = 0.1
 
 output_thresholding = True
 
 # number_of_seeds = min(number_of_seeds, len(train_labels))
 # seed_classes = random.sample([i for i in range(len(train_labels))], number_of_seeds)
-test_label = 'matrix {} - sth{} outh{} retest{} exp-{} mns{}x{} er-{} sw{}eth{}'.format(
+test_label = 'matrix {} - sth{} outh{} retest{} exp-{} ' \
+             'ms{} ' \
+             'er-{} sw{}eth{}'.format(
     test,
     surprise_threshold, output_thresholding,
     retest_rate, expecting,
-    maximum_net_size, maximum_synapses_per_neuron,
+    # maximum_net_size,
+    maximum_synapses_per_neuron,
     error_type,
     sensitivity_width,
     error_threshold
@@ -654,7 +673,10 @@ np.save("./data/{}".format(test_label), data_dict)
 
 # import matplotlib.pyplot as plt
 plt.plot(ave_data['fold_testing_accuracy'])
-plt.suptitle(test_label)
+figure = plt.gcf()
+figure.set_size_inches(16, 9)
+plt.tight_layout(rect=[0, 0.3, 1, 0.95])
+plt.suptitle(test_label, fontsize=16)
 plt.savefig("./plots/ave_test {}.png".format(test_label), bbox_inches='tight', dpi=200, format='png')
 
 print(ave_data['fold_testing_accuracy'])

@@ -51,19 +51,20 @@ tf_test_rate = [1, 64]
 n_neurons = [8192]
 configs = [
     # [1, 0.00003, 1024],
-    [1, 0.0001, 1024],
+    # [1, 0.0001, 1024],
     # [1, 0.0003, 1024],
     # [1, 0.001, 1024],
     # [1, 0.003, 1024],
     # [1, 0.01, 1024],
     # [1, 0.03, 1024]
-    # [32, 0.0001, 1024],
-    # [32, 0.0003, 1024],
-    [32, 0.001, 1024],
-    # [32, 0.003, 1024],
-    # [32, 0.01, 1024],
-    # [32, 0.03, 1024],
-    # [32, 0.1, 1024]
+    [16, 0.0001, 1024],
+    [16, 0.0003, 1024],
+    [16, 0.001, 1024],
+    [16, 0.003, 1024],
+    [16, 0.01, 1024],
+    [16, 0.03, 1024],
+    [16, 0.1, 1024],
+    [16, 0.3, 1024]
     # [0.99, 64, 0.003],
     # [0.99, 128, 0.003],
 ]
@@ -74,7 +75,8 @@ tf_colour = []
 max_brightness = 0.99
 colours = pl.cm.coolwarm(np.linspace(0, 1, len(configs)))
 for rate, lr, n in configs:
-    tf_files.append('bp none mpg n{} lr{} b{}.npy'.format(n, lr, rate))
+    # tf_files.append('bp none mpg n{} lr{} b{}.npy'.format(n, lr, rate))
+    tf_files.append('bp testing noise i100o3e300 n128 lr{} b16.npy'.format(lr))
     # tf_files.append('bp actor critic invpen gamma{} - hidden{} - lr{}.npy'.format(rate, n, lr))
     # tf_labels.append('lr {} - n {} - b {}'.format(lr, n, rate))
     tf_labels.append('lr {} - b {}'.format(lr, rate))
@@ -84,8 +86,9 @@ for rate, lr, n in configs:
                       for i in range(3)])
 # ng_file = 'thresholded-True-oa-th0.4 retest1000 sm ms150  - ' \
 #           'mnist fixed_h0.0 - sw0.4 - at0.0 - et0.1 - 1.0adr0.99.png.npy'
-ng_file = 'regression_no_norm long 1ms20 square0.0 RL0.9999  - ' \
-          'mpg fixed_h0.0 - sw0.4n9 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise.npy'
+# ng_file = 'regression_no_norm long 1ms20 square0.0 RL0.9999  - ' \
+#           'mpg fixed_h0.0 - sw0.4n9 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise.npy'
+ng_file = 'matrix noise i100o3e300 - sth0.4 outhTrue retest1 exp-neu ms128 er-sm sw0.9eth0.1.npy'
 ng_test_rate = 1
 ng_colour = [0, 0, 0]
 print('Loading data')
@@ -130,7 +133,7 @@ print('plotting')
 #              data=fmri)
 
 fig, ax = plt.subplots(1, 1)
-legend_size = 28
+legend_size = 14
 fontsize = 28
 tick_size = fontsize
 min_length = np.min([len(ng_testing), np.min([len(tf_t) for tf_t in tf_testing])])

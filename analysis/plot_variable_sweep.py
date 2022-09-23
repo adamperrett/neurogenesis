@@ -21,14 +21,14 @@ top_dir = '../tests/data/'
 # collect = 'pen'
 # collect = 'train_test'
 collect_multiple = [
-    # ['running_neuron_counts', 0],
-    # ['running_synapse_counts', 0],
+    ['running_neuron_counts', 0],
+    ['running_synapse_counts', 0],
     # ['training_classifications', 1],
     # ['running_error_values', 1],
-    ['fold_testing_accuracy', 0],
+    # ['fold_testing_accuracy', 0],
 ]
-examine = 'random'
-# examine = 'surprise'
+# examine = 'random'
+examine = 'surprise'
 # examine = 'error'
 # examine = 'spread'
 # examine = 'pen'
@@ -61,8 +61,9 @@ if examine == 'random':
     variables = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
     reverse_variables = 0
 if examine == 'surprise':
-    variables = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
-                 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.]
+    # variables = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
+    #              0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.]
+    variables = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]#, 0.7, 0.8, 0.9]
     reverse_variables = 1
 if examine == 'error':
     variables = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
@@ -103,8 +104,10 @@ for idx, variable in enumerate(variables):
     if examine == 'surprise':
         # base_file_name = 'paper_var {} - 1ms50 sm0.0 RL0.9999  - ' \
         #                  'wine fixed_h0.0 - sw0.4n0.0 - at0.0 - et0.0 - 1.0adr1.0 - 0.0noise'.format(variable)
-        base_file_name = 'paper_var exp{} - 1ms1 sm0.0 RL0.9999  - ' \
-                         'wine fixed_h0.0 - sw0.4n0.0 - at0.0 - et0.2 - 1.0adr1.0 - 0.0noise'.format(variable)
+        # base_file_name = 'paper_var exp{} - 1ms1 sm0.0 RL0.9999  - ' \
+        #                  'wine fixed_h0.0 - sw0.4n0.0 - at0.0 - et0.2 - 1.0adr1.0 - 0.0noise'.format(variable)
+        base_file_name = "matrix noise i100o3e300 - sth{} outhTrue retest1 " \
+                         "exp-neu ms128 er-sm sw0.9eth0.1".format(variable)
 
     if examine == 'error':
         # base_file_name = 'paper_var 0.0 - 1ms50 sm0.0 RL0.9999  - ' \
