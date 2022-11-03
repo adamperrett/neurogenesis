@@ -45,9 +45,9 @@ elif test == 'mnist':
     retest_size = 50
 elif test == 'noise':
     from datasets.high_noise_inputs import *
-    num_inputs = 100
+    num_inputs = 10000
     num_outputs = 3
-    examples = 300
+    examples = 3000
     test += ' i{}o{}e{}'.format(num_inputs, num_outputs, examples)
     noise_data, noise_labels = generate_date(num_inputs=num_inputs,
                                              num_outputs=num_outputs,
@@ -57,7 +57,7 @@ elif test == 'noise':
     train_feat = noise_data[:int(examples*(1. - test_set_size))]
     test_labels = noise_labels[int(examples*(1. - test_set_size)):]
     test_feat = noise_data[int(examples*(1. - test_set_size)):]
-    retest_rate = 1
+    retest_rate = 200
     retest_size = len(test_feat)
 elif test == 'pima':
     from datasets.pima_indians import *
@@ -169,7 +169,7 @@ def test_net(net, data, labels, indexes=None, test_net_label='', classifications
             print("Neuron count: ", CLASSnet.neuron_count, " - del", CLASSnet.deleted_neuron_count)
             print("Synapse count: ", CLASSnet.synapse_count)
             print("Repeated neuron count: ", CLASSnet.repeated_neuron_count)
-            print(test_label)
+            print(test_label, repeat)
             for ep in epoch_error:
                 print(ep)
             confusion_matrix[choice][label] += 1
@@ -405,10 +405,10 @@ if read_args:
     for i in range(9):
         print(sys.argv[i+1])
 else:
-    sensitivity_width = 0.9
+    sensitivity_width = 0.7
     activation_threshold = 0.0
     error_threshold = 0.1
-    maximum_synapses_per_neuron = 10
+    maximum_synapses_per_neuron = 12800
     # fixed_hidden_amount = 0
     fixed_hidden_ratio = 0.0
     # fixed_hidden_ratio = fixed_hidden_amount / maximum_synapses_per_neuron
@@ -442,8 +442,8 @@ confusion_decay = 0.8
 always_save = True
 remove_class = 2
 check_repeat = False
-expecting = False#'neu'#'act'
-surprise_threshold = 0.1
+expecting = 'neu'#'act'
+surprise_threshold = 0.4
 
 output_thresholding = True
 
@@ -677,6 +677,7 @@ figure = plt.gcf()
 figure.set_size_inches(16, 9)
 plt.tight_layout(rect=[0, 0.3, 1, 0.95])
 plt.suptitle(test_label, fontsize=16)
+plt.ylim([0,1])
 plt.savefig("./plots/ave_test {}.png".format(test_label), bbox_inches='tight', dpi=200, format='png')
 
 print(ave_data['fold_testing_accuracy'])

@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sn
 import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, GaussianNoise
 from streamlit import legacy_caching as caching
 
 def original(short_dict, long_dict):
@@ -20,6 +23,65 @@ def original(short_dict, long_dict):
         t1 = time.time_ns()
         times.append(t1 - t0)
     print(all_values[0])
+    return times
+
+def tf_math(short_dict, long_dict):
+    # num_inputs = len(short_dict)
+    # n_neurons = len(long_dict)
+    # model = Sequential()
+    # # model.add(GaussianNoise(stddev=k_stdev))
+    # model.add(Dense(n_neurons, input_dim=num_inputs, activation='relu'))
+    # # model.add(Dense(n_neurons, input_dim=num_inputs, activation='relu'))
+    # if test == 'mpg':
+    #     model.add(Dense(num_outputs))
+    #     # model.add(Dense(num_outputs, activation='sigmoid'))
+    #     # model.add(Dense(num_outputs, activation='linear'))
+    # else:
+    #     model.add(Dense(num_outputs, activation='softmax'))
+
+    times = []
+    print("Doing tensorflow")
+    for r in range(repeats):
+        short_long = []
+        long_values = None
+        for i in range(neurons):
+            short_neurons = []
+            for ele in long_dict:
+                if ele in short_dict[i]:
+                    short_neurons.append(short_dict[i][ele])
+                else:
+                    short_neurons.append(np.nan)
+            short_long.append(np.array(short_neurons))
+        short_long = np.array(short_long)
+        long_values = np.array(list(long_dict.values()))
+
+        # def tf_triangle(s_tf, l_tf):
+        #     return tf.keras.metrics.Sum(tf.maximum(0, 0.6 - tf.abs(tf.subtract(s_tf, l_tf))), dtype=tf.float32) / 0.6
+
+        width = tf.constant(0.6, dtype=tf.float64)
+        t0 = time.time_ns()
+
+        # short_tf = tf.constant(short_long)
+        # long_tf = tf.constant(long_values)
+        # av_s = tf.subtract(long_values, short_long)
+        # av_a = tf.abs(tf.subtract(long_values, short_long))
+        # av_w = tf.subtract(width, tf.abs(tf.subtract(long_values, short_long)))
+        # av_m = tf.maximum(0, tf.subtract(width, tf.abs(tf.subtract(long_values, short_long))))
+        # av_r = tf.experimental.numpy.nansum(tf.maximum(0, tf.subtract(width, tf.abs(tf.subtract(long_values, short_long)))), axis=1)
+
+        # all_values = tf.divide(tf.reduce_sum(tf.maximum(0, tf.subtract(width, tf.abs(tf.subtract(short_tf, long_tf))))), width)
+        all_values = tf.divide(tf.experimental.numpy.nansum(tf.maximum(
+            0, tf.subtract(width, tf.abs(tf.subtract(long_values, short_long)))), axis=1), width)
+
+        # print("tf\n", "\ns", av_s.numpy(), "\na", av_a.numpy(), "\nw", av_w.numpy(),
+        #       "\nm", av_m.numpy(), "\nr", av_r, "\na", all_values.numpy())
+
+
+        # all_values = np.sum(np.maximum(0, 0.6 - np.abs(np.subtract(short_long, long_values))), axis=1) / 0.6
+        t1 = time.time_ns()
+        times.append((t1 - t0) / neurons)
+    # print(np.maximum(0, 0.6 - np.abs(np.subtract(short_long, long_values))) / 0.6)
+    print(all_values[0].numpy())
     return times
 
 def numpy_matrix_full(short_dict, long_dict):
@@ -40,9 +102,17 @@ def numpy_matrix_full(short_dict, long_dict):
         short_long = np.array(short_long)
         long_values = np.array(list(long_dict.values()))
 
+        # av_s = np.subtract(short_long, long_values)
+        # av_a = np.abs(np.subtract(short_long, long_values))
+        # av_w = 0.6 - np.abs(np.subtract(short_long, long_values))
+        # av_m = np.maximum(0, 0.6 - np.abs(np.subtract(short_long, long_values)))
+        # av_r = np.nansum(np.maximum(0, 0.6 - np.abs(np.subtract(short_long, long_values))), axis=1)
+
         t0 = time.time_ns()
 
         all_values = np.nansum(np.maximum(0, 0.6 - np.abs(np.subtract(short_long, long_values))), axis=1) / 0.6
+
+        # print("tf\n", "\ns", av_s, "\na", av_a, "\nw", av_w, "\nm", av_m, "\nr", av_r, "\na", all_values)
 
         t1 = time.time_ns()
         times.append((t1 - t0) / neurons)
@@ -227,9 +297,10 @@ def test_calc_times(short_length, long_length):
         long_dict['{}'.format(i)] = np.random.random()
     short_dict = [{} for i in range(neurons)]
     for i in range(neurons):
+        selection = np.random.choice([k for k in long_dict.keys()], short_length, replace=False)
         for j in range(short_length):
             # short_dict['{}'.format(i+(long_length/2))] = 100 - i
-            short_dict[i]['{}'.format(j)] = np.random.random()
+            short_dict[i]['{}'.format(selection[j])] = np.random.random()
 
     print("\n\n")
     time_original = numpy_matrix_short(short_dict, long_dict)
@@ -245,7 +316,8 @@ def test_calc_times(short_length, long_length):
     # time_pre = numpy_matrix_short(short_dict, long_dict)
     time_pre = create_short_list_outside(short_dict, long_dict)
 
-    time_all = create_long_list_outside(short_dict, long_dict)
+    # time_all = create_long_list_outside(short_dict, long_dict)
+    time_all = tf_math(short_dict, long_dict)
     print("")
 
     # total_time = np.sum([np.average(time_original),
@@ -268,7 +340,7 @@ def test_calc_times(short_length, long_length):
     print(np.average(time_sample) / total_time, "time for inside sample = ", np.average(time_sample), "with sdtev", np.std(time_sample))
     print(np.average(time_delete) / total_time, "time for inside delete = ", np.average(time_delete), "with sdtev", np.std(time_delete))
     print(np.average(time_pre) / total_time, "time for pre shorten = ", np.average(time_pre), "with sdtev", np.std(time_pre))
-    print(np.average(time_all) / total_time, "time for pre lengthen = ", np.average(time_all), "with sdtev", np.std(time_all), "\n")
+    print(np.average(time_all) / total_time, "time for tf math = ", np.average(time_all), "with sdtev", np.std(time_all), "\n")
 
     return np.average(time_original) / total_time, np.average(time_original), \
            np.average(time_matrix) / total_time, np.average(time_matrix), \
@@ -279,7 +351,7 @@ def test_calc_times(short_length, long_length):
 
 lengths = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]
 
-neurons = 10
+neurons = 10000
 repeats = 10
 
 all_data = []
@@ -392,7 +464,7 @@ axs[2][1] = sn.heatmap(df_long, annot=True, annot_kws={"size": 8},
                        # vmax=np.nanmax(np.ma.masked_equal(long_share, 0.0, copy=False)),
                        # vmin=np.nanmin(np.ma.masked_equal(long_share, 0.0, copy=False)),
                        xticklabels=lengths, yticklabels=lengths) # font size
-axs[2][1].set_title('long')
+axs[2][1].set_title('tf')
 plt.suptitle("neurons-{}    repeats-{}".format(neurons, repeats))
 plt.subplots_adjust(left=0, bottom=0,
                     right=1, top=0.95,

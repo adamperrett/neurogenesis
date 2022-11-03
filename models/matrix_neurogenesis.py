@@ -131,6 +131,7 @@ class Network():
         else:
             modulation = 1
         total = expectation + inv_expectation
+        # does this work when v=0or1 for exp or inv?
         mask_exp = (expectation == 0)
         mask_inv = (inv_expectation == 0)
         mask = mask_exp * mask_inv
