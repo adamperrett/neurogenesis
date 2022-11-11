@@ -9,7 +9,6 @@ class Network():
                  maximum_synapses_per_neuron=1,
                  maximum_net_size=10000,
                  input_dimensions=None,
-                 reward_decay=1.,
                  delete_neuron_type='RL',
                  expecting=False,
                  surprise_threshold=0.4,
@@ -21,7 +20,6 @@ class Network():
         self.maximum_synapses_per_neuron = maximum_synapses_per_neuron
         self.maximum_net_size = maximum_net_size
         self.input_dimensions = input_dimensions
-        self.reward_decay = reward_decay
         self.delete_neuron_type = delete_neuron_type
         self.expecting = expecting
         self.surprise_threshold = surprise_threshold
